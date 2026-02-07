@@ -1,0 +1,252 @@
+/* Madar Holding - Premium Corporate Login Styles */
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Outfit", sans-serif;
+  overflow: hidden;
+}
+
+.login-page {
+  width: 100vw;
+  height: 100vh;
+  /* Light Grey/White Gradient */
+  background: radial-gradient(circle at top left, #ffffff, #f0f2f5, #e0e4e8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dynamic background elements - Subtle & Professional */
+.login-page::before,
+.login-page::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  z-index: 0;
+  animation: float 12s infinite ease-in-out alternate;
+}
+
+.login-page::before {
+  /* Madar Gold */
+  width: 400px;
+  height: 400px;
+  background: rgba(207, 161, 90, 0.15);
+  top: -100px;
+  left: -100px;
+}
+
+.login-page::after {
+  /* Madar Green */
+  width: 500px;
+  height: 500px;
+  background: rgba(10, 92, 54, 0.1);
+  bottom: -100px;
+  right: -100px;
+  animation-delay: -6s;
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(20px, 30px);
+  }
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 3.5rem 3rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(10, 92, 54, 0.08); /* Subtle Green Shadow */
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  animation: slideUp 0.8s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-header {
+  /* Madar Green */
+  color: #0a5c36;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.login-subheader {
+  color: #cfa15a; /* Gold */
+  font-size: 1rem;
+  font-weight: 500;
+  margin-top: -15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 20px;
+}
+
+/* Material UI Overrides for Light Theme */
+.loginForm .MuiTextField-root {
+  width: 100%;
+}
+
+.loginForm .MuiInputBase-root {
+  color: #1a1a1a !important; /* Dark text */
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.loginForm .MuiInputBase-root:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.loginForm .MuiInputLabel-root {
+  color: #666 !important;
+  font-weight: 500;
+}
+
+.loginForm .MuiInputLabel-root.Mui-focused {
+  color: #0a5c36 !important; /* Green Focus */
+}
+
+.loginForm .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.loginForm .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #cfa15a !important; /* Gold Hover */
+}
+
+.loginForm .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #0a5c36 !important; /* Green Focus */
+  border-width: 2px;
+}
+
+.login-button {
+  /* Madar Green Gradient */
+  background: linear-gradient(135deg, #0a5c36 0%, #063b22 100%);
+  color: white;
+  border: none;
+  padding: 14px 0;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(10, 92, 54, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  /* Gold Accent on Hover */
+  background: linear-gradient(135deg, #0d7a46 0%, #0a5c36 100%);
+  box-shadow: 0 6px 20px rgba(10, 92, 54, 0.35);
+}
+
+.login-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(10, 92, 54, 0.25);
+}
+
+.login-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: contain;
+  border: 3px solid #cfa15a; /* Madar Gold */
+  box-shadow: 0 4px 15px rgba(207, 161, 90, 0.3);
+  margin-bottom: 10px;
+  background: white;
+  padding: 8px;
+  transition: transform 0.3s ease;
+}
+
+.login-logo:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(207, 161, 90, 0.5);
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  .login-container {
+    max-width: 90%;
+    padding: 2.5rem 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body,
+  html {
+    overflow: auto;
+    height: auto;
+  }
+  .login-page {
+    height: auto;
+    min-height: 100vh;
+    padding: 40px 0;
+    overflow-y: visible;
+  }
+
+  .login-container {
+    width: 90%;
+    padding: 2rem 1.5rem;
+    gap: 15px;
+    margin: 20px auto;
+  }
+
+  .login-header {
+    font-size: 1.75rem;
+  }
+
+  .login-subheader {
+    font-size: 0.9rem;
+  }
+
+  .login-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .login-button {
+    padding: 12px 0;
+  }
+}
