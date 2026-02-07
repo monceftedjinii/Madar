@@ -2,9 +2,11 @@ import React from "react";
 import TextField from "@mui/material/TextField";
 import "../../styles/login.css";
 import logo from "../../assets/logo.jfif";
-
-import { useState  , } from "react";
+import login from "../../api/auth.api";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 export default function Login() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -17,12 +19,20 @@ export default function Login() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    try {
+      let response = await login("/api/auth/token/", form);
+      const token = response.access;
+      localStorage.setItem("access_token", token);
+      navigate("/profile")
+      // console.log(status);
+    } catch (error) {
+      console.error("Login failed", error);
+    }
   };
   return (
-    <div className="login-page" >
+    <div className="login-page">
       <div className="login-container">
         <img src={logo} alt="Madar Logo" className="login-logo" />
         <h1 className="login-header">MADAR HOLDING</h1>
@@ -53,7 +63,7 @@ export default function Login() {
             value={form.password}
             onChange={handlechange}
           />
-          <button className="login-button" type="submit" onClick={handleSubmit} >
+          <button className="login-button" type="submit" onClick={handleSubmit}>
             Login
           </button>
         </form>
