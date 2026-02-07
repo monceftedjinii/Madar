@@ -1,0 +1,136 @@
+ la structure de notre projrt de front-end :
+src/
+├── app/
+│   ├── App.jsx
+│   ├── main.jsx
+│   ├── routes.jsx
+│   └── providers.jsx
+│
+├── api/
+│   ├── axiosClient.js
+│   ├── endpoints.js
+│   ├── auth.api.js
+│   ├── employees.api.js
+│   ├── org.api.js              # services & postes
+│   ├── leaves.api.js
+│   ├── documents.api.js
+│   ├── reports.api.js
+│   ├── notifications.api.js
+│   └── evaluations.api.js
+│
+├── auth/
+│   ├── AuthProvider.jsx
+│   ├── useAuth.js
+│   ├── RequireAuth.jsx         # protège routes
+│   └── roleGuard.js            # RH vs Employé
+│
+├── layouts/
+│   ├── AuthLayout.jsx
+│   └── DashboardLayout.jsx     # Navbar + Sidebar + Outlet
+│
+├── components/
+│   ├── common/
+│   │   ├── Navbar.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── PageHeader.jsx
+│   │   ├── Breadcrumbs.jsx
+│   │   └── ConfirmDialog.jsx
+│   └── ui/
+│       ├── Button.jsx
+│       ├── Input.jsx
+│       ├── Select.jsx
+│       ├── Modal.jsx
+│       ├── Table.jsx
+│       ├── Pagination.jsx
+│       ├── Badge.jsx
+│       └── Loader.jsx
+│
+├── features/                   # ✅ meilleur pour modules GRH
+│   ├── users/
+│   │   ├── pages/
+│   │   │   ├── UsersList.jsx
+│   │   │   └── UserForm.jsx
+│   │   ├── components/
+│   │   └── hooks/
+│   │
+│   ├── employees/
+│   │   ├── pages/
+│   │   │   ├── EmployeesList.jsx
+│   │   │   ├── EmployeeDetails.jsx
+│   │   │   └── EmployeeForm.jsx
+│   │   ├── components/
+│   │   └── hooks/
+│   │
+│   ├── org/                    # services & postes
+│   │   ├── pages/
+│   │   │   ├── Services.jsx
+│   │   │   └── Positions.jsx
+│   │   └── components/
+│   │
+│   ├── leaves/
+│   │   ├── pages/
+│   │   │   ├── LeaveRequest.jsx
+│   │   │   ├── LeavesList.jsx
+│   │   │   └── LeaveValidation.jsx
+│   │   └── components/
+│   │
+│   ├── documents/
+│   │   ├── pages/
+│   │   │   ├── DocumentsList.jsx
+│   │   │   ├── DocumentUpload.jsx
+│   │   │   └── GenerateAttestation.jsx
+│   │   └── components/
+│   │
+│   ├── reports/
+│   │   ├── pages/
+│   │   │   ├── EmployeesByService.jsx
+│   │   │   ├── LeaveStats.jsx
+│   │   │   └── ExportCenter.jsx
+│   │   └── components/
+│   │
+│   ├── notifications/
+│   │   ├── pages/
+│   │   │   └── NotificationsList.jsx
+│   │   └── components/
+│   │
+│   └── evaluations/
+│       ├── pages/
+│       │   ├── Criteria.jsx
+│       │   ├── EvaluateEmployee.jsx
+│       │   └── EvaluationHistory.jsx
+│       └── components/
+│
+├── pages/                      # pages globales
+│   ├── auth/
+│   │   └── Login.jsx
+│   ├── dashboard/
+│   │   └── Dashboard.jsx
+│   ├── errors/
+│   │   ├── NotFound.jsx
+│   │   └── Forbidden.jsx
+│   └── profile/
+│       └── MyProfile.jsx
+│
+├── hooks/
+│   ├── useFetch.js
+│   ├── useDebounce.js
+│   └── usePagination.js
+│
+├── store/                      # optionnel (si besoin)
+│   └── (redux | zustand)
+│
+├── styles/
+│   ├── globals.css
+│   └── variables.css
+│
+└── utils/
+    ├── constants.js
+    ├── validators.js
+    ├── formatters.js
+    └── permissions.js
+
+
+
+
+  
+  -- mes notes-- :
