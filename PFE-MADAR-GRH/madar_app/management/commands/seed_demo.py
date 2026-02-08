@@ -40,7 +40,7 @@ class Command(BaseCommand):
             )
             if created:
                 user.set_password(password)
-                user.save()
+            user.save()
             created_users[email] = user
 
         self.stdout.write(self.style.SUCCESS('✓ Users created with roles'))
@@ -57,6 +57,9 @@ class Command(BaseCommand):
                 'salary': Decimal('50000.00'),
             }
         )
+        if not emp.attendance_pin:
+            emp.attendance_pin = '1234'
+            emp.save()
 
         chef_user = created_users['chef@example.com']
         chef_emp, _ = Employee.objects.get_or_create(
@@ -69,6 +72,9 @@ class Command(BaseCommand):
                 'salary': Decimal('65000.00'),
             }
         )
+        if not chef_emp.attendance_pin:
+            chef_emp.attendance_pin = '1234'
+            chef_emp.save()
 
         rh_simple_user = created_users['rh_simple@example.com']
         rh_simple_emp, _ = Employee.objects.get_or_create(
@@ -81,6 +87,9 @@ class Command(BaseCommand):
                 'salary': Decimal('60000.00'),
             }
         )
+        if not rh_simple_emp.attendance_pin:
+            rh_simple_emp.attendance_pin = '1234'
+            rh_simple_emp.save()
 
         rh_senior_user = created_users['rh_senior@example.com']
         rh_senior_emp, _ = Employee.objects.get_or_create(
@@ -93,6 +102,9 @@ class Command(BaseCommand):
                 'salary': Decimal('75000.00'),
             }
         )
+        if not rh_senior_emp.attendance_pin:
+            rh_senior_emp.attendance_pin = '1234'
+            rh_senior_emp.save()
 
         grh_user = created_users['grh@example.com']
         grh_emp, _ = Employee.objects.get_or_create(
@@ -105,6 +117,9 @@ class Command(BaseCommand):
                 'salary': Decimal('90000.00'),
             }
         )
+        if not grh_emp.attendance_pin:
+            grh_emp.attendance_pin = '1234'
+            grh_emp.save()
 
         self.stdout.write(self.style.SUCCESS('✓ Employees (demo users) created'))
 

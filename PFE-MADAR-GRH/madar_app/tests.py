@@ -182,8 +182,8 @@ class AttendanceTests(APITestCase):
 		# employee user and employee record
 		self.email = 'att@example.com'
 		self.password = 'attpass'
-		User.objects.create_user(email=self.email, password=self.password, role=RoleChoices.EMPLOYEE)
-		self.emp = Employee.objects.create(first_name='Att', last_name='User', email=self.email, hired_at='2020-01-01', department=self.d, salary='1000')
+		self.user = User.objects.create_user(email=self.email, password=self.password, role=RoleChoices.EMPLOYEE)
+		self.emp = Employee.objects.create(first_name='Att', last_name='User', email=self.email, hired_at='2020-01-01', department=self.d, salary='1000', attendance_pin='1234')
 
 	def get_token(self):
 		resp = self.client.post('/api/auth/token/', {'email': self.email, 'password': self.password}, format='json')
@@ -193,32 +193,59 @@ class AttendanceTests(APITestCase):
 	def test_check_in_creates_record(self):
 		token = self.get_token()
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp = self.client.post('/api/attendance/check-in/')
+		resp = self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
 		self.assertIn(resp.status_code, (200, 201))
 		data = resp.json()
 		# check_in_time present
 		self.assertIn('check_in_time', data)
 
+	def test_check_in_wrong_pin_forbidden(self):
+		token = self.get_token()
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/attendance/check-in/', {'pin': '0000'}, format='json')
+		self.assertEqual(resp.status_code, 403)
+
+	def test_check_in_missing_pin_bad_request(self):
+		token = self.get_token()
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/attendance/check-in/', {}, format='json')
+		self.assertEqual(resp.status_code, 400)
+
+	def test_check_in_no_pin_set_bad_request(self):
+		self.emp.attendance_pin = ''
+		self.emp.save()
+		token = self.get_token()
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
+		self.assertEqual(resp.status_code, 400)
+
+	def test_check_out_requires_pin(self):
+		token = self.get_token()
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
+		resp = self.client.post('/api/attendance/check-out/', {'pin': '0000'}, format='json')
+		self.assertEqual(resp.status_code, 403)
+
 	def test_double_check_in_bad_request(self):
 		token = self.get_token()
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp1 = self.client.post('/api/attendance/check-in/')
+		resp1 = self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
 		self.assertIn(resp1.status_code, (200, 201))
-		resp2 = self.client.post('/api/attendance/check-in/')
+		resp2 = self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
 		self.assertEqual(resp2.status_code, 400)
 
 	def test_check_out_after_check_in(self):
 		token = self.get_token()
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		self.client.post('/api/attendance/check-in/')
-		resp = self.client.post('/api/attendance/check-out/')
+		self.client.post('/api/attendance/check-in/', {'pin': '1234'}, format='json')
+		resp = self.client.post('/api/attendance/check-out/', {'pin': '1234'}, format='json')
 		self.assertEqual(resp.status_code, 200)
 		self.assertIn('check_out_time', resp.json())
 
 	def test_check_out_without_check_in(self):
 		token = self.get_token()
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp = self.client.post('/api/attendance/check-out/')
+		resp = self.client.post('/api/attendance/check-out/', {'pin': '1234'}, format='json')
 		self.assertEqual(resp.status_code, 400)
 
 	def test_list_returns_only_self(self):

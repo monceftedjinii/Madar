@@ -7,6 +7,10 @@ export default function MyAttendance() {
   const [error, setError] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null); // 'check-in' or 'check-out'
   const [actionMessage, setActionMessage] = useState(null); // success/error from action
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // 'check-in' or 'check-out'
+  const [pinValue, setPinValue] = useState('');
+  const [pinError, setPinError] = useState(null);
 
   // Date filtering
   const [fromDate, setFromDate] = useState('');
@@ -26,6 +30,16 @@ export default function MyAttendance() {
     fetchAttendance(fromFormatted, toFormatted);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && pinModalOpen) {
+        closePinModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pinModalOpen]);
+
   const fetchAttendance = async (from, to) => {
     try {
       setLoading(true);
@@ -44,43 +58,40 @@ export default function MyAttendance() {
     }
   };
 
-  const handleCheckIn = async () => {
-    try {
-      setActionInProgress('check-in');
-      setActionMessage(null);
-      await api.post('/api/attendance/check-in/', {});
-      setActionMessage({ type: 'success', text: 'Checked in successfully' });
-      // Refresh attendance records
-      setTimeout(() => {
-        fetchAttendance(fromDate, toDate);
-        setActionMessage(null);
-      }, 2000);
-    } catch (err) {
-      setActionMessage({
-        type: 'error',
-        text: err.response?.data?.error || 'Failed to check in'
-      });
-    } finally {
-      setActionInProgress(null);
-    }
+  const openPinModal = (action) => {
+    setPendingAction(action);
+    setPinValue('');
+    setPinError(null);
+    setPinModalOpen(true);
   };
 
-  const handleCheckOut = async () => {
+  const closePinModal = () => {
+    setPinModalOpen(false);
+    setPendingAction(null);
+    setPinValue('');
+    setPinError(null);
+  };
+
+  const confirmPin = async () => {
+    if (pinValue.length !== 4) return;
     try {
-      setActionInProgress('check-out');
+      setActionInProgress(pendingAction);
       setActionMessage(null);
-      await api.post('/api/attendance/check-out/', {});
-      setActionMessage({ type: 'success', text: 'Checked out successfully' });
-      // Refresh attendance records
+      setPinError(null);
+      const endpoint = pendingAction === 'check-in' ? '/api/attendance/check-in/' : '/api/attendance/check-out/';
+      await api.post(endpoint, { pin: pinValue });
+      setActionMessage({
+        type: 'success',
+        text: pendingAction === 'check-in' ? 'Checked in successfully' : 'Checked out successfully'
+      });
+      closePinModal();
       setTimeout(() => {
         fetchAttendance(fromDate, toDate);
         setActionMessage(null);
       }, 2000);
     } catch (err) {
-      setActionMessage({
-        type: 'error',
-        text: err.response?.data?.error || 'Failed to check out'
-      });
+      const detail = err.response?.data?.detail || err.response?.data?.error;
+      setPinError(detail || 'Invalid PIN');
     } finally {
       setActionInProgress(null);
     }
@@ -171,6 +182,67 @@ export default function MyAttendance() {
     buttonDisabled: {
       backgroundColor: '#ccc',
       cursor: 'not-allowed'
+    },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    },
+    modalCard: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      padding: '20px',
+      width: '320px',
+      boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+    },
+    modalTitle: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      marginBottom: '10px',
+      color: '#333'
+    },
+    modalInput: {
+      width: '100%',
+      padding: '10px',
+      fontSize: '16px',
+      letterSpacing: '6px',
+      textAlign: 'center',
+      border: '1px solid #ddd',
+      borderRadius: '6px',
+      boxSizing: 'border-box'
+    },
+    modalError: {
+      marginTop: '10px',
+      color: '#c33',
+      fontSize: '12px'
+    },
+    modalActions: {
+      display: 'flex',
+      gap: '10px',
+      marginTop: '15px'
+    },
+    modalButton: {
+      flex: 1,
+      padding: '8px 12px',
+      fontSize: '12px',
+      borderRadius: '4px',
+      border: 'none',
+      cursor: 'pointer'
+    },
+    modalConfirm: {
+      backgroundColor: '#007bff',
+      color: 'white'
+    },
+    modalCancel: {
+      backgroundColor: '#6c757d',
+      color: 'white'
     },
     messageBanner: {
       padding: '12px 16px',
@@ -291,7 +363,7 @@ export default function MyAttendance() {
               ...styles.checkInButton,
               ...(actionInProgress ? styles.buttonDisabled : {})
             }}
-            onClick={handleCheckIn}
+            onClick={() => openPinModal('check-in')}
             disabled={actionInProgress !== null}
           >
             {actionInProgress === 'check-in' ? 'Checking in...' : '✓ Check In'}
@@ -302,7 +374,7 @@ export default function MyAttendance() {
               ...styles.checkOutButton,
               ...(actionInProgress ? styles.buttonDisabled : {})
             }}
-            onClick={handleCheckOut}
+            onClick={() => openPinModal('check-out')}
             disabled={actionInProgress !== null}
           >
             {actionInProgress === 'check-out' ? 'Checking out...' : '✗ Check Out'}
@@ -324,6 +396,51 @@ export default function MyAttendance() {
           </div>
         )}
       </div>
+
+      {pinModalOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Enter 4-digit PIN</div>
+            <input
+              style={styles.modalInput}
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinValue}
+              onChange={(e) => {
+                const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setPinValue(digitsOnly);
+                if (pinError) setPinError(null);
+              }}
+              placeholder="••••"
+            />
+            {pinError && <div style={styles.modalError}>{pinError}</div>}
+            <div style={styles.modalActions}>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalConfirm,
+                  ...(pinValue.length !== 4 || actionInProgress ? styles.buttonDisabled : {})
+                }}
+                onClick={confirmPin}
+                disabled={pinValue.length !== 4 || actionInProgress}
+              >
+                Confirm
+              </button>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalCancel
+                }}
+                onClick={closePinModal}
+                disabled={actionInProgress}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Attendance History Section */}
       <div style={styles.section}>

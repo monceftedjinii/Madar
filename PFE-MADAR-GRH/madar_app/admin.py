@@ -43,7 +43,16 @@ class UserAdmin(BaseUserAdmin):
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Department)
-admin.site.register(Employee)
+
+
+class EmployeeAdmin(admin.ModelAdmin):
+	list_display = ('email', 'first_name', 'last_name', 'department', 'attendance_pin')
+	search_fields = ('email', 'first_name', 'last_name')
+	list_filter = ('department',)
+	fields = ('first_name', 'last_name', 'email', 'department', 'hired_at', 'salary', 'attendance_pin')
+
+
+admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Task)
 admin.site.register(Attendance)
 admin.site.register(LeaveRequest)

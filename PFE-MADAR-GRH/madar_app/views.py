@@ -127,12 +127,22 @@ def mark_task_done(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsEmployee])
 def attendance_check_in(request):
-	now = timezone.now()
-	today = now.date()
+	pin = request.data.get('pin')
+	if not pin:
+		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
+	if not str(pin).isdigit() or len(str(pin)) != 4:
+		return Response({'detail': 'pin must be exactly 4 digits'}, status=status.HTTP_400_BAD_REQUEST)
 	try:
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
+	if not emp.attendance_pin:
+		return Response({'detail': 'pin not set'}, status=status.HTTP_400_BAD_REQUEST)
+	if str(pin) != emp.attendance_pin:
+		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
+
+	now = timezone.now()
+	today = now.date()
 
 	att, created = Attendance.objects.get_or_create(employee=emp, date=today)
 	if att.check_in_time:
@@ -146,12 +156,22 @@ def attendance_check_in(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsEmployee])
 def attendance_check_out(request):
-	now = timezone.now()
-	today = now.date()
+	pin = request.data.get('pin')
+	if not pin:
+		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
+	if not str(pin).isdigit() or len(str(pin)) != 4:
+		return Response({'detail': 'pin must be exactly 4 digits'}, status=status.HTTP_400_BAD_REQUEST)
 	try:
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
+	if not emp.attendance_pin:
+		return Response({'detail': 'pin not set'}, status=status.HTTP_400_BAD_REQUEST)
+	if str(pin) != emp.attendance_pin:
+		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
+
+	now = timezone.now()
+	today = now.date()
 
 	try:
 		att = Attendance.objects.get(employee=emp, date=today)
