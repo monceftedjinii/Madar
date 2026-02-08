@@ -8,6 +8,12 @@ export default function DepartmentLeaves() {
   const [actionInProgress, setActionInProgress] = useState(null); // tracks which leave is being processed
   const [commentInputs, setCommentInputs] = useState({}); // stores comment for each leave
   const [expandedLeave, setExpandedLeave] = useState(null); // which leave has expanded action buttons
+  const [searchInput, setSearchInput] = useState('');
+  const [fromDateInput, setFromDateInput] = useState('');
+  const [toDateInput, setToDateInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     fetchLeaves();
@@ -74,6 +80,12 @@ export default function DepartmentLeaves() {
     setCommentInputs(prev => ({ ...prev, [leaveId]: value }));
   };
 
+  const applyFilters = () => {
+    setSearchTerm(searchInput.trim());
+    setFromDate(fromDateInput);
+    setToDate(toDateInput);
+  };
+
   const getStatusColor = (status) => {
     const normalizedStatus = String(status || '').toUpperCase();
     const colors = {
@@ -104,9 +116,36 @@ export default function DepartmentLeaves() {
     return 'UNKNOWN';
   };
 
-  const pendingLeaves = leaves.filter(l => normalizeStatus(l) === 'PENDING');
-  const acceptedLeaves = leaves.filter(l => normalizeStatus(l) === 'ACCEPTED');
-  const refusedLeaves = leaves.filter(l => normalizeStatus(l) === 'REFUSED');
+  const filteredLeaves = leaves.filter((leave) => {
+    const term = searchTerm.toLowerCase();
+    if (term) {
+      const email = leave?.employee_email || leave?.employee?.email || leave?.employee?.user?.email || '';
+      const first = leave?.employee?.first_name || leave?.employee?.user?.first_name || '';
+      const last = leave?.employee?.last_name || leave?.employee?.user?.last_name || '';
+      const reason = leave?.reason || '';
+      const haystack = `${first} ${last} ${email} ${reason}`.toLowerCase();
+      if (!haystack.includes(term)) return false;
+    }
+
+    if (fromDate || toDate) {
+      const start = leave?.start_date ? new Date(leave.start_date) : null;
+      const end = leave?.end_date ? new Date(leave.end_date) : null;
+      if (fromDate) {
+        const from = new Date(fromDate);
+        if (end && end < from) return false;
+      }
+      if (toDate) {
+        const to = new Date(toDate);
+        if (start && start > to) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const pendingLeaves = filteredLeaves.filter(l => normalizeStatus(l) === 'PENDING');
+  const acceptedLeaves = filteredLeaves.filter(l => normalizeStatus(l) === 'ACCEPTED');
+  const refusedLeaves = filteredLeaves.filter(l => normalizeStatus(l) === 'REFUSED');
 
   // Helper to render employee label with fallbacks
   const getEmployeeLabel = (leave) => {
@@ -139,6 +178,37 @@ export default function DepartmentLeaves() {
     subtitle: {
       fontSize: '14px',
       color: '#666'
+    },
+    filterRow: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 160px 160px 120px',
+      gap: '10px',
+      alignItems: 'end',
+      marginBottom: '20px'
+    },
+    filterLabel: {
+      display: 'block',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: '5px'
+    },
+    filterInput: {
+      padding: '8px',
+      fontSize: '12px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      width: '100%',
+      boxSizing: 'border-box'
+    },
+    filterButton: {
+      padding: '8px 12px',
+      fontSize: '12px',
+      backgroundColor: '#007bff',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
     },
     alertBanner: {
       padding: '12px 16px',
@@ -295,6 +365,40 @@ export default function DepartmentLeaves() {
         <p style={styles.subtitle}>
           Total: {leaves.length} | Pending: {pendingLeaves.length} | Accepted: {acceptedLeaves.length} | Refused: {refusedLeaves.length}
         </p>
+      </div>
+
+      <div style={styles.filterRow}>
+        <div>
+          <label style={styles.filterLabel}>Search</label>
+          <input
+            style={styles.filterInput}
+            type="text"
+            placeholder="Search name, email, reason"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <div>
+          <label style={styles.filterLabel}>From Date</label>
+          <input
+            style={styles.filterInput}
+            type="date"
+            value={fromDateInput}
+            onChange={(e) => setFromDateInput(e.target.value)}
+          />
+        </div>
+        <div>
+          <label style={styles.filterLabel}>To Date</label>
+          <input
+            style={styles.filterInput}
+            type="date"
+            value={toDateInput}
+            onChange={(e) => setToDateInput(e.target.value)}
+          />
+        </div>
+        <button style={styles.filterButton} onClick={applyFilters}>
+          Search
+        </button>
       </div>
 
       {error && (

@@ -343,10 +343,11 @@ class LeaveRequestTests(APITestCase):
 		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-12', 'end_date': '2026-03-14', 'type': 'ANNUAL', 'reason': 'Overlap'}, format='json')
 		self.assertEqual(resp.status_code, 400)
 
-	def test_chef_lists_only_his_department_pending(self):
+	def test_chef_lists_only_his_department_leaves(self):
 		from .models import LeaveRequest
-		# create two pending leaves, one in each dept
+		# create leaves in both departments
 		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type=LeaveRequest.LeaveType.ANNUAL)
+		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-05', end_date='2026-03-06', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
 		LeaveRequest.objects.create(employee=self.b1, start_date='2026-03-03', end_date='2026-03-04', type=LeaveRequest.LeaveType.ANNUAL)
 
 		token = self.get_token('chef3@example.com', 'chefpass')
@@ -354,9 +355,10 @@ class LeaveRequestTests(APITestCase):
 		resp = self.client.get('/api/leaves/department/')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		# should include only the one from dept A
-		self.assertEqual(len(data), 1)
-		self.assertEqual(data[0]['employee_email'], 'a1@example.com')
+		# should include only dept A leaves (pending + accepted)
+		self.assertEqual(len(data), 2)
+		emails = {d['employee_email'] for d in data}
+		self.assertEqual(emails, {'a1@example.com'})
 
 	def test_chef_approves_request_in_dept(self):
 		from .models import LeaveRequest

@@ -417,7 +417,7 @@ def mark_notification_read(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsChef])
 def department_pending_leaves(request):
-	# Chef lists PENDING leaves in his department
+	# Chef lists all leaves in his department (history + pending)
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
@@ -425,8 +425,8 @@ def department_pending_leaves(request):
 			{'detail': 'Chef has no Employee record / department assigned'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
-	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department, status=LeaveRequest.Status.PENDING).order_by('created_at')
-	print(f"department_pending_leaves dept_id={chef_emp.department_id} pending_count={qs.count()}")
+	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department).order_by('-created_at')
+	print(f"department_pending_leaves dept_id={chef_emp.department_id} total_count={qs.count()}")
 	data = [
 		{
 			'id': l.id,
