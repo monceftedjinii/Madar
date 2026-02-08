@@ -110,11 +110,13 @@ export default function DepartmentLeaves() {
 
   // Helper to render employee label with fallbacks
   const getEmployeeLabel = (leave) => {
-    const user = leave?.employee?.user;
-    if (user?.email) return user.email;
-    const first = user?.first_name || leave?.employee?.first_name;
-    const last = user?.last_name || leave?.employee?.last_name;
-    if (first || last) return `${first || ''} ${last || ''}`.trim();
+    const email = leave?.employee_email || leave?.employee?.email || leave?.employee?.user?.email;
+    const first = leave?.employee?.first_name || leave?.employee?.user?.first_name;
+    const last = leave?.employee?.last_name || leave?.employee?.user?.last_name;
+    const name = [first, last].filter(Boolean).join(' ').trim();
+    if (name && email) return `${name} (${email})`;
+    if (name) return name;
+    if (email) return email;
     return 'Unknown';
   };
 
@@ -320,7 +322,7 @@ export default function DepartmentLeaves() {
                 <div style={styles.leaveHeader}>
                   <div>
                     <div style={styles.leaveTitle}>
-                      {leave.employee?.user?.email || 'Unknown'} ({leave.employee?.first_name} {leave.employee?.last_name})
+                      {getEmployeeLabel(leave)}
                     </div>
                   </div>
                   <div
@@ -400,7 +402,7 @@ export default function DepartmentLeaves() {
               <div key={leave.id} style={styles.leaveCard}>
                 <div style={styles.leaveHeader}>
                   <div style={styles.leaveTitle}>
-                    {leave.employee?.email || leave.employee?.user?.email || 'Unknown'} ({leave.employee?.first_name} {leave.employee?.last_name})
+                    {getEmployeeLabel(leave)}
                   </div>
                   <div
                     style={{
@@ -432,7 +434,7 @@ export default function DepartmentLeaves() {
               <div key={leave.id} style={styles.leaveCard}>
                 <div style={styles.leaveHeader}>
                   <div style={styles.leaveTitle}>
-                    {leave.employee?.email || leave.employee?.user?.email || 'Unknown'} ({leave.employee?.first_name} {leave.employee?.last_name})
+                    {getEmployeeLabel(leave)}
                   </div>
                   <div
                     style={{
