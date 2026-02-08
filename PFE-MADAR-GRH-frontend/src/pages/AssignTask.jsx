@@ -56,10 +56,7 @@ export default function AssignTask() {
     try {
       setSubmitting(true);
       await api.post('/api/tasks/', {
-        employee_id: parseInt(formData.employee_id),
-        title: formData.title,
-        description: formData.description,
-        due_date: formData.due_date
+        assigned_to: parseInt(formData.employee_id),
       });
 
       setSuccess('Task assigned successfully');
@@ -251,7 +248,7 @@ export default function AssignTask() {
             <option value="">Select an employee</option>
             {employees.map(emp => (
               <option key={emp.id} value={emp.id}>
-                {emp.user.email} ({emp.first_name} {emp.last_name})
+                {emp.first_name} {emp.last_name} ({emp.email})
               </option>
             ))}
           </select>

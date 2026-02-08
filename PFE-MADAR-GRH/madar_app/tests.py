@@ -174,6 +174,108 @@ class TaskTests(APITestCase):
 		resp = self.client.post('/api/tasks/', {'title': 'Do Y', 'assigned_to': self.b1.id}, format='json')
 		self.assertEqual(resp.status_code, 403)
 
+	def test_chef_assigns_with_all_fields(self):
+		# Comprehensive test: chef assigns task with title, description, due_date
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/tasks/', {
+			'assigned_to': self.a1.id,
+			'title': 'Complete Report',
+			'description': 'Prepare Q1 financial report',
+			'due_date': '2026-03-15'
+		}, format='json')
+		self.assertEqual(resp.status_code, 201)
+		data = resp.json()
+		self.assertIn('id', data)
+		# Verify task was created
+		from .models import Task
+		task = Task.objects.get(id=data['id'])
+		self.assertEqual(task.title, 'Complete Report')
+		self.assertEqual(task.description, 'Prepare Q1 financial report')
+		self.assertEqual(task.assigned_to.id, self.a1.id)
+		self.assertEqual(task.assigned_by.email, 'chef2@example.com')
+
+	def test_chef_assigns_missing_title(self):
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/tasks/', {'assigned_to': self.a1.id}, format='json')
+		self.assertEqual(resp.status_code, 400)
+		self.assertIn('title', str(resp.json() or '').lower())
+
+	def test_chef_assigns_missing_assigned_to(self):
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/tasks/', {'title': 'Task'}, format='json')
+		self.assertEqual(resp.status_code, 400)
+		self.assertIn('assigned_to', str(resp.json() or '').lower())
+
+	def test_employee_sees_assigned_task(self):
+		# Create a task via chef
+		from .models import Task
+		Task.objects.create(
+			title='Employee Task',
+			description='Do something',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		# Employee views their tasks
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/me/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertGreater(len(data), 0)
+		task = data[0]
+		self.assertEqual(task['title'], 'Employee Task')
+		self.assertEqual(task['status'], 'TODO')
+
+	def test_employee_cannot_see_others_tasks(self):
+		# Create a task for a1
+		from .models import Task
+		Task.objects.create(
+			title='A1 Task',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		# Employee b1 tries to view tasks (should see none)
+		token = self.get_token('b1@example.com', 'otherpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/me/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(len(data), 0)
+
+	def test_employee_marks_task_done(self):
+		# Create a task for a1
+		from .models import Task
+		task = Task.objects.create(
+			title='Task to Complete',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		# Employee a1 marks it done
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.patch(f'/api/tasks/{task.id}/done/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		# Verify task status changed
+		task.refresh_from_db()
+		self.assertEqual(task.status, 'DONE')
+
+	def test_employee_cannot_mark_others_task_done(self):
+		# Create a task for a1
+		from .models import Task
+		task = Task.objects.create(
+			title='A1 Task',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		# Employee b1 tries to mark a1's task as done (should fail)
+		token = self.get_token('b1@example.com', 'otherpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.patch(f'/api/tasks/{task.id}/done/', format='json')
+		self.assertEqual(resp.status_code, 403)
+
 
 class AttendanceTests(APITestCase):
 	def setUp(self):
@@ -273,6 +375,17 @@ class LeaveRequestTests(APITestCase):
 		# departments
 		self.d1 = Department.objects.create(name='Dept A')
 		self.d2 = Department.objects.create(name='Dept B')
+		# employees
+		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
+		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
+
+		# chef in dept A
+		self.chef = User.objects.create_user(email='chef3@example.com', password='chefpass', role=RoleChoices.CHEF)
+		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef3@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
+
+		# users for employees
+		self.emp_user = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
+		self.other_user = User.objects.create_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
 	def test_employee_blocked_if_pending_leave(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
@@ -296,17 +409,6 @@ class LeaveRequestTests(APITestCase):
 		resp = self.client.post('/api/leaves/', {'start_date': str(today + timedelta(days=5)), 'end_date': str(today + timedelta(days=7)), 'type': 'ANNUAL', 'reason': 'Blocked'}, format='json')
 		self.assertEqual(resp.status_code, 400)
 		self.assertIn('ongoing approved leave', resp.json()['detail'])
-		# employees
-		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
-		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
-
-		# chef in dept A
-		self.chef = User.objects.create_user(email='chef3@example.com', password='chefpass', role=RoleChoices.CHEF)
-		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef3@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
-
-		# users for employees
-		self.emp_user = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
-		self.other_user = User.objects.create_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
