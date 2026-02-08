@@ -317,6 +317,9 @@ class LeaveRequestTests(APITestCase):
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-01', 'end_date': '2026-03-05', 'type': 'ANNUAL', 'reason': 'Vacation'}, format='json')
 		self.assertEqual(resp.status_code, 201)
+		from .models import Notification
+		notifs = Notification.objects.filter(user=self.chef)
+		self.assertGreater(notifs.count(), 0)
 
 	def test_employee_create_sick_without_attachment_bad_request(self):
 		token = self.get_token('a1@example.com', 'emppass')

@@ -274,6 +274,13 @@ def create_leave(request):
 		attachment=request.FILES.get('attachment') if request.FILES.get('attachment') else None,
 		status=LeaveRequest.Status.PENDING,
 	)
+
+	# Notify chef(s) in the same department
+	chef_emails = Employee.objects.filter(department=emp.department).values_list('email', flat=True)
+	chef_users = User.objects.filter(role=RoleChoices.CHEF, email__in=chef_emails)
+	for chef_user in chef_users:
+		notify(chef_user, 'New leave request', f'{emp.first_name} {emp.last_name} requested leave from {sd} to {ed}.')
+
 	return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
 
 
