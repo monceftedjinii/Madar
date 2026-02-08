@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 
 export default function MyLeaves() {
+    // Block leave request if employee has pending or ongoing accepted leave
+    const [blockedReason, setBlockedReason] = useState(null);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,6 +28,23 @@ export default function MyLeaves() {
       setError(null);
       const response = await api.get('/api/leaves/me/');
       setLeaves(response.data);
+      // Check for blocking conditions
+      const today = new Date();
+      let blocked = null;
+      for (const leave of response.data) {
+        if (leave.status === 'PENDING') {
+          blocked = 'You already have a pending leave request.';
+          break;
+        }
+        if (leave.status === 'ACCEPTED') {
+          const endDate = new Date(leave.end_date);
+          if (endDate >= today) {
+            blocked = `You have an ongoing approved leave until ${leave.end_date}.`;
+            break;
+          }
+        }
+      }
+      setBlockedReason(blocked);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load leaves');
     } finally {
@@ -109,13 +128,9 @@ export default function MyLeaves() {
       setTimeout(() => fetchLeaves(), 1000);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.log('submit leave status', err.response?.status);
-      console.log('submit leave data', err.response?.data);
-      setError(
-        err.response?.data?.detail ||
-        JSON.stringify(err.response?.data) ||
-        'Failed to submit leave request'
-      );
+      // Show backend error message clearly
+      const detail = err.response?.data?.detail || err.response?.data?.error;
+      setError(detail || 'Failed to submit leave request');
     } finally {
       setSubmitting(false);
     }
@@ -343,6 +358,11 @@ export default function MyLeaves() {
         {/* Create Leave Form */}
         <div style={styles.sectionCard}>
           <h2 style={styles.sectionTitle}>Create Leave Request</h2>
+          {blockedReason && (
+            <div style={{...styles.alertBanner, ...styles.errorBanner}}>
+              <span>{blockedReason}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div style={styles.formGroup}>
@@ -354,6 +374,7 @@ export default function MyLeaves() {
                   value={formData.start_date}
                   onChange={handleInputChange}
                   required
+                  disabled={!!blockedReason}
                 />
               </div>
 
@@ -366,6 +387,7 @@ export default function MyLeaves() {
                   value={formData.end_date}
                   onChange={handleInputChange}
                   required
+                  disabled={!!blockedReason}
                 />
               </div>
 
@@ -376,6 +398,7 @@ export default function MyLeaves() {
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
+                  disabled={!!blockedReason}
                 >
                   <option value="ANNUAL">Annual Leave</option>
                   <option value="SICK">Sick Leave</option>
@@ -391,6 +414,7 @@ export default function MyLeaves() {
                     type="file"
                     name="attachment"
                     onChange={handleInputChange}
+                    disabled={!!blockedReason}
                   />
                 </div>
               )}
@@ -405,14 +429,15 @@ export default function MyLeaves() {
                 onChange={handleInputChange}
                 placeholder="Explain your leave request"
                 required
+                disabled={!!blockedReason}
               />
             </div>
 
             <div style={styles.buttonGroup}>
               <button
-                style={{...styles.submitButton, ...(submitting ? styles.submitButtonDisabled : {})}}
+                style={{...styles.submitButton, ...(submitting || blockedReason ? styles.submitButtonDisabled : {})}}
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !!blockedReason}
               >
                 {submitting ? 'Submitting...' : 'Submit Request'}
               </button>
@@ -429,6 +454,7 @@ export default function MyLeaves() {
                   });
                   setError(null);
                 }}
+                disabled={!!blockedReason}
               >
                 Clear
               </button>
@@ -467,7 +493,12 @@ export default function MyLeaves() {
                       <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
                       <div><strong>Days:</strong> {(new Date(leave.end_date) - new Date(leave.start_date)) / (1000 * 60 * 60 * 24) + 1}</div>
                       <div><strong>Reason:</strong> {leave.reason}</div>
-                      {leave.chef_comment && <div><strong>Chef Comment:</strong> {leave.chef_comment}</div>}
+                      {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.chef_comment && (
+                        <div><strong>Chef Comment:</strong> {leave.chef_comment}</div>
+                      )}
+                      {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.decided_at && (
+                        <div style={{ fontSize: '12px', color: '#999' }}>Decided: {new Date(leave.decided_at).toLocaleDateString()}</div>
+                      )}
                       {leave.submitted_at && <div style={{ fontSize: '12px', color: '#999' }}>Submitted: {new Date(leave.submitted_at).toLocaleDateString()}</div>}
                     </div>
                   </div>

@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Django tests for leave blocking rule",
+			"type": "shell",
+			"command": "python manage.py test madar_app.tests.LeaveRequestTests",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$pytest"
+			],
+			"group": "test"
+		}
+	]
+}

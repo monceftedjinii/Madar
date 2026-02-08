@@ -245,7 +245,29 @@ class LeaveRequestTests(APITestCase):
 		# departments
 		self.d1 = Department.objects.create(name='Dept A')
 		self.d2 = Department.objects.create(name='Dept B')
+	def test_employee_blocked_if_pending_leave(self):
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		# Create a pending leave
+		from .models import LeaveRequest
+		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-10', end_date='2026-03-12', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.PENDING)
+		# Try to create another leave
+		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-15', 'end_date': '2026-03-17', 'type': 'ANNUAL', 'reason': 'Blocked'}, format='json')
+		self.assertEqual(resp.status_code, 400)
+		self.assertIn('pending request', resp.json()['detail'])
 
+	def test_employee_blocked_if_ongoing_accepted_leave(self):
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		from .models import LeaveRequest
+		from datetime import date, timedelta
+		today = date.today()
+		# Create an accepted leave ending in the future
+		LeaveRequest.objects.create(employee=self.a1, start_date=today, end_date=today + timedelta(days=2), type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		# Try to create another leave
+		resp = self.client.post('/api/leaves/', {'start_date': str(today + timedelta(days=5)), 'end_date': str(today + timedelta(days=7)), 'type': 'ANNUAL', 'reason': 'Blocked'}, format='json')
+		self.assertEqual(resp.status_code, 400)
+		self.assertIn('ongoing approved leave', resp.json()['detail'])
 		# employees
 		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
 		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')

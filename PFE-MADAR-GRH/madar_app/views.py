@@ -231,15 +231,19 @@ def create_leave(request):
 	if ltype == LeaveRequest.LeaveType.SICK and not request.FILES.get('attachment'):
 		return Response({'detail': 'attachment required for sick leave'}, status=status.HTTP_400_BAD_REQUEST)
 
-	# Bonus: reject if overlaps with existing ACCEPTED leave for same employee
-	overlapping = LeaveRequest.objects.filter(
+	# Business rule: block if employee has any PENDING request or ongoing ACCEPTED leave
+	today = date.today()
+	blocked = LeaveRequest.objects.filter(
+		employee=emp,
+		# PENDING: any
+		status=LeaveRequest.Status.PENDING
+	).exists() or LeaveRequest.objects.filter(
 		employee=emp,
 		status=LeaveRequest.Status.ACCEPTED,
-		start_date__lte=ed,
-		end_date__gte=sd,
+		end_date__gte=today
 	).exists()
-	if overlapping:
-		return Response({'detail': 'requested dates overlap with an existing accepted leave'}, status=status.HTTP_400_BAD_REQUEST)
+	if blocked:
+		return Response({'detail': "You can’t submit a new leave request while you have a pending request or an ongoing approved leave."}, status=status.HTTP_400_BAD_REQUEST)
 
 	leave = LeaveRequest.objects.create(
 		employee=emp,
@@ -269,6 +273,9 @@ def my_leaves(request):
 			'type': l.type,
 			'status': l.status,
 			'reason': l.reason,
+			'chef_comment': l.chef_comment,
+			'decided_by': l.decided_by.email if l.decided_by else None,
+			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
 		}
 		for l in qs
 	]
