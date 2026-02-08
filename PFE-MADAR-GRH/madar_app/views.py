@@ -399,6 +399,7 @@ def department_pending_leaves(request):
 			status=status.HTTP_400_BAD_REQUEST
 		)
 	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department, status=LeaveRequest.Status.PENDING).order_by('created_at')
+	print(f"department_pending_leaves dept_id={chef_emp.department_id} pending_count={qs.count()}")
 	data = [
 		{
 			'id': l.id,
@@ -412,6 +413,7 @@ def department_pending_leaves(request):
 			'end_date': l.end_date.isoformat(),
 			'type': l.type,
 			'reason': l.reason,
+			'attachment': request.build_absolute_uri(l.attachment.url) if l.attachment else None,
 			'status': l.status,
 		}
 		for l in qs

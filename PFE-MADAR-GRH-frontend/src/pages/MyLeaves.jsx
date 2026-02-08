@@ -114,6 +114,8 @@ export default function MyLeaves() {
         data.append('attachment', formData.attachment);
       }
 
+      console.log([...data.entries()]);
+
       await api.post('/api/leaves/', data);
       setSuccess('Leave request submitted successfully');
       setFormData({
@@ -130,7 +132,7 @@ export default function MyLeaves() {
     } catch (err) {
       // Show backend error message clearly
       const detail = err.response?.data?.detail || err.response?.data?.error;
-      setError(detail || 'Failed to submit leave request');
+      setError(detail || JSON.stringify(err.response?.data) || 'Failed to submit leave request');
     } finally {
       setSubmitting(false);
     }
