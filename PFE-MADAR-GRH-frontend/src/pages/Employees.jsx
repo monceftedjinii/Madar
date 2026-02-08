@@ -24,10 +24,12 @@ export default function Employees() {
     }
   };
 
-  // Client-side filter by name
+  // Client-side filter by name or email
   const filteredEmployees = employees.filter((emp) => {
     const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase());
+    const email = `${emp.email || ''}`.toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return fullName.includes(term) || email.includes(term);
   });
 
   const styles = {
@@ -169,11 +171,11 @@ export default function Employees() {
 
       {/* Search Filter */}
       <div style={styles.filterSection}>
-        <label style={styles.filterLabel}>Search by Name</label>
+        <label style={styles.filterLabel}>Search by Name or Email</label>
         <input
           style={styles.filterInput}
           type="text"
-          placeholder="Enter employee name..."
+          placeholder="Enter employee name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -206,13 +208,11 @@ export default function Employees() {
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <td style={styles.tableCell}>
-                      {emp.first_name && emp.last_name
-                        ? `${emp.first_name} ${emp.last_name}`
-                        : emp.first_name || emp.last_name || `User (ID: ${emp.id})`}
+                      {`${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || `User #${emp.id}`}
                     </td>
-                    <td style={styles.tableCell}>{emp.email || `ID: ${emp.id}`}</td>
+                    <td style={styles.tableCell}>{emp.email || `User #${emp.id}`}</td>
                     <td style={styles.tableCell}>
-                      {emp.department?.name || emp.department || '-'}
+                      {emp.department?.name || emp.department_name || '-'}
                     </td>
                   </tr>
                 ))}

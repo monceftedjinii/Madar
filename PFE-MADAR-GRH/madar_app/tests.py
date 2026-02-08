@@ -118,7 +118,7 @@ class EmployeeScopeTests(APITestCase):
 		data = resp.json()
 		# dept A has a1, a2, chef -> 3
 		self.assertEqual(len(data), 3)
-		names = {d['full_name'] for d in data}
+		names = {f"{d['first_name']} {d['last_name']}" for d in data}
 		self.assertIn('A One', names)
 		self.assertIn('A Two', names)
 
@@ -129,7 +129,8 @@ class EmployeeScopeTests(APITestCase):
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
 		self.assertEqual(len(data), 1)
-		self.assertEqual(data[0]['full_name'], 'A One')
+		self.assertEqual(data[0]['first_name'], 'A')
+		self.assertEqual(data[0]['last_name'], 'One')
 
 
 class TaskTests(APITestCase):
