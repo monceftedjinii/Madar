@@ -55,8 +55,18 @@ export default function AssignTask() {
 
     try {
       setSubmitting(true);
+      console.log('Submitting task:', {
+        assigned_to: parseInt(formData.employee_id),
+        title: formData.title,
+        description: formData.description,
+        due_date: formData.due_date
+      });
+      
       await api.post('/api/tasks/', {
         assigned_to: parseInt(formData.employee_id),
+        title: formData.title,
+        description: formData.description,
+        due_date: formData.due_date
       });
 
       setSuccess('Task assigned successfully');
@@ -70,7 +80,12 @@ export default function AssignTask() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to assign task');
+      console.error('Task assignment error:', err);
+      const errorMsg = err.response?.data?.detail || 
+                       (typeof err.response?.data === 'object' ? JSON.stringify(err.response?.data) : err.response?.data) || 
+                       err.message || 
+                       'Failed to assign task';
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
