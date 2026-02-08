@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/employees/', madar_views.employees_list, name='api-employees'),
     path('api/tasks/', madar_views.create_task, name='api-tasks-create'),
     path('api/tasks/me/', madar_views.my_tasks, name='api-tasks-me'),
+    path('api/tasks/chef/', madar_views.chef_tasks, name='api-tasks-chef'),
     path('api/tasks/<int:pk>/done/', madar_views.mark_task_done, name='api-tasks-done'),
     path('api/attendance/check-in/', madar_views.attendance_check_in, name='api-att-check-in'),
     path('api/attendance/check-out/', madar_views.attendance_check_out, name='api-att-check-out'),

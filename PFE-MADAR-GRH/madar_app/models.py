@@ -105,6 +105,7 @@ class Task(models.Model):
     assigned_to = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='tasks')
     assigned_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='assigned_tasks')
     created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.title} -> {self.assigned_to}"

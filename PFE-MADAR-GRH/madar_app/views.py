@@ -122,14 +122,32 @@ def my_tasks(request):
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response([], status=status.HTTP_200_OK)
-	qs = Task.objects.filter(assigned_to=emp).order_by('id')
-	data = [{'id': t.id, 'title': t.title, 'status': t.status, 'due_date': t.due_date} for t in qs]
+	qs = Task.objects.filter(assigned_to=emp).order_by('-created_at')
+	data = [{
+		'id': t.id,
+		'title': t.title,
+		'description': t.description,
+		'status': t.status,
+		'due_date': t.due_date,
+		'created_at': t.created_at,
+		'completed_at': t.completed_at,
+		'assigned_by': {
+			'id': t.assigned_by.id,
+			'email': t.assigned_by.email,
+			'first_name': t.assigned_by.first_name,
+			'last_name': t.assigned_by.last_name,
+		} if t.assigned_by else None
+	} for t in qs]
 	return Response(data)
 
 
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def mark_task_done(request, pk):
+	from django.utils import timezone
+	import logging
+	logger = logging.getLogger(__name__)
+	
 	try:
 		task = Task.objects.get(id=pk)
 	except Task.DoesNotExist:
@@ -140,8 +158,59 @@ def mark_task_done(request, pk):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	task.status = Task.Status.DONE
+	task.completed_at = timezone.now()
 	task.save()
+	
+	# Notify the chef who assigned this task
+	if task.assigned_by:
+		emp = task.assigned_to
+		chef_name = f"{task.assigned_by.first_name} {task.assigned_by.last_name}".strip() or task.assigned_by.email
+		notify(
+			task.assigned_by,
+			title=f"Task Completed",
+			message=f"{emp.first_name} {emp.last_name} marked '{task.title}' as done"
+		)
+		logger.info(f'mark_task_done: notified chef {task.assigned_by.email} that task {task.id} was completed')
+	
 	return Response({'ok': True})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsChef])
+def chef_tasks(request):
+	# Chef view of all tasks assigned by this chef
+	import logging
+	logger = logging.getLogger(__name__)
+	
+	qs = Task.objects.filter(assigned_by=request.user).order_by('-created_at')
+	logger.info(f'chef_tasks: fetching tasks for chef {request.user.email}, found {qs.count()} tasks')
+	
+	data = [{
+		'id': t.id,
+		'title': t.title,
+		'description': t.description,
+		'status': t.status,
+		'due_date': t.due_date,
+		'created_at': t.created_at,
+		'completed_at': t.completed_at,
+		'employee': {
+			'id': t.assigned_to.id,
+			'email': t.assigned_to.email,
+			'first_name': t.assigned_to.first_name,
+			'last_name': t.assigned_to.last_name,
+			'department': {
+				'id': t.assigned_to.department.id,
+				'name': t.assigned_to.department.name
+			} if t.assigned_to.department else None
+		},
+		'assigned_by': {
+			'id': t.assigned_by.id,
+			'email': t.assigned_by.email,
+			'first_name': t.assigned_by.first_name,
+			'last_name': t.assigned_by.last_name,
+		} if t.assigned_by else None
+	} for t in qs]
+	return Response(data)
 
 
 @api_view(['POST'])

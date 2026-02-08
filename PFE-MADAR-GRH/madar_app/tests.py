@@ -146,7 +146,7 @@ class TaskTests(APITestCase):
 		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
 
 		# chef in dept A
-		self.chef = User.objects.create_user(email='chef2@example.com', password='chefpass', role=RoleChoices.CHEF)
+		self.chef = User.objects.create_user(email='chef2@example.com', password='chefpass', role=RoleChoices.CHEF, first_name='Chef', last_name='Guy')
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
 
 		# employee user for a1
@@ -274,6 +274,140 @@ class TaskTests(APITestCase):
 		token = self.get_token('b1@example.com', 'otherpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.patch(f'/api/tasks/{task.id}/done/', format='json')
+		self.assertEqual(resp.status_code, 403)
+
+	def test_employee_sees_assigned_by_details(self):
+		# Employee should see who assigned the task
+		from .models import Task
+		task = Task.objects.create(
+			title='Task with assignee info',
+			description='See who assigned this',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/me/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertGreater(len(data), 0)
+		task_data = data[0]
+		# Verify assigned_by is included
+		self.assertIn('assigned_by', task_data)
+		self.assertIsNotNone(task_data['assigned_by'])
+		self.assertEqual(task_data['assigned_by']['email'], 'chef2@example.com')
+		self.assertEqual(task_data['assigned_by']['first_name'], 'Chef')
+		self.assertEqual(task_data['assigned_by']['last_name'], 'Guy')
+
+	def test_task_completed_at_set_when_marked_done(self):
+		# Verify completed_at is set when marking task as done
+		from .models import Task
+		task = Task.objects.create(
+			title='Track completion time',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		# Verify completed_at is initially None
+		task.refresh_from_db()
+		self.assertIsNone(task.completed_at)
+		
+		# Mark as done
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.patch(f'/api/tasks/{task.id}/done/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		
+		# Verify completed_at is now set
+		task.refresh_from_db()
+		self.assertIsNotNone(task.completed_at)
+		self.assertEqual(task.status, 'DONE')
+
+	def test_chef_sees_own_tasks(self):
+		# Chef should see tasks they assigned via chef_tasks endpoint
+		from .models import Task
+		# Create multiple tasks assigned by chef
+		task1 = Task.objects.create(
+			title='Task 1',
+			description='First task',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		task2 = Task.objects.create(
+			title='Task 2',
+			description='Second task',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/chef/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(len(data), 2)
+		titles = {task['title'] for task in data}
+		self.assertIn('Task 1', titles)
+		self.assertIn('Task 2', titles)
+
+	def test_chef_sees_task_details_with_employee_info(self):
+		# Chef task endpoint should include employee and completion info
+		from .models import Task
+		task = Task.objects.create(
+			title='Task with employee info',
+			description='Check employee details',
+			due_date='2026-03-15',
+			assigned_to=self.a1,
+			assigned_by=self.chef
+		)
+		
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/chef/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertGreater(len(data), 0)
+		task_data = data[0]
+		
+		# Verify task data
+		self.assertEqual(task_data['title'], 'Task with employee info')
+		self.assertEqual(task_data['status'], 'TODO')
+		self.assertIsNone(task_data['completed_at'])
+		
+		# Verify employee info
+		self.assertIn('employee', task_data)
+		emp = task_data['employee']
+		self.assertEqual(emp['email'], 'a1@example.com')
+		self.assertEqual(emp['first_name'], 'A')
+		self.assertEqual(emp['last_name'], 'One')
+		self.assertEqual(emp['department']['name'], 'Dept A')
+
+	def test_chef_sees_completed_tasks(self):
+		# Chef should see completed tasks with completed_at
+		from .models import Task
+		from django.utils import timezone
+		task = Task.objects.create(
+			title='Completed task',
+			assigned_to=self.a1,
+			assigned_by=self.chef,
+			status='DONE',
+			completed_at=timezone.now()
+		)
+		
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/chef/', format='json')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertGreater(len(data), 0)
+		task_data = data[0]
+		self.assertEqual(task_data['status'], 'DONE')
+		self.assertIsNotNone(task_data['completed_at'])
+
+	def test_employee_cannot_access_chef_tasks(self):
+		# Regular employee should NOT access /api/tasks/chef/
+		token = self.get_token('a1@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/tasks/chef/', format='json')
 		self.assertEqual(resp.status_code, 403)
 
 
