@@ -3,6 +3,7 @@ import api from '../api';
 
 export default function Documents() {
   const [documents, setDocuments] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploadError, setUploadError] = useState(null);
@@ -28,21 +29,38 @@ export default function Documents() {
   // User info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isRHSeniorOrGRH = user.role === 'RH_SENIOR' || user.role === 'GRH';
+  const isChef = user.role === 'CHEF';
+  const isEmployee = user.role === 'EMPLOYEE';
 
   useEffect(() => {
     fetchDocuments();
+    fetchDepartments();
   }, []);
 
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/api/documents/me/');
+      const endpoint = isEmployee
+        ? '/api/documents/feed/'
+        : isChef
+          ? '/api/documents/mine/'
+          : '/api/documents/me/';
+      const response = await api.get(endpoint);
       setDocuments(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load documents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await api.get('/api/departments/');
+      setDepartments(response.data || []);
+    } catch (err) {
+      setDepartments([]);
     }
   };
 
@@ -63,6 +81,10 @@ export default function Documents() {
 
     if (!formData.title || !formData.type || !formData.file) {
       setUploadError('Please fill in title, type, and select a file');
+      return;
+    }
+    if (isChef && !formData.target_department) {
+      setUploadError('Please select a target department');
       return;
     }
 
@@ -92,7 +114,11 @@ export default function Documents() {
         setUploadSuccess(null);
       }, 1500);
     } catch (err) {
-      setUploadError(err.response?.data?.error || 'Failed to upload document');
+      const detail = err.response?.data?.detail || err.response?.data?.error;
+      const payload = typeof err.response?.data === 'object'
+        ? JSON.stringify(err.response?.data)
+        : err.response?.data;
+      setUploadError(detail || payload || 'Failed to upload document');
     } finally {
       setUploading(false);
     }
@@ -510,26 +536,36 @@ export default function Documents() {
 
           <div style={styles.formGroup}>
             <label style={styles.label}>Source Department</label>
-            <input
-              style={styles.input}
-              type="text"
+            <select
+              style={styles.select}
               name="source_department"
               value={formData.source_department}
               onChange={handleFormChange}
-              placeholder="Optional"
-            />
+            >
+              <option value="">Optional</option>
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Target Department</label>
-            <input
-              style={styles.input}
-              type="text"
+            <label style={styles.label}>Target Department {isChef ? '*' : ''}</label>
+            <select
+              style={styles.select}
               name="target_department"
               value={formData.target_department}
               onChange={handleFormChange}
-              placeholder="Optional"
-            />
+            >
+              <option value="">Optional</option>
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={styles.formGroup}>
@@ -609,8 +645,8 @@ export default function Documents() {
                   return (
                     <tr key={doc.id} style={styles.tableRow}>
                       <td style={styles.tableCell}><strong>{doc.title}</strong></td>
-                      <td style={styles.tableCell}>{doc.type}</td>
-                      <td style={styles.tableCell}>{doc.category || '-'}</td>
+                      <td style={styles.tableCell}>{doc.doc_type}</td>
+                      <td style={styles.tableCell}>{doc.doc_type_category || '-'}</td>
                       <td style={styles.tableCell}>
                         <span style={{...styles.statusBadge, backgroundColor: statusInfo.bg, color: statusInfo.text}}>
                           {statusInfo.label}
@@ -621,6 +657,16 @@ export default function Documents() {
                       <td style={styles.tableCell}>{new Date(doc.created_at).toLocaleDateString()}</td>
                       <td style={styles.tableCell}>
                         <div>
+                          {doc.file_url && (
+                            <a
+                              href={doc.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{...styles.button, ...styles.sendButton, textDecoration: 'none'}}
+                            >
+                              View
+                            </a>
+                          )}
                           {canSend && (
                             <button
                               style={{...styles.button, ...styles.sendButton, ...(actionInProgress[doc.id] ? styles.buttonDisabled : {})}}

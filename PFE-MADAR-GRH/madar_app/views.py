@@ -73,6 +73,16 @@ def employees_list(request):
 	return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def departments_list(request):
+	data = [
+		{'id': d.id, 'name': d.name}
+		for d in Department.objects.order_by('name')
+	]
+	return Response(data)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsChef])
 def create_task(request):
@@ -610,39 +620,55 @@ def create_doc_history(document, action, by_user, note=''):
 @permission_classes([IsAuthenticated, CanUploadDocument])
 def upload_document(request):
 	"""Upload a new document (DRAFT status)."""
-	from rest_framework.parsers import MultiPartParser
-	
 	title = request.data.get('title')
-	doc_type_id = request.data.get('doc_type')
-	source_dept_id = request.data.get('source_department')
-	target_dept_id = request.data.get('target_department')
 	file_obj = request.FILES.get('file')
+	if not all([title, file_obj]):
+		return Response({'detail': 'title and file required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if not all([title, doc_type_id, source_dept_id, file_obj]):
-		return Response({'detail': 'title, doc_type, source_department, file required'}, status=status.HTTP_400_BAD_REQUEST)
+	doc_type_id = request.data.get('doc_type')
+	doc_type_name = request.data.get('type')
+	category = (request.data.get('category') or DocumentType.Category.INTERNAL).upper()
 
-	try:
-		doc_type = DocumentType.objects.get(id=doc_type_id)
-	except DocumentType.DoesNotExist:
-		return Response({'detail': 'doc_type not found'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		source_dept = Department.objects.get(id=source_dept_id)
-	except Department.DoesNotExist:
-		return Response({'detail': 'source_department not found'}, status=status.HTTP_400_BAD_REQUEST)
-
-	target_dept = None
-	if target_dept_id:
+	if doc_type_id:
 		try:
-			target_dept = Department.objects.get(id=target_dept_id)
-		except Department.DoesNotExist:
-			return Response({'detail': 'target_department not found'}, status=status.HTTP_400_BAD_REQUEST)
+			doc_type = DocumentType.objects.get(id=doc_type_id)
+		except DocumentType.DoesNotExist:
+			return Response({'detail': 'doc_type not found'}, status=status.HTTP_400_BAD_REQUEST)
+	else:
+		if not doc_type_name:
+			return Response({'detail': 'type is required'}, status=status.HTTP_400_BAD_REQUEST)
+		doc_type, _ = DocumentType.objects.get_or_create(
+			name=doc_type_name,
+			defaults={'category': category},
+		)
+		if doc_type.category != category:
+			doc_type.category = category
+			doc_type.save()
+
+	def _resolve_department(value):
+		if not value:
+			return None
+		if str(value).isdigit():
+			return Department.objects.filter(id=int(value)).first()
+		return Department.objects.filter(name=value).first()
+
+	source_dept = _resolve_department(request.data.get('source_department'))
+	if not source_dept:
+		try:
+			user_emp = Employee.objects.get(email=request.user.email)
+			source_dept = user_emp.department
+		except Employee.DoesNotExist:
+			return Response({'detail': 'source_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	target_dept = _resolve_department(request.data.get('target_department'))
+	if request.user.role == RoleChoices.CHEF and not target_dept:
+		return Response({'detail': 'target_department is required'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# Permission check: employee/chef must upload for their own department
 	if request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF]:
 		try:
 			emp = Employee.objects.get(email=request.user.email)
-			if emp.department_id != int(source_dept_id):
+			if source_dept and emp.department_id != source_dept.id:
 				return Response({'detail': 'can only upload for own department'}, status=status.HTTP_403_FORBIDDEN)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
@@ -663,7 +689,8 @@ def upload_document(request):
 
 	create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
-	return Response({'id': doc.id, 'status': doc.status}, status=status.HTTP_201_CREATED)
+	file_url = request.build_absolute_uri(doc.file.url) if doc.file else None
+	return Response({'id': doc.id, 'status': doc.status, 'file_url': file_url}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -729,7 +756,8 @@ def list_documents_scoped(request):
 			from django.db.models import Q
 			qs = Document.objects.filter(
 				Q(created_by=request.user) |
-				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
+				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
+				Q(source_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.filter(created_by=request.user)
@@ -741,11 +769,80 @@ def list_documents_scoped(request):
 			'id': d.id,
 			'title': d.title,
 			'doc_type': d.doc_type.name,
+			'doc_type_category': d.doc_type.category,
 			'status': d.status,
-			'source_department': d.source_department.name,
+			'source_department': d.source_department.name if d.source_department else None,
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
+		}
+		for d in qs.order_by('-created_at')
+	]
+	return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def documents_feed(request):
+	"""Employee feed: documents sent to the employee's department."""
+	if request.user.role != RoleChoices.EMPLOYEE:
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response([], status=status.HTTP_200_OK)
+
+	qs = Document.objects.filter(
+		target_department_id=emp.department_id,
+		status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]
+	)
+
+	data = [
+		{
+			'id': d.id,
+			'title': d.title,
+			'doc_type': d.doc_type.name,
+			'doc_type_category': d.doc_type.category,
+			'status': d.status,
+			'source_department': d.source_department.name if d.source_department else None,
+			'target_department': d.target_department.name if d.target_department else None,
+			'created_by': d.created_by.email if d.created_by else None,
+			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
+		}
+		for d in qs.order_by('-created_at')
+	]
+	return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def documents_mine(request):
+	"""Chef history: documents posted from the chef's department."""
+	if request.user.role != RoleChoices.CHEF:
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	try:
+		chef_emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response([], status=status.HTTP_200_OK)
+
+	qs = Document.objects.filter(source_department_id=chef_emp.department_id)
+
+	data = [
+		{
+			'id': d.id,
+			'title': d.title,
+			'doc_type': d.doc_type.name,
+			'doc_type_category': d.doc_type.category,
+			'status': d.status,
+			'source_department': d.source_department.name if d.source_department else None,
+			'target_department': d.target_department.name if d.target_department else None,
+			'created_by': d.created_by.email if d.created_by else None,
+			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
 		}
 		for d in qs.order_by('-created_at')
 	]
