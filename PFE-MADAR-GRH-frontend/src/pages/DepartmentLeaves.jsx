@@ -164,6 +164,13 @@ export default function DepartmentLeaves() {
     return 'UNKNOWN';
   };
 
+  const getLeaveDays = (leave) => {
+    if (!leave?.start_date || !leave?.end_date) return '-';
+    const start = new Date(leave.start_date);
+    const end = new Date(leave.end_date);
+    return Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  };
+
   const filteredLeaves = leaves.filter((leave) => {
     const term = searchTerm.toLowerCase();
     if (term) {
@@ -680,7 +687,7 @@ export default function DepartmentLeaves() {
                 <div style={styles.leaveBody}>
                   <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
-                  <div><strong>Days:</strong> {(new Date(leave.end_date) - new Date(leave.start_date)) / (1000 * 60 * 60 * 24) + 1}</div>
+                  <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   <div><strong>Reason:</strong> {leave.reason}</div>
                   {leave.attachment && <div><strong>Attachment:</strong> <a href={leave.attachment} target="_blank" rel="noopener noreferrer">View file</a></div>}
                 </div>
@@ -759,6 +766,7 @@ export default function DepartmentLeaves() {
                 <div style={styles.leaveBody}>
                   <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
+                  <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   {leave.chef_comment && <div><strong>Your Comment:</strong> {leave.chef_comment}</div>}
                 </div>
               </div>
@@ -791,6 +799,7 @@ export default function DepartmentLeaves() {
                 <div style={styles.leaveBody}>
                   <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
+                  <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   {leave.chef_comment && <div><strong>Reason:</strong> {leave.chef_comment}</div>}
                 </div>
               </div>
