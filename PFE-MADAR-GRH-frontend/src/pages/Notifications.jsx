@@ -33,8 +33,8 @@ function Notifications() {
       await api.post(`/api/notifications/${notificationId}/read/`, {})
       
       // Update UI: mark notification as read locally
-      setNotifications(
-        notifications.map((notif) =>
+      setNotifications((prev) =>
+        prev.map((notif) =>
           notif.id === notificationId ? { ...notif, is_read: true } : notif
         )
       )
@@ -42,6 +42,24 @@ function Notifications() {
       setError(err.response?.data?.detail || 'Failed to mark as read')
     } finally {
       setMarking(null)
+    }
+  }
+
+  const handleOpenNotification = async (notif) => {
+    try {
+      if (!notif.is_read) {
+        await handleMarkAsRead(notif.id)
+      }
+    } catch {
+      // ignore mark errors for navigation
+    }
+    if (notif.link) {
+      navigate(notif.link)
+      return
+    }
+    const msg = `${notif.title} ${notif.message}`.toLowerCase()
+    if (msg.includes('document') || msg.includes('comment')) {
+      navigate('/documents')
     }
   }
 
@@ -90,7 +108,13 @@ function Notifications() {
             }}
           >
             <div style={styles.notificationHeader}>
-              <h3 style={styles.title}>{notif.title}</h3>
+              <button
+                onClick={() => handleOpenNotification(notif)}
+                style={styles.titleButton}
+                type="button"
+              >
+                {notif.title}
+              </button>
               {!notif.is_read && <span style={styles.badge}>UNREAD</span>}
             </div>
 
@@ -163,6 +187,16 @@ const styles = {
     margin: 0,
     fontSize: '16px',
     color: '#333',
+  },
+  titleButton: {
+    margin: 0,
+    padding: 0,
+    fontSize: '16px',
+    color: '#0d6efd',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left'
   },
   badge: {
     backgroundColor: '#ff9800',

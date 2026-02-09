@@ -24,9 +24,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 
-def notify(user, title, message):
+def notify(user, title, message, link=''):
 	"""Helper to create a notification."""
-	return Notification.objects.create(user=user, title=title, message=message)
+	return Notification.objects.create(user=user, title=title, message=message, link=link)
 
 
 def _display_name(user):
@@ -36,7 +36,7 @@ def _display_name(user):
 	return name or user.email
 
 
-def _notify_department_users(department_id, actor_user, title, message):
+def _notify_department_users(department_id, actor_user, title, message, link=''):
 	if not department_id:
 		return
 	for emp in Employee.objects.filter(department_id=department_id):
@@ -46,7 +46,7 @@ def _notify_department_users(department_id, actor_user, title, message):
 			continue
 		if actor_user and user.id == actor_user.id:
 			continue
-		notify(user, title, message)
+		notify(user, title, message, link=link)
 
 
 @api_view(['GET'])
@@ -207,7 +207,8 @@ def mark_task_done(request, pk):
 		notify(
 			task.assigned_by,
 			title=f"Task Completed",
-			message=f"{emp.first_name} {emp.last_name} marked '{task.title}' as done"
+			message=f"{emp.first_name} {emp.last_name} marked '{task.title}' as done",
+			link='/tasks'
 		)
 		logger.info(f'mark_task_done: notified chef {task.assigned_by.email} that task {task.id} was completed')
 	
@@ -407,7 +408,12 @@ def create_leave(request):
 	chef_emails = Employee.objects.filter(department=emp.department).values_list('email', flat=True)
 	chef_users = User.objects.filter(role=RoleChoices.CHEF, email__in=chef_emails)
 	for chef_user in chef_users:
-		notify(chef_user, 'New leave request', f'{emp.first_name} {emp.last_name} requested leave from {sd} to {ed}.')
+		notify(
+			chef_user,
+			'New leave request',
+			f'{emp.first_name} {emp.last_name} requested leave from {sd} to {ed}.',
+			link='/leaves/department'
+		)
 
 	return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
 
@@ -485,7 +491,12 @@ def create_warning(request):
 	if flag.warning_count >= 3:
 		rh_senior_users = User.objects.filter(role=RoleChoices.RH_SENIOR)
 		for rh_user in rh_senior_users:
-			notify(rh_user, 'Discipline Flag', f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.')
+			notify(
+				rh_user,
+				'Discipline Flag',
+				f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.',
+				link='/discipline/flags'
+			)
 
 	return Response({'id': aw.id, 'warning_count': flag.warning_count}, status=status.HTTP_201_CREATED)
 
@@ -518,6 +529,7 @@ def list_notifications(request):
 			'id': n.id,
 			'title': n.title,
 			'message': n.message,
+			'link': n.link or None,
 			'is_read': n.is_read,
 			'created_at': n.created_at.isoformat(),
 		}
@@ -608,7 +620,12 @@ def _chef_decide_common(request, pk, accept=True):
 		pass
 	if emp_user:
 		status_label = 'approved' if accept else 'rejected'
-		notify(emp_user, f'Leave {status_label}', f'Your leave request from {lr.start_date} to {lr.end_date} has been {status_label}.')
+		notify(
+			emp_user,
+			f'Leave {status_label}',
+			f'Your leave request from {lr.start_date} to {lr.end_date} has been {status_label}.',
+			link='/leaves'
+		)
 
 	return Response({'id': lr.id, 'status': lr.status})
 
@@ -775,7 +792,8 @@ def send_document(request, pk):
 			notify(
 				user,
 				title='New document received',
-				message=f"{doc.title} was sent to your department."
+				message=f"{doc.title} was sent to your department.",
+				link=f"/documents?docId={doc.id}"
 			)
 
 	return Response({'id': doc.id, 'status': doc.status, 'sent_at': doc.sent_at.isoformat()})
@@ -980,7 +998,7 @@ def comment_document(request, pk):
 	if parent and parent.is_private:
 		is_private = True
 
-	create_doc_history(
+	comment_entry = create_doc_history(
 		doc,
 		DocumentHistory.Action.COMMENTED,
 		request.user,
@@ -988,6 +1006,8 @@ def comment_document(request, pk):
 		parent=parent,
 		is_private=is_private
 	)
+
+	comment_link = f"/documents?docId={doc.id}&commentId={comment_entry.id}"
 
 	actor_name = _display_name(request.user)
 	# Notify document owner and parent commenter as needed
@@ -998,13 +1018,15 @@ def comment_document(request, pk):
 				notify(
 					parent.by_user,
 					'Reply to private comment',
-					f"{actor_name} replied to your private comment on {doc.title}."
+					f"{actor_name} replied to your private comment on {doc.title}.",
+					link=comment_link
 				)
 			else:
 				notify(
 					parent.by_user,
 					'New reply',
-					f"{actor_name} replied to your comment on {doc.title}."
+					f"{actor_name} replied to your comment on {doc.title}.",
+					link=comment_link
 				)
 		# Also notify owner when someone else replies (public or private)
 		if owner and owner != request.user and owner != parent.by_user:
@@ -1012,13 +1034,15 @@ def comment_document(request, pk):
 				notify(
 					owner,
 					'Private reply',
-					f"{actor_name} replied privately on {doc.title}."
+					f"{actor_name} replied privately on {doc.title}.",
+					link=comment_link
 				)
 			else:
 				notify(
 					owner,
 					'New reply',
-					f"{actor_name} replied on {doc.title}."
+					f"{actor_name} replied on {doc.title}.",
+					link=comment_link
 				)
 	else:
 		if owner and owner != request.user:
@@ -1026,13 +1050,15 @@ def comment_document(request, pk):
 				notify(
 					owner,
 					'Private comment',
-					f"{actor_name} left a private comment on {doc.title}."
+					f"{actor_name} left a private comment on {doc.title}.",
+					link=comment_link
 				)
 			else:
 				notify(
 					owner,
 					'New comment',
-					f"{actor_name} commented on {doc.title}."
+					f"{actor_name} commented on {doc.title}.",
+					link=comment_link
 				)
 
 	# Public top-level comments notify department users
@@ -1042,14 +1068,16 @@ def comment_document(request, pk):
 				doc.target_department_id,
 				request.user,
 				'New comment',
-				f"{actor_name} commented on {doc.title}."
+				f"{actor_name} commented on {doc.title}.",
+				link=comment_link
 			)
 		elif doc.source_department_id:
 			_notify_department_users(
 				doc.source_department_id,
 				request.user,
 				'New comment',
-				f"{actor_name} commented on {doc.title}."
+				f"{actor_name} commented on {doc.title}.",
+				link=comment_link
 			)
 
 	return Response({'detail': 'comment added'})

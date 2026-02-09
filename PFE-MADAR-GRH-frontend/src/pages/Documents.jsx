@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api';
 
 export default function Documents() {
@@ -31,6 +32,9 @@ export default function Documents() {
   const [replyExpanded, setReplyExpanded] = useState({}); // { commentId: true/false }
   const [commentPrivacy, setCommentPrivacy] = useState({}); // { docId: boolean }
   const [replyPrivacy, setReplyPrivacy] = useState({}); // { commentId: boolean }
+  const [focusDocId, setFocusDocId] = useState(null);
+  const [focusCommentId, setFocusCommentId] = useState(null);
+  const location = useLocation();
 
   // User info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -42,6 +46,33 @@ export default function Documents() {
     fetchDocuments();
     fetchDepartments();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const docId = params.get('docId');
+    const commentId = params.get('commentId');
+    setFocusDocId(docId ? Number(docId) : null);
+    setFocusCommentId(commentId ? Number(commentId) : null);
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!focusDocId) return;
+    const docExists = documents.some(doc => doc.id === focusDocId);
+    if (!docExists) return;
+    if (!expandedComments[focusDocId]) {
+      toggleComments(focusDocId);
+    } else if (commentsByDoc[focusDocId] === undefined) {
+      fetchComments(focusDocId);
+    }
+  }, [focusDocId, documents]);
+
+  useEffect(() => {
+    if (!focusCommentId) return;
+    const element = document.getElementById(`comment-${focusCommentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [focusCommentId, commentsByDoc, expandedComments]);
 
   const fetchDocuments = async () => {
     try {
@@ -528,6 +559,10 @@ export default function Documents() {
       borderRadius: '4px',
       marginBottom: '6px'
     },
+    commentHighlight: {
+      borderColor: '#0d6efd',
+      boxShadow: '0 0 0 2px rgba(13, 110, 253, 0.2)'
+    },
     commentHeader: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -870,7 +905,14 @@ export default function Documents() {
                                 <div style={styles.commentEmpty}>No comments yet.</div>
                               )}
                               {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).map(comment => (
-                                <div key={comment.id} style={styles.commentItem}>
+                                <div
+                                  key={comment.id}
+                                  id={`comment-${comment.id}`}
+                                  style={{
+                                    ...styles.commentItem,
+                                    ...(comment.id === focusCommentId ? styles.commentHighlight : {})
+                                  }}
+                                >
                                   <div style={styles.commentHeader}>
                                     <div style={styles.commentMeta}>
                                       {comment.by_user_name || comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
@@ -918,7 +960,14 @@ export default function Documents() {
                                   {(comment.replies || []).length > 0 && (
                                     <div style={styles.replyList}>
                                       {comment.replies.map(reply => (
-                                        <div key={reply.id} style={styles.replyItem}>
+                                        <div
+                                          key={reply.id}
+                                          id={`comment-${reply.id}`}
+                                          style={{
+                                            ...styles.replyItem,
+                                            ...(reply.id === focusCommentId ? styles.commentHighlight : {})
+                                          }}
+                                        >
                                           <div style={styles.commentMeta}>
                                             {reply.by_user_name || reply.by_user || 'Unknown'} · {formatDate(reply.created_at)}
                                             {reply.is_private && <span style={styles.privateBadge}>Private</span>}
