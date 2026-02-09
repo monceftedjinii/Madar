@@ -29,6 +29,26 @@ def notify(user, title, message):
 	return Notification.objects.create(user=user, title=title, message=message)
 
 
+def _display_name(user):
+	if not user:
+		return 'Someone'
+	name = f"{user.first_name} {user.last_name}".strip()
+	return name or user.email
+
+
+def _notify_department_users(department_id, actor_user, title, message):
+	if not department_id:
+		return
+	for emp in Employee.objects.filter(department_id=department_id):
+		try:
+			user = User.objects.get(email=emp.email)
+		except User.DoesNotExist:
+			continue
+		if actor_user and user.id == actor_user.id:
+			continue
+		notify(user, title, message)
+
+
 @api_view(['GET'])
 def ping(request):
 	return Response({'ping': 'pong'})
@@ -968,6 +988,70 @@ def comment_document(request, pk):
 		parent=parent,
 		is_private=is_private
 	)
+
+	actor_name = _display_name(request.user)
+	# Notify document owner and parent commenter as needed
+	owner = doc.created_by
+	if parent:
+		if parent.by_user and parent.by_user != request.user:
+			if parent.is_private or is_private:
+				notify(
+					parent.by_user,
+					'Reply to private comment',
+					f"{actor_name} replied to your private comment on {doc.title}."
+				)
+			else:
+				notify(
+					parent.by_user,
+					'New reply',
+					f"{actor_name} replied to your comment on {doc.title}."
+				)
+		# Also notify owner when someone else replies (public or private)
+		if owner and owner != request.user and owner != parent.by_user:
+			if is_private:
+				notify(
+					owner,
+					'Private reply',
+					f"{actor_name} replied privately on {doc.title}."
+				)
+			else:
+				notify(
+					owner,
+					'New reply',
+					f"{actor_name} replied on {doc.title}."
+				)
+	else:
+		if owner and owner != request.user:
+			if is_private:
+				notify(
+					owner,
+					'Private comment',
+					f"{actor_name} left a private comment on {doc.title}."
+				)
+			else:
+				notify(
+					owner,
+					'New comment',
+					f"{actor_name} commented on {doc.title}."
+				)
+
+	# Public top-level comments notify department users
+	if not parent and not is_private:
+		if doc.target_department_id:
+			_notify_department_users(
+				doc.target_department_id,
+				request.user,
+				'New comment',
+				f"{actor_name} commented on {doc.title}."
+			)
+		elif doc.source_department_id:
+			_notify_department_users(
+				doc.source_department_id,
+				request.user,
+				'New comment',
+				f"{actor_name} commented on {doc.title}."
+			)
+
 	return Response({'detail': 'comment added'})
 
 
