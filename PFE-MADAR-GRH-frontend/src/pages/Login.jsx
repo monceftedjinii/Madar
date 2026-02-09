@@ -22,7 +22,11 @@ function Login({ setUser }) {
       })
 
       const token = tokenResponse.data.access
+      const refreshToken = tokenResponse.data.refresh
       localStorage.setItem('access_token', token)
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken)
+      }
 
       // Get user info
       const userResponse = await api.get('/api/whoami/', {

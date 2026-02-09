@@ -5,6 +5,7 @@ function Dashboard({ user, setUser }) {
 
   const handleLogout = () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
     setUser(null)
     navigate('/login')
