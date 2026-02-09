@@ -690,6 +690,10 @@ def upload_document(request):
 	create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
 	file_url = request.build_absolute_uri(doc.file.url) if doc.file else None
+	created_by_name = None
+	if doc.created_by:
+		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
+		created_by_name = name or doc.created_by.email
 	return Response({
 		'id': doc.id,
 		'title': doc.title,
@@ -699,6 +703,7 @@ def upload_document(request):
 		'source_department': doc.source_department.name if doc.source_department else None,
 		'target_department': doc.target_department.name if doc.target_department else None,
 		'created_by': doc.created_by.email if doc.created_by else None,
+		'created_by_name': created_by_name,
 		'created_at': doc.created_at.isoformat() if doc.created_at else None,
 		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
 		'file_url': file_url,
@@ -793,8 +798,13 @@ def list_documents_scoped(request):
 	else:
 		qs = Document.objects.none()
 
-	data = [
-		{
+	data = []
+	for d in qs.order_by('-created_at'):
+		created_by_name = None
+		if d.created_by:
+			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
+			created_by_name = name or d.created_by.email
+		data.append({
 			'id': d.id,
 			'title': d.title,
 			'doc_type': d.doc_type.name,
@@ -803,12 +813,11 @@ def list_documents_scoped(request):
 			'source_department': d.source_department.name if d.source_department else None,
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
+			'created_by_name': created_by_name,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
 			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		}
-		for d in qs.order_by('-created_at')
-	]
+		})
 	return Response(data)
 
 
@@ -829,8 +838,13 @@ def documents_feed(request):
 		status=Document.Status.SENT
 	)
 
-	data = [
-		{
+	data = []
+	for d in qs.order_by('-sent_at', '-created_at'):
+		created_by_name = None
+		if d.created_by:
+			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
+			created_by_name = name or d.created_by.email
+		data.append({
 			'id': d.id,
 			'title': d.title,
 			'doc_type': d.doc_type.name,
@@ -839,12 +853,11 @@ def documents_feed(request):
 			'source_department': d.source_department.name if d.source_department else None,
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
+			'created_by_name': created_by_name,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
 			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		}
-		for d in qs.order_by('-sent_at', '-created_at')
-	]
+		})
 	return Response(data)
 
 
@@ -862,8 +875,13 @@ def documents_mine(request):
 
 	qs = Document.objects.filter(source_department_id=chef_emp.department_id)
 
-	data = [
-		{
+	data = []
+	for d in qs.order_by('-created_at'):
+		created_by_name = None
+		if d.created_by:
+			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
+			created_by_name = name or d.created_by.email
+		data.append({
 			'id': d.id,
 			'title': d.title,
 			'doc_type': d.doc_type.name,
@@ -872,12 +890,11 @@ def documents_mine(request):
 			'source_department': d.source_department.name if d.source_department else None,
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
+			'created_by_name': created_by_name,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
 			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		}
-		for d in qs.order_by('-created_at')
-	]
+		})
 	return Response(data)
 
 
@@ -969,15 +986,19 @@ def document_comments(request, pk):
 		action=DocumentHistory.Action.COMMENTED
 	).select_related('by_user').order_by('created_at')
 
-	data = [
-		{
+	data = []
+	for c in comments:
+		by_user_name = None
+		if c.by_user:
+			name = f"{c.by_user.first_name} {c.by_user.last_name}".strip()
+			by_user_name = name or c.by_user.email
+		data.append({
 			'id': c.id,
 			'note': c.note,
 			'by_user': c.by_user.email if c.by_user else None,
+			'by_user_name': by_user_name,
 			'created_at': c.created_at.isoformat() if c.created_at else None,
-		}
-		for c in comments
-	]
+		})
 	return Response(data)
 
 

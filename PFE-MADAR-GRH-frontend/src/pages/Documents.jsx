@@ -721,7 +721,7 @@ export default function Documents() {
                       )}
                       {!isEmployee && <td style={styles.tableCell}>{doc.source_department || '-'}</td>}
                       {!isEmployee && <td style={styles.tableCell}>{doc.target_department || '-'}</td>}
-                      {isEmployee && <td style={styles.tableCell}>{doc.created_by || '-'}</td>}
+                      {isEmployee && <td style={styles.tableCell}>{doc.created_by_name || doc.created_by || '-'}</td>}
                       {isEmployee && <td style={styles.tableCell}>{formatDate(doc.sent_at)}</td>}
                       {!isEmployee && <td style={styles.tableCell}>{formatDate(doc.created_at)}</td>}
                       <td style={styles.tableCell}>
@@ -787,7 +787,7 @@ export default function Documents() {
                               {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).map(comment => (
                                 <div key={comment.id} style={styles.commentItem}>
                                   <div style={styles.commentMeta}>
-                                    {comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
+                                    {comment.by_user_name || comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
                                   </div>
                                   <div style={styles.commentBody}>{comment.note}</div>
                                 </div>
