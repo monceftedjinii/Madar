@@ -124,25 +124,33 @@ export default function Documents() {
     }
   };
 
-  const handleSend = async (docId) => {
+  const handleSend = async (doc) => {
+    if (!doc?.target_department) {
+      setRowMessages(prev => ({
+        ...prev,
+        [doc.id]: { type: 'error', text: 'Target department is required to send' }
+      }));
+      return;
+    }
+
     try {
-      setActionInProgress(prev => ({ ...prev, [docId]: 'send' }));
-      await api.post(`/api/documents/${docId}/send/`, {});
+      setActionInProgress(prev => ({ ...prev, [doc.id]: 'send' }));
+      const response = await api.post(`/api/documents/${doc.id}/send/`, {});
       setDocuments(docs =>
-        docs.map(doc => doc.id === docId ? { ...doc, status: 'SENT' } : doc)
+        docs.map(item => item.id === doc.id ? { ...item, status: 'SENT', sent_at: response.data?.sent_at } : item)
       );
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'success', text: 'Document sent successfully' }
+        [doc.id]: { type: 'success', text: 'Document sent successfully' }
       }));
-      setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
+      setTimeout(() => setRowMessages(prev => ({ ...prev, [doc.id]: null })), 3000);
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.error || 'Failed to send' }
+        [doc.id]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to send' }
       }));
     } finally {
-      setActionInProgress(prev => ({ ...prev, [docId]: null }));
+      setActionInProgress(prev => ({ ...prev, [doc.id]: null }));
     }
   };
 
@@ -169,7 +177,7 @@ export default function Documents() {
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.error || 'Failed to add comment' }
+        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to add comment' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
@@ -228,6 +236,11 @@ export default function Documents() {
       ARCHIVED: { bg: '#e2e3e5', text: '#383d41', label: 'Archived' }
     };
     return colors[status] || colors.DRAFT;
+  };
+
+  const formatDate = (value) => {
+    if (!value) return '-';
+    return new Date(value).toLocaleDateString();
   };
 
   const styles = {
@@ -609,7 +622,7 @@ export default function Documents() {
 
       {/* Documents List Section */}
       <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>My Documents</h2>
+        <h2 style={styles.sectionTitle}>{isEmployee ? 'Documents Feed' : 'My Documents'}</h2>
 
         {error && (
           <div style={{...styles.alertBanner, ...styles.errorBanner}}>
@@ -628,33 +641,40 @@ export default function Documents() {
                   <th style={styles.tableHeaderCell}>Title</th>
                   <th style={styles.tableHeaderCell}>Type</th>
                   <th style={styles.tableHeaderCell}>Category</th>
-                  <th style={styles.tableHeaderCell}>Status</th>
-                  <th style={styles.tableHeaderCell}>Source</th>
-                  <th style={styles.tableHeaderCell}>Target</th>
-                  <th style={styles.tableHeaderCell}>Created</th>
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Status</th>}
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Source</th>}
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Target</th>}
+                  {isEmployee && <th style={styles.tableHeaderCell}>Uploaded By</th>}
+                  {isEmployee && <th style={styles.tableHeaderCell}>Sent At</th>}
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Created</th>}
                   <th style={styles.tableHeaderCell}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {documents.map(doc => {
                   const statusInfo = getStatusColor(doc.status);
-                  const canSend = doc.status === 'DRAFT';
+                  const canSend = doc.status === 'DRAFT' && !!doc.target_department;
                   const canValidate = isRHSeniorOrGRH && doc.status === 'SENT';
                   const canArchive = isRHSeniorOrGRH && doc.status === 'VALIDATED';
+                  const isBusy = Boolean(actionInProgress[doc.id]);
 
                   return (
                     <tr key={doc.id} style={styles.tableRow}>
                       <td style={styles.tableCell}><strong>{doc.title}</strong></td>
                       <td style={styles.tableCell}>{doc.doc_type}</td>
                       <td style={styles.tableCell}>{doc.doc_type_category || '-'}</td>
-                      <td style={styles.tableCell}>
-                        <span style={{...styles.statusBadge, backgroundColor: statusInfo.bg, color: statusInfo.text}}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td style={styles.tableCell}>{doc.source_department || '-'}</td>
-                      <td style={styles.tableCell}>{doc.target_department || '-'}</td>
-                      <td style={styles.tableCell}>{new Date(doc.created_at).toLocaleDateString()}</td>
+                      {!isEmployee && (
+                        <td style={styles.tableCell}>
+                          <span style={{...styles.statusBadge, backgroundColor: statusInfo.bg, color: statusInfo.text}}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                      )}
+                      {!isEmployee && <td style={styles.tableCell}>{doc.source_department || '-'}</td>}
+                      {!isEmployee && <td style={styles.tableCell}>{doc.target_department || '-'}</td>}
+                      {isEmployee && <td style={styles.tableCell}>{doc.created_by || '-'}</td>}
+                      {isEmployee && <td style={styles.tableCell}>{formatDate(doc.sent_at)}</td>}
+                      {!isEmployee && <td style={styles.tableCell}>{formatDate(doc.created_at)}</td>}
                       <td style={styles.tableCell}>
                         <div>
                           {doc.file_url && (
@@ -669,9 +689,9 @@ export default function Documents() {
                           )}
                           {canSend && (
                             <button
-                              style={{...styles.button, ...styles.sendButton, ...(actionInProgress[doc.id] ? styles.buttonDisabled : {})}}
-                              onClick={() => handleSend(doc.id)}
-                              disabled={actionInProgress[doc.id] !== null}
+                              style={{...styles.button, ...styles.sendButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                              onClick={() => handleSend(doc)}
+                              disabled={isBusy}
                               title="Send document"
                             >
                               {actionInProgress[doc.id] === 'send' ? '...' : 'Send'}
@@ -679,9 +699,9 @@ export default function Documents() {
                           )}
                           {canValidate && (
                             <button
-                              style={{...styles.button, ...styles.validateButton, ...(actionInProgress[doc.id] ? styles.buttonDisabled : {})}}
+                              style={{...styles.button, ...styles.validateButton, ...(isBusy ? styles.buttonDisabled : {})}}
                               onClick={() => handleValidate(doc.id)}
-                              disabled={actionInProgress[doc.id] !== null}
+                              disabled={isBusy}
                               title="Validate document"
                             >
                               {actionInProgress[doc.id] === 'validate' ? '...' : 'Validate'}
@@ -689,9 +709,9 @@ export default function Documents() {
                           )}
                           {canArchive && (
                             <button
-                              style={{...styles.button, ...styles.archiveButton, ...(actionInProgress[doc.id] ? styles.buttonDisabled : {})}}
+                              style={{...styles.button, ...styles.archiveButton, ...(isBusy ? styles.buttonDisabled : {})}}
                               onClick={() => handleArchive(doc.id)}
-                              disabled={actionInProgress[doc.id] !== null}
+                              disabled={isBusy}
                               title="Archive document"
                             >
                               {actionInProgress[doc.id] === 'archive' ? '...' : 'Archive'}
@@ -715,9 +735,9 @@ export default function Documents() {
                               onChange={(e) => setCommentInputs(prev => ({ ...prev, [doc.id]: e.target.value }))}
                             />
                             <button
-                              style={{...styles.button, ...styles.commentButton, ...(actionInProgress[doc.id] ? styles.buttonDisabled : {})}}
+                              style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
                               onClick={() => handleComment(doc.id)}
-                              disabled={actionInProgress[doc.id] !== null}
+                              disabled={isBusy}
                             >
                               {actionInProgress[doc.id] === 'comment' ? '...' : 'Post'}
                             </button>

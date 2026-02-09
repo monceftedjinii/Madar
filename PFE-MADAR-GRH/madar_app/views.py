@@ -690,7 +690,19 @@ def upload_document(request):
 	create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
 	file_url = request.build_absolute_uri(doc.file.url) if doc.file else None
-	return Response({'id': doc.id, 'status': doc.status, 'file_url': file_url}, status=status.HTTP_201_CREATED)
+	return Response({
+		'id': doc.id,
+		'title': doc.title,
+		'doc_type': doc.doc_type.name,
+		'doc_type_category': doc.doc_type.category,
+		'status': doc.status,
+		'source_department': doc.source_department.name if doc.source_department else None,
+		'target_department': doc.target_department.name if doc.target_department else None,
+		'created_by': doc.created_by.email if doc.created_by else None,
+		'created_at': doc.created_at.isoformat() if doc.created_at else None,
+		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
+		'file_url': file_url,
+	}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -704,6 +716,9 @@ def send_document(request, pk):
 
 	if doc.status != Document.Status.DRAFT:
 		return Response({'detail': 'can only send DRAFT documents'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if not doc.target_department_id:
+		return Response({'detail': 'target_department is required to send'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# Permission: only creator or chef of source department
 	is_creator = doc.created_by_id == request.user.id
@@ -719,10 +734,24 @@ def send_document(request, pk):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.status = Document.Status.SENT
+	doc.sent_at = timezone.now()
 	doc.save()
 	create_doc_history(doc, DocumentHistory.Action.SENT, request.user)
 
-	return Response({'id': doc.id, 'status': doc.status})
+	if doc.target_department_id:
+		dept_emps = Employee.objects.filter(department_id=doc.target_department_id)
+		for emp in dept_emps:
+			try:
+				user = User.objects.get(email=emp.email)
+			except User.DoesNotExist:
+				continue
+			notify(
+				user,
+				title='New document received',
+				message=f"{doc.title} was sent to your department."
+			)
+
+	return Response({'id': doc.id, 'status': doc.status, 'sent_at': doc.sent_at.isoformat()})
 
 
 @api_view(['GET'])
@@ -775,6 +804,7 @@ def list_documents_scoped(request):
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
 		}
 		for d in qs.order_by('-created_at')
@@ -796,7 +826,7 @@ def documents_feed(request):
 
 	qs = Document.objects.filter(
 		target_department_id=emp.department_id,
-		status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]
+		status=Document.Status.SENT
 	)
 
 	data = [
@@ -810,9 +840,10 @@ def documents_feed(request):
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
 		}
-		for d in qs.order_by('-created_at')
+		for d in qs.order_by('-sent_at', '-created_at')
 	]
 	return Response(data)
 
@@ -842,6 +873,7 @@ def documents_mine(request):
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
+			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
 			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
 		}
 		for d in qs.order_by('-created_at')
@@ -871,6 +903,16 @@ def comment_document(request, pk):
 
 	if not can_comment and request.user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
 		can_comment = True
+
+	if not can_comment and request.user.role == RoleChoices.EMPLOYEE:
+		try:
+			emp = Employee.objects.get(email=request.user.email)
+			can_comment = (
+				emp.department_id == doc.source_department_id or
+				(doc.target_department_id and emp.department_id == doc.target_department_id)
+			)
+		except Employee.DoesNotExist:
+			pass
 
 	if not can_comment:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)

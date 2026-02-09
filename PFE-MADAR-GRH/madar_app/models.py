@@ -223,6 +223,7 @@ class Document(models.Model):
     target_department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='documents_received')
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='documents_created')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    sent_at = models.DateTimeField(null=True, blank=True)
     validated_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='documents_validated')
     validated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
