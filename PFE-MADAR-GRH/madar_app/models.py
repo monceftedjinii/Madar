@@ -246,6 +246,7 @@ class DocumentHistory(models.Model):
     action = models.CharField(max_length=20, choices=Action.choices)
     by_user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='document_history_actions')
     note = models.TextField(blank=True)
+    is_private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

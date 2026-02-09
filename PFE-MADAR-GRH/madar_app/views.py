@@ -605,14 +605,15 @@ def reject_leave(request, pk):
 	return _chef_decide_common(request, pk, accept=False)
 
 # Document Helper
-def create_doc_history(document, action, by_user, note='', parent=None):
+def create_doc_history(document, action, by_user, note='', parent=None, is_private=False):
 	"""Helper to create a document history entry."""
 	return DocumentHistory.objects.create(
 		document=document,
 		parent=parent,
 		action=action,
 		by_user=by_user,
-		note=note
+		note=note,
+		is_private=is_private,
 	)
 
 
@@ -952,8 +953,21 @@ def comment_document(request, pk):
 			)
 		except DocumentHistory.DoesNotExist:
 			return Response({'detail': 'parent comment not found'}, status=status.HTTP_400_BAD_REQUEST)
+		if parent.is_private and request.user not in [doc.created_by, parent.by_user]:
+			return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
-	create_doc_history(doc, DocumentHistory.Action.COMMENTED, request.user, note=comment, parent=parent)
+	is_private = bool(request.data.get('is_private'))
+	if parent and parent.is_private:
+		is_private = True
+
+	create_doc_history(
+		doc,
+		DocumentHistory.Action.COMMENTED,
+		request.user,
+		note=comment,
+		parent=parent,
+		is_private=is_private
+	)
 	return Response({'detail': 'comment added'})
 
 
@@ -994,10 +1008,19 @@ def document_comments(request, pk):
 	if not _can_access_comments(request.user, doc):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
+	from django.db.models import Q
+
+	visibility_filter = Q(is_private=False)
+	if request.user == doc.created_by:
+		visibility_filter = Q()
+	else:
+		visibility_filter |= Q(is_private=True, by_user=request.user)
+		visibility_filter |= Q(is_private=True, parent__by_user=request.user)
+
 	comments = DocumentHistory.objects.filter(
 		document=doc,
 		action=DocumentHistory.Action.COMMENTED
-	).select_related('by_user', 'parent').order_by('created_at')
+	).filter(visibility_filter).select_related('by_user', 'parent').order_by('created_at')
 
 	comment_map = {}
 	ordered = []
@@ -1013,6 +1036,7 @@ def document_comments(request, pk):
 			'by_user_name': by_user_name,
 			'created_at': c.created_at.isoformat() if c.created_at else None,
 			'parent_id': c.parent_id,
+			'is_private': c.is_private,
 			'replies': [],
 		}
 		comment_map[c.id] = item

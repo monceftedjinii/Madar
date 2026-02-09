@@ -29,6 +29,8 @@ export default function Documents() {
   const [commentsLoading, setCommentsLoading] = useState({}); // { docId: boolean }
   const [replyInputs, setReplyInputs] = useState({}); // { commentId: reply text }
   const [replyExpanded, setReplyExpanded] = useState({}); // { commentId: true/false }
+  const [commentPrivacy, setCommentPrivacy] = useState({}); // { docId: boolean }
+  const [replyPrivacy, setReplyPrivacy] = useState({}); // { commentId: boolean }
 
   // User info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -170,13 +172,17 @@ export default function Documents() {
 
     try {
       setActionInProgress(prev => ({ ...prev, [docId]: 'comment' }));
-      await api.post(`/api/documents/${docId}/comment/`, { comment });
+      await api.post(`/api/documents/${docId}/comment/`, {
+        comment,
+        is_private: Boolean(commentPrivacy[docId])
+      });
       await fetchComments(docId);
       setRowMessages(prev => ({
         ...prev,
         [docId]: { type: 'success', text: 'Comment added' }
       }));
       setCommentInputs(prev => ({ ...prev, [docId]: '' }));
+      setCommentPrivacy(prev => ({ ...prev, [docId]: false }));
       setExpandedComments(prev => ({ ...prev, [docId]: false }));
       setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
     } catch (err) {
@@ -201,13 +207,18 @@ export default function Documents() {
 
     try {
       setActionInProgress(prev => ({ ...prev, [docId]: 'comment' }));
-      await api.post(`/api/documents/${docId}/comment/`, { comment: reply, parent_id: parentId });
+      await api.post(`/api/documents/${docId}/comment/`, {
+        comment: reply,
+        parent_id: parentId,
+        is_private: Boolean(replyPrivacy[parentId])
+      });
       await fetchComments(docId);
       setRowMessages(prev => ({
         ...prev,
         [docId]: { type: 'success', text: 'Reply added' }
       }));
       setReplyInputs(prev => ({ ...prev, [parentId]: '' }));
+      setReplyPrivacy(prev => ({ ...prev, [parentId]: false }));
       setReplyExpanded(prev => ({ ...prev, [parentId]: false }));
       setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
     } catch (err) {
@@ -528,10 +539,26 @@ export default function Documents() {
       color: '#666',
       marginBottom: '4px'
     },
+    privateBadge: {
+      display: 'inline-block',
+      marginLeft: '6px',
+      padding: '2px 6px',
+      fontSize: '10px',
+      backgroundColor: '#fde2e1',
+      color: '#b02a37',
+      borderRadius: '10px'
+    },
     commentBody: {
       fontSize: '12px',
       color: '#333'
     },
+        privacyToggle: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '11px',
+          color: '#666'
+        },
     replyList: {
       marginLeft: '18px',
       marginTop: '6px'
@@ -847,6 +874,7 @@ export default function Documents() {
                                   <div style={styles.commentHeader}>
                                     <div style={styles.commentMeta}>
                                       {comment.by_user_name || comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
+                                      {comment.is_private && <span style={styles.privateBadge}>Private</span>}
                                     </div>
                                     <button
                                       style={{...styles.button, ...styles.replyButton}}
@@ -859,20 +887,31 @@ export default function Documents() {
                                   <div style={styles.commentBody}>{comment.note}</div>
 
                                   {replyExpanded[comment.id] && (
-                                    <div style={styles.expandedRow}>
-                                      <textarea
-                                        style={styles.commentInput}
-                                        placeholder="Write a reply..."
-                                        value={replyInputs[comment.id] || ''}
-                                        onChange={(e) => setReplyInputs(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                                      />
-                                      <button
-                                        style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
-                                        onClick={() => handleReply(doc.id, comment.id)}
-                                        disabled={isBusy}
-                                      >
-                                        {actionInProgress[doc.id] === 'comment' ? '...' : 'Reply'}
-                                      </button>
+                                    <div>
+                                      <div style={styles.expandedRow}>
+                                        <textarea
+                                          style={styles.commentInput}
+                                          placeholder="Write a reply..."
+                                          value={replyInputs[comment.id] || ''}
+                                          onChange={(e) => setReplyInputs(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                        />
+                                        <button
+                                          style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                                          onClick={() => handleReply(doc.id, comment.id)}
+                                          disabled={isBusy}
+                                        >
+                                          {actionInProgress[doc.id] === 'comment' ? '...' : 'Reply'}
+                                        </button>
+                                      </div>
+                                      <label style={styles.privacyToggle}>
+                                        <input
+                                          type="checkbox"
+                                          checked={comment.is_private || Boolean(replyPrivacy[comment.id])}
+                                          onChange={(e) => setReplyPrivacy(prev => ({ ...prev, [comment.id]: e.target.checked }))}
+                                          disabled={comment.is_private}
+                                        />
+                                        Private reply
+                                      </label>
                                     </div>
                                   )}
 
@@ -882,6 +921,7 @@ export default function Documents() {
                                         <div key={reply.id} style={styles.replyItem}>
                                           <div style={styles.commentMeta}>
                                             {reply.by_user_name || reply.by_user || 'Unknown'} · {formatDate(reply.created_at)}
+                                            {reply.is_private && <span style={styles.privateBadge}>Private</span>}
                                           </div>
                                           <div style={styles.commentBody}>{reply.note}</div>
                                         </div>
@@ -906,6 +946,14 @@ export default function Documents() {
                                 {actionInProgress[doc.id] === 'comment' ? '...' : 'Post'}
                               </button>
                             </div>
+                            <label style={styles.privacyToggle}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(commentPrivacy[doc.id])}
+                                onChange={(e) => setCommentPrivacy(prev => ({ ...prev, [doc.id]: e.target.checked }))}
+                              />
+                              Private comment (only you and the document owner)
+                            </label>
                           </div>
                         )}
 
