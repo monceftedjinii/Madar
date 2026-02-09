@@ -890,31 +890,33 @@ def comment_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	# Permission: creator, chef of source or target dept, RH_SENIOR, GRH
-	can_comment = request.user.id == doc.created_by_id
+	def _can_access_comments(user, document):
+		# creator, chef of source/target, RH_SENIOR, GRH, or employee in source/target dept
+		if user.id == document.created_by_id:
+			return True
+		if user.role == RoleChoices.CHEF:
+			try:
+				chef_emp = Employee.objects.get(email=user.email)
+				return (
+					chef_emp.department_id == document.source_department_id or
+					(document.target_department_id and chef_emp.department_id == document.target_department_id)
+				)
+			except Employee.DoesNotExist:
+				return False
+		if user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+			return True
+		if user.role == RoleChoices.EMPLOYEE:
+			try:
+				emp = Employee.objects.get(email=user.email)
+				return (
+					emp.department_id == document.source_department_id or
+					(document.target_department_id and emp.department_id == document.target_department_id)
+				)
+			except Employee.DoesNotExist:
+				return False
+		return False
 
-	if not can_comment and request.user.role == RoleChoices.CHEF:
-		try:
-			chef_emp = Employee.objects.get(email=request.user.email)
-			can_comment = (chef_emp.department_id == doc.source_department_id or 
-						   (doc.target_department_id and chef_emp.department_id == doc.target_department_id))
-		except Employee.DoesNotExist:
-			pass
-
-	if not can_comment and request.user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
-		can_comment = True
-
-	if not can_comment and request.user.role == RoleChoices.EMPLOYEE:
-		try:
-			emp = Employee.objects.get(email=request.user.email)
-			can_comment = (
-				emp.department_id == doc.source_department_id or
-				(doc.target_department_id and emp.department_id == doc.target_department_id)
-			)
-		except Employee.DoesNotExist:
-			pass
-
-	if not can_comment:
+	if not _can_access_comments(request.user, doc):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	comment = request.data.get('comment', '')
@@ -923,6 +925,60 @@ def comment_document(request, pk):
 
 	create_doc_history(doc, DocumentHistory.Action.COMMENTED, request.user, note=comment)
 	return Response({'detail': 'comment added'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def document_comments(request, pk):
+	"""List comments for a document."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	def _can_access_comments(user, document):
+		if user.id == document.created_by_id:
+			return True
+		if user.role == RoleChoices.CHEF:
+			try:
+				chef_emp = Employee.objects.get(email=user.email)
+				return (
+					chef_emp.department_id == document.source_department_id or
+					(document.target_department_id and chef_emp.department_id == document.target_department_id)
+				)
+			except Employee.DoesNotExist:
+				return False
+		if user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+			return True
+		if user.role == RoleChoices.EMPLOYEE:
+			try:
+				emp = Employee.objects.get(email=user.email)
+				return (
+					emp.department_id == document.source_department_id or
+					(document.target_department_id and emp.department_id == document.target_department_id)
+				)
+			except Employee.DoesNotExist:
+				return False
+		return False
+
+	if not _can_access_comments(request.user, doc):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	comments = DocumentHistory.objects.filter(
+		document=doc,
+		action=DocumentHistory.Action.COMMENTED
+	).select_related('by_user').order_by('created_at')
+
+	data = [
+		{
+			'id': c.id,
+			'note': c.note,
+			'by_user': c.by_user.email if c.by_user else None,
+			'created_at': c.created_at.isoformat() if c.created_at else None,
+		}
+		for c in comments
+	]
+	return Response(data)
 
 
 @api_view(['POST'])

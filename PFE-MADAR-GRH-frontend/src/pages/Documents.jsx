@@ -25,6 +25,8 @@ export default function Documents() {
   const [commentInputs, setCommentInputs] = useState({}); // { docId: comment text }
   const [expandedComments, setExpandedComments] = useState({}); // { docId: true/false }
   const [rowMessages, setRowMessages] = useState({}); // { docId: { type, text } }
+  const [commentsByDoc, setCommentsByDoc] = useState({}); // { docId: comments[] }
+  const [commentsLoading, setCommentsLoading] = useState({}); // { docId: boolean }
 
   // User info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -167,6 +169,7 @@ export default function Documents() {
     try {
       setActionInProgress(prev => ({ ...prev, [docId]: 'comment' }));
       await api.post(`/api/documents/${docId}/comment/`, { comment });
+      await fetchComments(docId);
       setRowMessages(prev => ({
         ...prev,
         [docId]: { type: 'success', text: 'Comment added' }
@@ -182,6 +185,28 @@ export default function Documents() {
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
     }
+  };
+
+  const fetchComments = async (docId) => {
+    try {
+      setCommentsLoading(prev => ({ ...prev, [docId]: true }));
+      const response = await api.get(`/api/documents/${docId}/comments/`);
+      setCommentsByDoc(prev => ({ ...prev, [docId]: response.data || [] }));
+    } catch (err) {
+      setCommentsByDoc(prev => ({ ...prev, [docId]: [] }));
+    } finally {
+      setCommentsLoading(prev => ({ ...prev, [docId]: false }));
+    }
+  };
+
+  const toggleComments = (docId) => {
+    setExpandedComments(prev => {
+      const next = !prev[docId];
+      if (next && commentsByDoc[docId] === undefined) {
+        fetchComments(docId);
+      }
+      return { ...prev, [docId]: next };
+    });
   };
 
   const handleValidate = async (docId) => {
@@ -444,6 +469,30 @@ export default function Documents() {
       border: '1px solid #ddd',
       borderRadius: '4px',
       fontFamily: 'inherit'
+    },
+    commentsList: {
+      marginBottom: '8px'
+    },
+    commentItem: {
+      padding: '6px 8px',
+      backgroundColor: '#f8f9fa',
+      border: '1px solid #eee',
+      borderRadius: '4px',
+      marginBottom: '6px'
+    },
+    commentMeta: {
+      fontSize: '11px',
+      color: '#666',
+      marginBottom: '4px'
+    },
+    commentBody: {
+      fontSize: '12px',
+      color: '#333'
+    },
+    commentEmpty: {
+      fontSize: '12px',
+      color: '#888',
+      marginBottom: '6px'
     },
     rowMessage: {
       fontSize: '11px',
@@ -719,7 +768,7 @@ export default function Documents() {
                           )}
                           <button
                             style={{...styles.button, ...styles.commentButton}}
-                            onClick={() => setExpandedComments(prev => ({ ...prev, [doc.id]: !prev[doc.id] }))}
+                            onClick={() => toggleComments(doc.id)}
                             title="Add comment"
                           >
                             💬
@@ -727,20 +776,38 @@ export default function Documents() {
                         </div>
 
                         {expandedComments[doc.id] && (
-                          <div style={styles.expandedRow}>
-                            <textarea
-                              style={styles.commentInput}
-                              placeholder="Add a comment..."
-                              value={commentInputs[doc.id] || ''}
-                              onChange={(e) => setCommentInputs(prev => ({ ...prev, [doc.id]: e.target.value }))}
-                            />
-                            <button
-                              style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
-                              onClick={() => handleComment(doc.id)}
-                              disabled={isBusy}
-                            >
-                              {actionInProgress[doc.id] === 'comment' ? '...' : 'Post'}
-                            </button>
+                          <div>
+                            <div style={styles.commentsList}>
+                              {commentsLoading[doc.id] && (
+                                <div style={styles.commentEmpty}>Loading comments...</div>
+                              )}
+                              {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).length === 0 && (
+                                <div style={styles.commentEmpty}>No comments yet.</div>
+                              )}
+                              {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).map(comment => (
+                                <div key={comment.id} style={styles.commentItem}>
+                                  <div style={styles.commentMeta}>
+                                    {comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
+                                  </div>
+                                  <div style={styles.commentBody}>{comment.note}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={styles.expandedRow}>
+                              <textarea
+                                style={styles.commentInput}
+                                placeholder="Add a comment..."
+                                value={commentInputs[doc.id] || ''}
+                                onChange={(e) => setCommentInputs(prev => ({ ...prev, [doc.id]: e.target.value }))}
+                              />
+                              <button
+                                style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                                onClick={() => handleComment(doc.id)}
+                                disabled={isBusy}
+                              >
+                                {actionInProgress[doc.id] === 'comment' ? '...' : 'Post'}
+                              </button>
+                            </div>
                           </div>
                         )}
 

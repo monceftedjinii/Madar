@@ -56,6 +56,7 @@ urlpatterns = [
     path('api/documents/mine/', madar_views.documents_mine, name='api-documents-mine'),
     path('api/documents/<int:pk>/send/', madar_views.send_document, name='api-documents-send'),
     path('api/documents/<int:pk>/comment/', madar_views.comment_document, name='api-documents-comment'),
+    path('api/documents/<int:pk>/comments/', madar_views.document_comments, name='api-documents-comments'),
     path('api/documents/<int:pk>/validate/', madar_views.validate_document, name='api-documents-validate'),
     path('api/documents/<int:pk>/archive/', madar_views.archive_document, name='api-documents-archive'),
     path('api/reports/summary/', madar_views.reports_summary, name='api-reports-summary'),
