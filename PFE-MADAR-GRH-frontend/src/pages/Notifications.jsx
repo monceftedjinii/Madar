@@ -58,6 +58,10 @@ function Notifications() {
       return
     }
     const msg = `${notif.title} ${notif.message}`.toLowerCase()
+    if (msg.includes('leave')) {
+      navigate('/leaves')
+      return
+    }
     if (msg.includes('document') || msg.includes('comment')) {
       navigate('/documents')
     }
