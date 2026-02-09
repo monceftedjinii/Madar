@@ -56,6 +56,12 @@ urlpatterns = [
     path('api/documents/<int:pk>/validate/', madar_views.validate_document, name='api-documents-validate'),
     path('api/documents/<int:pk>/archive/', madar_views.archive_document, name='api-documents-archive'),
     path('api/reports/summary/', madar_views.reports_summary, name='api-reports-summary'),
+    path('api/reports/attendance/export/', madar_views.export_attendance_report, name='api-reports-attendance-export'),
+    path('api/reports/leaves/export/', madar_views.export_leaves_report, name='api-reports-leaves-export'),
+    path('api/reports/tasks/export/', madar_views.export_tasks_report, name='api-reports-tasks-export'),
+    path('api/reports/attendance/export', madar_views.export_attendance_report, name='api-reports-attendance-export-noslash'),
+    path('api/reports/leaves/export', madar_views.export_leaves_report, name='api-reports-leaves-export-noslash'),
+    path('api/reports/tasks/export', madar_views.export_tasks_report, name='api-reports-tasks-export-noslash'),
 ]
 # Serve media files in development
 if settings.DEBUG:

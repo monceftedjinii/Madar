@@ -11,6 +11,12 @@ export default function MyAttendance() {
   const [pendingAction, setPendingAction] = useState(null); // 'check-in' or 'check-out'
   const [pinValue, setPinValue] = useState('');
   const [pinError, setPinError] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('pdf');
+  const [exportEmployees, setExportEmployees] = useState([]);
+  const [exportEmployeeId, setExportEmployeeId] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
   // Date filtering
   const [fromDate, setFromDate] = useState('');
@@ -28,6 +34,7 @@ export default function MyAttendance() {
     setFromDate(fromFormatted);
     setToDate(toFormatted);
     fetchAttendance(fromFormatted, toFormatted);
+    fetchExportEmployees();
   }, []);
 
   useEffect(() => {
@@ -55,6 +62,15 @@ export default function MyAttendance() {
       setError(err.response?.data?.error || 'Failed to load attendance');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchExportEmployees = async () => {
+    try {
+      const response = await api.get('/api/employees/');
+      setExportEmployees(response.data || []);
+    } catch (err) {
+      setExportEmployees([]);
     }
   };
 
@@ -102,6 +118,41 @@ export default function MyAttendance() {
     setToDate(newToDate);
     if (newFromDate && newToDate) {
       fetchAttendance(newFromDate, newToDate);
+    }
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setExportError(null);
+      const response = await api.get('/api/reports/attendance/export/', {
+        params: {
+          from: fromDate,
+          to: toDate,
+          file_format: exportFormat,
+          employee_id: exportEmployeeId || undefined
+        },
+        responseType: 'blob'
+      });
+      const ext = exportFormat === 'xlsx' ? 'xlsx' : 'pdf';
+      const filename = `attendance_report_${fromDate}_${toDate}.${ext}`;
+      downloadBlob(response.data, filename);
+      setExportOpen(false);
+    } catch (err) {
+      setExportError('Failed to export attendance');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -157,8 +208,8 @@ export default function MyAttendance() {
       margin: '0 0 15px 0'
     },
     buttonGroup: {
-      display: 'flex',
-      gap: '12px',
+      display: 'grid',
+      gridTemplateColumns: '150px 150px 1fr 140px',
       marginBottom: '15px'
     },
     button: {
@@ -301,6 +352,37 @@ export default function MyAttendance() {
       borderRadius: '4px',
       cursor: 'pointer'
     },
+    exportButton: {
+      padding: '8px 12px',
+      fontSize: '12px',
+      backgroundColor: '#17a2b8',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    },
+    exportButtonDisabled: {
+      backgroundColor: '#ccc',
+      cursor: 'not-allowed'
+    },
+    exportField: {
+      marginBottom: '12px'
+    },
+    exportLabel: {
+      display: 'block',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: '6px'
+    },
+    exportSelect: {
+      width: '100%',
+      padding: '8px',
+      fontSize: '13px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      boxSizing: 'border-box'
+    },
     table: {
       width: '100%',
       borderCollapse: 'collapse'
@@ -434,6 +516,64 @@ export default function MyAttendance() {
                 }}
                 onClick={closePinModal}
                 disabled={actionInProgress}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {exportOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Export Attendance</div>
+            <div style={styles.exportField}>
+              <label style={styles.exportLabel}>Employee</label>
+              <select
+                style={styles.exportSelect}
+                value={exportEmployeeId}
+                onChange={(e) => setExportEmployeeId(e.target.value)}
+              >
+                <option value="">All</option>
+                {exportEmployees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.first_name} {emp.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.exportField}>
+              <label style={styles.exportLabel}>Format</label>
+              <select
+                style={styles.exportSelect}
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+              >
+                <option value="pdf">PDF</option>
+                <option value="xlsx">Excel</option>
+              </select>
+            </div>
+            {exportError && <div style={styles.modalError}>{exportError}</div>}
+            <div style={styles.modalActions}>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalConfirm,
+                  ...(exporting ? styles.buttonDisabled : {})
+                }}
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                {exporting ? 'Exporting...' : 'Download'}
+              </button>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalCancel
+                }}
+                onClick={() => setExportOpen(false)}
+                disabled={exporting}
               >
                 Cancel
               </button>

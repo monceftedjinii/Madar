@@ -14,9 +14,21 @@ export default function DepartmentLeaves() {
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('pdf');
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
+  const [exportStatus, setExportStatus] = useState('');
+  const [exportType, setExportType] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
   useEffect(() => {
     fetchLeaves();
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    setExportFromDate(firstDay.toISOString().split('T')[0]);
+    setExportToDate(today.toISOString().split('T')[0]);
   }, []);
 
   // Log first leave object from API response for debugging structure
@@ -84,6 +96,42 @@ export default function DepartmentLeaves() {
     setSearchTerm(searchInput.trim());
     setFromDate(fromDateInput);
     setToDate(toDateInput);
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setExportError(null);
+      const response = await api.get('/api/reports/leaves/export/', {
+        params: {
+          from: exportFromDate,
+          to: exportToDate,
+          status: exportStatus || undefined,
+          type: exportType || undefined,
+          file_format: exportFormat
+        },
+        responseType: 'blob'
+      });
+      const ext = exportFormat === 'xlsx' ? 'xlsx' : 'pdf';
+      const filename = `leave_report_${exportFromDate}_${exportToDate}.${ext}`;
+      downloadBlob(response.data, filename);
+      setExportOpen(false);
+    } catch (err) {
+      setExportError('Failed to export leave history');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -168,6 +216,95 @@ export default function DepartmentLeaves() {
     },
     header: {
       marginBottom: '30px'
+    },
+    headerActions: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '12px'
+    },
+    exportButton: {
+      padding: '8px 14px',
+      fontSize: '13px',
+      fontWeight: 'bold',
+      backgroundColor: '#17a2b8',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    },
+    exportButtonDisabled: {
+      backgroundColor: '#ccc',
+      cursor: 'not-allowed'
+    },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    },
+    modalCard: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      padding: '20px',
+      width: '360px',
+      boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+    },
+    modalTitle: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      marginBottom: '12px',
+      color: '#333'
+    },
+    modalField: {
+      marginBottom: '12px'
+    },
+    modalLabel: {
+      display: 'block',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: '6px'
+    },
+    modalInput: {
+      width: '100%',
+      padding: '8px',
+      fontSize: '13px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      boxSizing: 'border-box'
+    },
+    modalActions: {
+      display: 'flex',
+      gap: '10px',
+      marginTop: '10px'
+    },
+    modalButton: {
+      flex: 1,
+      padding: '8px 12px',
+      fontSize: '12px',
+      borderRadius: '4px',
+      border: 'none',
+      cursor: 'pointer'
+    },
+    modalConfirm: {
+      backgroundColor: '#007bff',
+      color: 'white'
+    },
+    modalCancel: {
+      backgroundColor: '#6c757d',
+      color: 'white'
+    },
+    modalError: {
+      marginTop: '6px',
+      color: '#c33',
+      fontSize: '12px'
     },
     title: {
       fontSize: '28px',
@@ -361,10 +498,24 @@ export default function DepartmentLeaves() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Department Leave Requests</h1>
-        <p style={styles.subtitle}>
-          Total: {leaves.length} | Pending: {pendingLeaves.length} | Accepted: {acceptedLeaves.length} | Refused: {refusedLeaves.length}
-        </p>
+        <div style={styles.headerActions}>
+          <div>
+            <h1 style={styles.title}>Department Leave Requests</h1>
+            <p style={styles.subtitle}>
+              Total: {leaves.length} | Pending: {pendingLeaves.length} | Accepted: {acceptedLeaves.length} | Refused: {refusedLeaves.length}
+            </p>
+          </div>
+          <button
+            style={{...styles.exportButton, ...(exporting ? styles.exportButtonDisabled : {})}}
+            onClick={() => {
+              setExportOpen(true);
+              setExportError(null);
+            }}
+            disabled={exporting}
+          >
+            Export
+          </button>
+        </div>
       </div>
 
       <div style={styles.filterRow}>
@@ -405,6 +556,93 @@ export default function DepartmentLeaves() {
         <div style={{...styles.alertBanner, ...styles.errorBanner}}>
           <span>{error}</span>
           <button style={styles.closeButton} onClick={() => setError(null)}>×</button>
+        </div>
+      )}
+
+      {exportOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Export Leave History</div>
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>From Date</label>
+              <input
+                style={styles.modalInput}
+                type="date"
+                value={exportFromDate}
+                onChange={(e) => setExportFromDate(e.target.value)}
+              />
+            </div>
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>To Date</label>
+              <input
+                style={styles.modalInput}
+                type="date"
+                value={exportToDate}
+                onChange={(e) => setExportToDate(e.target.value)}
+              />
+            </div>
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Status</label>
+              <select
+                style={styles.modalInput}
+                value={exportStatus}
+                onChange={(e) => setExportStatus(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="PENDING">Pending</option>
+                <option value="ACCEPTED">Accepted</option>
+                <option value="REFUSED">Refused</option>
+              </select>
+            </div>
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Leave Type</label>
+              <select
+                style={styles.modalInput}
+                value={exportType}
+                onChange={(e) => setExportType(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="ANNUAL">Annual</option>
+                <option value="SICK">Sick</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Format</label>
+              <select
+                style={styles.modalInput}
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+              >
+                <option value="pdf">PDF</option>
+                <option value="xlsx">Excel</option>
+              </select>
+            </div>
+            {exportError && <div style={styles.modalError}>{exportError}</div>}
+            <div style={styles.modalActions}>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalConfirm,
+                  ...(exporting ? styles.exportButtonDisabled : {})
+                }}
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                {exporting ? 'Exporting...' : 'Download'}
+              </button>
+              <button
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalCancel
+                }}
+                onClick={() => setExportOpen(false)}
+                disabled={exporting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
