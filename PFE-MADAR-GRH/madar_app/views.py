@@ -605,10 +605,11 @@ def reject_leave(request, pk):
 	return _chef_decide_common(request, pk, accept=False)
 
 # Document Helper
-def create_doc_history(document, action, by_user, note=''):
+def create_doc_history(document, action, by_user, note='', parent=None):
 	"""Helper to create a document history entry."""
 	return DocumentHistory.objects.create(
 		document=document,
+		parent=parent,
 		action=action,
 		by_user=by_user,
 		note=note
@@ -940,7 +941,19 @@ def comment_document(request, pk):
 	if not comment:
 		return Response({'detail': 'comment required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	create_doc_history(doc, DocumentHistory.Action.COMMENTED, request.user, note=comment)
+	parent = None
+	parent_id = request.data.get('parent_id')
+	if parent_id:
+		try:
+			parent = DocumentHistory.objects.get(
+				id=parent_id,
+				document=doc,
+				action=DocumentHistory.Action.COMMENTED
+			)
+		except DocumentHistory.DoesNotExist:
+			return Response({'detail': 'parent comment not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	create_doc_history(doc, DocumentHistory.Action.COMMENTED, request.user, note=comment, parent=parent)
 	return Response({'detail': 'comment added'})
 
 
@@ -984,21 +997,34 @@ def document_comments(request, pk):
 	comments = DocumentHistory.objects.filter(
 		document=doc,
 		action=DocumentHistory.Action.COMMENTED
-	).select_related('by_user').order_by('created_at')
+	).select_related('by_user', 'parent').order_by('created_at')
 
-	data = []
+	comment_map = {}
+	ordered = []
 	for c in comments:
 		by_user_name = None
 		if c.by_user:
 			name = f"{c.by_user.first_name} {c.by_user.last_name}".strip()
 			by_user_name = name or c.by_user.email
-		data.append({
+		item = {
 			'id': c.id,
 			'note': c.note,
 			'by_user': c.by_user.email if c.by_user else None,
 			'by_user_name': by_user_name,
 			'created_at': c.created_at.isoformat() if c.created_at else None,
-		})
+			'parent_id': c.parent_id,
+			'replies': [],
+		}
+		comment_map[c.id] = item
+		ordered.append(item)
+
+	data = []
+	for item in ordered:
+		if item['parent_id'] and item['parent_id'] in comment_map:
+			comment_map[item['parent_id']]['replies'].append(item)
+		else:
+			data.append(item)
+
 	return Response(data)
 
 

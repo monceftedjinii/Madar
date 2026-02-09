@@ -242,6 +242,7 @@ class DocumentHistory(models.Model):
         RETURNED = 'RETURNED', 'Returned'
 
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='history')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     action = models.CharField(max_length=20, choices=Action.choices)
     by_user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='document_history_actions')
     note = models.TextField(blank=True)

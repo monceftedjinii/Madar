@@ -27,6 +27,8 @@ export default function Documents() {
   const [rowMessages, setRowMessages] = useState({}); // { docId: { type, text } }
   const [commentsByDoc, setCommentsByDoc] = useState({}); // { docId: comments[] }
   const [commentsLoading, setCommentsLoading] = useState({}); // { docId: boolean }
+  const [replyInputs, setReplyInputs] = useState({}); // { commentId: reply text }
+  const [replyExpanded, setReplyExpanded] = useState({}); // { commentId: true/false }
 
   // User info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -187,6 +189,37 @@ export default function Documents() {
     }
   };
 
+  const handleReply = async (docId, parentId) => {
+    const reply = replyInputs[parentId] || '';
+    if (!reply.trim()) {
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'error', text: 'Reply cannot be empty' }
+      }));
+      return;
+    }
+
+    try {
+      setActionInProgress(prev => ({ ...prev, [docId]: 'comment' }));
+      await api.post(`/api/documents/${docId}/comment/`, { comment: reply, parent_id: parentId });
+      await fetchComments(docId);
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'success', text: 'Reply added' }
+      }));
+      setReplyInputs(prev => ({ ...prev, [parentId]: '' }));
+      setReplyExpanded(prev => ({ ...prev, [parentId]: false }));
+      setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
+    } catch (err) {
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to add reply' }
+      }));
+    } finally {
+      setActionInProgress(prev => ({ ...prev, [docId]: null }));
+    }
+  };
+
   const fetchComments = async (docId) => {
     try {
       setCommentsLoading(prev => ({ ...prev, [docId]: true }));
@@ -207,6 +240,10 @@ export default function Documents() {
       }
       return { ...prev, [docId]: next };
     });
+  };
+
+  const toggleReply = (commentId) => {
+    setReplyExpanded(prev => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
   const handleValidate = async (docId) => {
@@ -480,6 +517,12 @@ export default function Documents() {
       borderRadius: '4px',
       marginBottom: '6px'
     },
+    commentHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '8px'
+    },
     commentMeta: {
       fontSize: '11px',
       color: '#666',
@@ -487,6 +530,21 @@ export default function Documents() {
     },
     commentBody: {
       fontSize: '12px',
+      color: '#333'
+    },
+    replyList: {
+      marginLeft: '18px',
+      marginTop: '6px'
+    },
+    replyItem: {
+      padding: '6px 8px',
+      backgroundColor: '#fff',
+      border: '1px solid #eee',
+      borderRadius: '4px',
+      marginBottom: '6px'
+    },
+    replyButton: {
+      backgroundColor: '#e9ecef',
       color: '#333'
     },
     commentEmpty: {
@@ -786,10 +844,50 @@ export default function Documents() {
                               )}
                               {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).map(comment => (
                                 <div key={comment.id} style={styles.commentItem}>
-                                  <div style={styles.commentMeta}>
-                                    {comment.by_user_name || comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
+                                  <div style={styles.commentHeader}>
+                                    <div style={styles.commentMeta}>
+                                      {comment.by_user_name || comment.by_user || 'Unknown'} · {formatDate(comment.created_at)}
+                                    </div>
+                                    <button
+                                      style={{...styles.button, ...styles.replyButton}}
+                                      onClick={() => toggleReply(comment.id)}
+                                      type="button"
+                                    >
+                                      Reply
+                                    </button>
                                   </div>
                                   <div style={styles.commentBody}>{comment.note}</div>
+
+                                  {replyExpanded[comment.id] && (
+                                    <div style={styles.expandedRow}>
+                                      <textarea
+                                        style={styles.commentInput}
+                                        placeholder="Write a reply..."
+                                        value={replyInputs[comment.id] || ''}
+                                        onChange={(e) => setReplyInputs(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                      />
+                                      <button
+                                        style={{...styles.button, ...styles.commentButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                                        onClick={() => handleReply(doc.id, comment.id)}
+                                        disabled={isBusy}
+                                      >
+                                        {actionInProgress[doc.id] === 'comment' ? '...' : 'Reply'}
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {(comment.replies || []).length > 0 && (
+                                    <div style={styles.replyList}>
+                                      {comment.replies.map(reply => (
+                                        <div key={reply.id} style={styles.replyItem}>
+                                          <div style={styles.commentMeta}>
+                                            {reply.by_user_name || reply.by_user || 'Unknown'} · {formatDate(reply.created_at)}
+                                          </div>
+                                          <div style={styles.commentBody}>{reply.note}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
