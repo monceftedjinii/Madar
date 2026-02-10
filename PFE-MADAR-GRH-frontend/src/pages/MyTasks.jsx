@@ -100,6 +100,12 @@ export default function MyTasks() {
     return err?.response?.data?.detail || err?.response?.data?.error || fallback;
   };
 
+  const getAssignerName = (assignedBy) => {
+    if (!assignedBy) return '-';
+    const name = `${assignedBy.first_name || ''} ${assignedBy.last_name || ''}`.trim();
+    return name || assignedBy.email || '-';
+  };
+
   const styles = {
     container: {
       maxWidth: '1000px',
@@ -447,7 +453,8 @@ export default function MyTasks() {
                   <span style={{...styles.statusBadge, ...(task.status === 'DONE' ? styles.statusBadgeDone : {})}}>
                     {task.status}
                   </span>
-                  <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                  <span>Assigned By: {getAssignerName(task.assigned_by)}</span>
+                  <span>Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</span>
                   <span>Assigned: {new Date(task.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
