@@ -149,6 +149,18 @@ def create_task(request):
 		assigned_to=emp,
 		assigned_by=request.user,
 	)
+
+	try:
+		assigned_user = User.objects.get(email=emp.email)
+		chef_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+		notify(
+			assigned_user,
+			title='New task assigned',
+			message=f"{chef_name} assigned you a task: {title}",
+			link='/tasks'
+		)
+	except User.DoesNotExist:
+		pass
 	logger.info(f'create_task: task {task.id} created and assigned to {emp.email}')
 	return Response({'id': task.id}, status=status.HTTP_201_CREATED)
 
