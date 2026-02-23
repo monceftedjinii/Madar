@@ -13,7 +13,7 @@ export default function Navbar() {
           <p className="text-nav">Portail RH</p>
         </div>
       </div>
-      <div style={{ display: "flex", gap: "14px", flexDirection: "column" }}>
+      <div className="nav-menu">
         <div className="pv pvv">Dashboard</div>
         <div className="pvv">Notifs</div>
         <div className="pvv">Congés</div>
@@ -21,6 +21,20 @@ export default function Navbar() {
         <div className="pvv">Présence</div>
         <div className="pvv">Votre assistant IA</div>
         <div className="pvv">Messagerie</div>
+      </div>
+
+      <div className="profile-navbar">
+        <div className="profile-img">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            alt="Profile"
+            className="profile-picture"
+          />
+        </div>
+        <div className="profile-name">
+          <h4>John Doe</h4>
+          <p className="text-nav">Administrateur</p>
+        </div>
       </div>
     </div>
   );
