@@ -1,0 +1,53 @@
+.container_navbar {
+  width: 298px;
+  background-image: linear-gradient(
+    to bottom,
+    rgb(13, 111, 51),
+    rgb(16, 23, 36)
+  );
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  /* justify-content: center; */
+  flex-flow: column wrap;
+  justify-content: flex-start;
+  
+}
+
+.grh-navbar {
+  display: flex;
+  flex-flow: row nowrap;
+  width: 240px;
+  height: 52px;
+  padding: 8px 12px;
+  align-items: center;
+  background-color: rgb(32, 119, 66);
+  gap: 25px;
+  border-radius: 10px;
+  margin-top: 30px;
+}
+.img-container {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background-image: linear-gradient(
+    to right bottom,
+    rgb(202, 202, 140) 10%,
+    rgb(36, 117, 55) 90%
+  );
+  box-shadow: 0px 2px 5px 1px rgb(26, 94, 53);
+}
+.img {
+  width: 100%;
+}
+.write {
+  color: white;
+  display: flex;
+  flex-flow: column wrap;
+}
+
+.write h4,
+.write p {
+  margin: 0;
+  line-height: 1.1;
+}
