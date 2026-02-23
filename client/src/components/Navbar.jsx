@@ -10,8 +10,17 @@ export default function Navbar() {
         </div>
         <div className="write">
           <h4>MADAR GRH</h4>
-          <p>Portail RH</p>
+          <p className="text-nav">Portail RH</p>
         </div>
+      </div>
+      <div style={{ display: "flex", gap: "20px", flexDirection: "column" }}>
+        <div className="pv pvv">Dashboard</div>
+        <div className="pvv">Notifs</div>
+        <div className="pvv">Congés</div>
+        <div className="pvv">Vos Taches</div>
+        <div className="pvv">Présence</div>
+        <div className="pvv">Votre assistant IA</div>
+        <div className="pvv">Messagerie</div>
       </div>
     </div>
   );

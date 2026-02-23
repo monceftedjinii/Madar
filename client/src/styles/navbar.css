@@ -5,15 +5,19 @@
     rgb(13, 111, 51),
     rgb(16, 23, 36)
   );
+  color: white;
+
   height: 100vh;
   display: flex;
   align-items: center;
-  /* justify-content: center; */
+  /* justify-content: space-evenly; */
   flex-flow: column wrap;
   justify-content: flex-start;
-  
 }
-
+.text-nav {
+  color: rgb(217, 231, 222);
+  font-size: 14px;
+}
 .grh-navbar {
   display: flex;
   flex-flow: row nowrap;
@@ -25,6 +29,7 @@
   gap: 25px;
   border-radius: 10px;
   margin-top: 30px;
+  box-shadow: 0px 5px 5px 4px rgb(26, 94, 53);
 }
 .img-container {
   width: 42px;
@@ -43,6 +48,7 @@
 .write {
   color: white;
   display: flex;
+  gap: 5px;
   flex-flow: column wrap;
 }
 
@@ -50,4 +56,44 @@
 .write p {
   margin: 0;
   line-height: 1.1;
+}
+.pv{
+  margin-top: 35px;
+  font-size: 19px;
+  font-weight: bold;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  width: 245px;
+  height: 52px;
+  background-color: rgb(38, 110, 69);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  box-shadow: 0px 5px 5px 4px rgb(27, 84, 50);
+  transition: all 0.3s ease;
+}
+.pvv{
+  
+  font-size: 19px;
+  font-weight: bold;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  width: 245px;
+  height: 52px;
+  background-color: rgb(38, 110, 69);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  box-shadow: 0px 5px 5px 4px rgb(27, 84, 50);
+  transition: all 0.3s ease;
+}
+.pvv:hover {
+  background-color: rgb(39, 95, 66);
+  box-shadow: 0px 5px 5px 4px rgb(27, 84, 50);
+  transform: scale(1.05);
+}
+.pv:hover {
+  background-color: rgb(39, 95, 66);
+  box-shadow: 0px 5px 5px 4px rgb(27, 84, 50);
+  transform: scale(1.05);
 }
