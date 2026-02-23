@@ -13,7 +13,7 @@ export default function Navbar() {
           <p className="text-nav">Portail RH</p>
         </div>
       </div>
-      <div style={{ display: "flex", gap: "20px", flexDirection: "column" }}>
+      <div style={{ display: "flex", gap: "14px", flexDirection: "column" }}>
         <div className="pv pvv">Dashboard</div>
         <div className="pvv">Notifs</div>
         <div className="pvv">Congés</div>
