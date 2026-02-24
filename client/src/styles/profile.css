@@ -30,10 +30,14 @@
   flex-flow: row wrap;
   justify-content: space-between;
   align-items: center;
-  
 }
 .yasar {
   line-height: 4px;
+}
+.yamin {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
 }
 .monprofile {
   font-weight: lighter;
@@ -50,4 +54,52 @@
   top: 0;
   z-index: 120;
   background: #fff;
+}
+.mode {
+  border: 1px solid rgb(172, 180, 193);
+  padding: 10px 20px;
+  background: none;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-weight: bold;
+}
+.mode:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+
+}
+.btn-logout {
+  border: none ;
+  padding: 10px 20px;
+  background: #EF4444;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  color:#FFFFFF;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-logout:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background: #DC2626;
+}
+.modifier {
+  border: none ;
+  padding: 10px 20px;
+  background: rgb(6, 99, 41);
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  color:#FFFFFF;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-weight: bold;
+}
+.modifier:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background: rgb(4, 120, 30);
 }
