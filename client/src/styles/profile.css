@@ -3,15 +3,15 @@
   flex-direction: row;
   min-height: 100vh;
   /* background-color: #f0f0f0; */
+  /* height: 3000px; */
 }
 
 .profile-content {
   width: 100%;
-  /* direction: rtl; */
+  height: 4000px;
 }
 
 .profile-naaav {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   margin-left: auto;
   margin-right: auto;
   width: 96%;
@@ -20,4 +20,16 @@
   flex-flow: row wrap;
   justify-content: space-between;
   align-items: center;
+}
+.yasar {
+  line-height: 4px;
+}
+.monprofile {
+  font-weight: lighter;
+  font-size: 19px;
+  font-family: sans-serif;
+}
+.morinfo {
+  font-size: 15px;
+  color: rgb(172, 180, 193);
 }
