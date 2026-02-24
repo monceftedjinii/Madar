@@ -3,8 +3,6 @@
   flex-direction: row;
   height: 100vh;
   overflow: hidden;
-  /* background-color: #f0f0f0; */
-  /* height: 3000px; */
 }
 
 .profile-content {
@@ -32,6 +30,7 @@
   flex-flow: row wrap;
   justify-content: space-between;
   align-items: center;
+  
 }
 .yasar {
   line-height: 4px;
@@ -44,4 +43,11 @@
 .morinfo {
   font-size: 15px;
   color: rgb(172, 180, 193);
+}
+
+.profile-content > div:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: #fff;
 }
