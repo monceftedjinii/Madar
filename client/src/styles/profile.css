@@ -3,6 +3,7 @@
   flex-direction: row;
   height: 100vh;
   overflow: hidden;
+  background-color: rgb(233, 234, 237);
 }
 
 .profile-content {
@@ -67,16 +68,15 @@
 .mode:hover {
   transform: scale(1.01);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-
 }
 .btn-logout {
-  border: none ;
+  border: none;
   padding: 10px 20px;
-  background: #EF4444;
+  background: #ef4444;
   border-radius: 15px;
   transition: all 0.3s ease;
   cursor: pointer;
-  color:#FFFFFF;
+  color: #ffffff;
   transition: all 0.3s ease;
   cursor: pointer;
   font-weight: bold;
@@ -84,16 +84,16 @@
 .btn-logout:hover {
   transform: scale(1.01);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  background: #DC2626;
+  background: #dc2626;
 }
 .modifier {
-  border: none ;
+  border: none;
   padding: 10px 20px;
   background: rgb(6, 99, 41);
   border-radius: 15px;
   transition: all 0.3s ease;
   cursor: pointer;
-  color:#FFFFFF;
+  color: #ffffff;
   transition: all 0.3s ease;
   cursor: pointer;
   font-weight: bold;
@@ -102,4 +102,35 @@
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   background: rgb(4, 120, 30);
+}
+.quelques-infos {
+  height: 125px;
+  width: 1099px;
+  background: white;
+  border-radius: 15px;
+  margin: auto;
+  margin-top: 23px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  justify-content: flex-start
+}
+.gauche{
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+.profile-pic{
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-left: 20px;
+  /* margin-top: 20px; */
+
+}
+.nom-status{
+  display: flex;
+  flex-direction:row;
+  gap: 5px;
 }

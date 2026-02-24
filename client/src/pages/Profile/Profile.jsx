@@ -41,6 +41,29 @@ export default function Profile() {
             </div>
           </div>
           <div className="profile-infos">
+            <div className="quelques-infos">
+              <div className="gauche">
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                  alt="Profile-pic"
+                  className="profile-pic"
+                />
+                <div className="infooos">
+                  <div className="nom-status">
+                    <h3> Boudaoud Mohamed Reda</h3>
+                    <div className="status">actif</div>
+                  </div>
+                  <p>
+                    Poste : Assistant RH • Département : Ressources Humaines
+                  </p>
+                  <div>
+                    <div className="">reda@madar.com </div>
+                    <div>+213...</div>
+                    <div>Alger</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
