@@ -1,8 +1,10 @@
 ﻿// import { useEffect } from "react";
 // import axios from "axios";
+import { useState } from "react";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
 export default function Profile() {
+  const [dark, setDark] = useState(false);
   // let access = localStorage.getItem("access_token");
   // const fetchProfile = async () => {
   //   const me = await axios.get("/api/whoami/", {
@@ -16,7 +18,7 @@ export default function Profile() {
 
   return (
     <>
-      <div className="profile-page">
+      <div className={`profile-page${dark ? " dark" : ""}`}>
         <div className="navbar-profile-page">
           <Navbar />
         </div>
@@ -34,7 +36,9 @@ export default function Profile() {
                 </p>
               </div>
               <div className="yamin">
-                <button className="mode">mode sombre</button>
+                <button className="mode" onClick={() => setDark(!dark)}>
+                  {dark ? "☀️ mode clair" : "🌙 mode sombre"}
+                </button>
                 <button className="btn-logout">déconnecter</button>
                 <button className="modifier">modifier</button>
               </div>
@@ -109,6 +113,50 @@ export default function Profile() {
                   <h3>Alger</h3>
                 </div>
               </div>
+            </div>
+
+            {/* Activité récente */}
+            <div className="activite-recente">
+              <div className="activite-top">
+                <h3 className="activite-title">Activité récente</h3>
+                <p className="activite-subtitle">Historique (exemple)</p>
+              </div>
+              <table className="activite-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>Détails</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>22/02/2026</td>
+                    <td>Demande de congé</td>
+                    <td>Annuel (3 jours)</td>
+                    <td>
+                      <span className="badge badge-attente">En attente</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>10/02/2026</td>
+                    <td>Profil mis à jour</td>
+                    <td>Téléphone modifié</td>
+                    <td>
+                      <span className="badge badge-termine">Terminé</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>05/02/2026</td>
+                    <td>Bulletin paie</td>
+                    <td>Février 2026</td>
+                    <td>
+                      <span className="badge badge-genere">Généré</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
