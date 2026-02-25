@@ -5,6 +5,7 @@ import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
 export default function Profile() {
   const [dark, setDark] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(true);
   // let access = localStorage.getItem("access_token");
   // const fetchProfile = async () => {
   //   const me = await axios.get("/api/whoami/", {
@@ -18,10 +19,21 @@ export default function Profile() {
 
   return (
     <>
-      <div className={`profile-page${dark ? " dark" : ""}`}>
-        <div className="navbar-profile-page">
+      <div
+        className={`profile-page${dark ? " dark" : ""} ${
+          isNavOpen ? "nav-open" : "nav-closed"
+        }`}
+      >
+        <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
           <Navbar />
         </div>
+        {isNavOpen && (
+          <div
+            className="profile-overlay"
+            onClick={() => setIsNavOpen(false)}
+            aria-hidden="true"
+          />
+        )}
         <div className="profile-content">
           <div
             style={{
@@ -36,8 +48,15 @@ export default function Profile() {
                 </p>
               </div>
               <div className="yamin">
+                <button
+                  className="nav-toggle"
+                  onClick={() => setIsNavOpen((prev) => !prev)}
+                  type="button"
+                >
+                  {isNavOpen ? "Masquer menu" : "Afficher menu"}
+                </button>
                 <button className="mode" onClick={() => setDark(!dark)}>
-                  {dark ? "☀️ mode clair" : "🌙 mode sombre"}
+                  {dark ? " mode clair" : " mode sombre"}
                 </button>
                 <button className="btn-logout">déconnecter</button>
                 <button className="modifier">modifier</button>
