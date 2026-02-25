@@ -87,7 +87,28 @@ export default function Profile() {
                   <h3>Alger</h3>
                 </div>
               </div>
-              <div className="info-pro"></div>
+              <div className="info-pro">
+                <div className="top">
+                  <h3 className="title">Informations professionnelles</h3>
+                  <p className="desc">Données visibles par l’utilisateur</p>
+                </div>
+                <div>
+                  <p className="desc">Nom complet</p>
+                  <h3>Boudaoud Mohamed Reda</h3>
+                </div>
+                <div>
+                  <p className="desc">Email</p>
+                  <h3>reda@madar.com</h3>
+                </div>
+                <div>
+                  <p className="desc">Téléphone</p>
+                  <h3>+213551860590</h3>
+                </div>
+                <div>
+                  <p className="desc">Adresse</p>
+                  <h3>Alger</h3>
+                </div>
+              </div>
             </div>
           </div>
         </div>
