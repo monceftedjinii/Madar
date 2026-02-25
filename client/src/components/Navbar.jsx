@@ -33,7 +33,7 @@ export default function Navbar() {
         </div>
         <div className="profile-name">
           <h4>Boudaoud mohamed reda </h4>
-          <p className="text-nav">Administrateur</p>
+          <p className="text-nav">khdam basit</p>
         </div>
       </div>
     </div>
