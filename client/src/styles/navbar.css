@@ -1,6 +1,7 @@
 .container_navbar {
   width: 280px;
-  min-height: 100vh;
+  /* min-height: 100vh; */
+  height: 100vh;
   padding: 24px 18px;
   box-sizing: border-box;
   display: flex;
