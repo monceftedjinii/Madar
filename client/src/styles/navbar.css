@@ -117,7 +117,7 @@
   border-radius: 999px;
 }
 .profile-navbar {
-  margin-top: 95px;
+  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 12px;
