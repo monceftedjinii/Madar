@@ -3,9 +3,21 @@
 import { useState } from "react";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
+import Form from "../../components/Form";
 export default function Profile() {
   const [dark, setDark] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: "Boudaoud Mohamed Reda",
+    email: "reda@madar.com",
+    phone: "+213551860590",
+    address: "Alger, Algerie",
+    position: "Assistant RH",
+    department: "Ressources Humaines",
+    photoName: "",
+  });
+  const [formData, setFormData] = useState(profileData);
   // let access = localStorage.getItem("access_token");
   // const fetchProfile = async () => {
   //   const me = await axios.get("/api/whoami/", {
@@ -16,6 +28,34 @@ export default function Profile() {
   // useEffect(() => {
   //   fetchProfile();
   // }, []);
+
+  const openEditModal = () => {
+    setFormData(profileData);
+    setIsEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditOpen(false);
+  };
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+    setFormData((prev) => ({
+      ...prev,
+      photoName: file ? file.name : "",
+    }));
+  };
+
+  const handleFormSubmit = (event) => {
+    event.preventDefault();
+    setProfileData(formData);
+    closeEditModal();
+  };
 
   return (
     <>
@@ -59,7 +99,9 @@ export default function Profile() {
                   {dark ? " mode clair" : " mode sombre"}
                 </button>
                 <button className="btn-logout">déconnecter</button>
-                <button className="modifier">modifier</button>
+                <button className="modifier" type="button" onClick={openEditModal}>
+                  modifier
+                </button>
               </div>
             </div>
           </div>
@@ -73,16 +115,17 @@ export default function Profile() {
                 />
                 <div className="infooos">
                   <div className="nom-status">
-                    <h3> Boudaoud Mohamed Reda</h3>
+                    <h3>{profileData.fullName}</h3>
                     <div className="status">actif</div>
                   </div>
                   <p>
-                    Poste : Assistant RH • Département : Ressources Humaines
+                    Poste : {profileData.position} • Département :{" "}
+                    {profileData.department}
                   </p>
                   <div>
-                    <div className="">reda@madar.com </div>
-                    <div>+213...</div>
-                    <div>Alger</div>
+                    <div>{profileData.email}</div>
+                    <div>{profileData.phone}</div>
+                    <div>{profileData.address}</div>
                   </div>
                 </div>
               </div>
@@ -95,19 +138,19 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="desc">Nom complet</p>
-                  <h3>Boudaoud Mohamed Reda</h3>
+                  <h3>{profileData.fullName}</h3>
                 </div>
                 <div>
                   <p className="desc">Email</p>
-                  <h3>reda@madar.com</h3>
+                  <h3>{profileData.email}</h3>
                 </div>
                 <div>
                   <p className="desc">Téléphone</p>
-                  <h3>+213551860590</h3>
+                  <h3>{profileData.phone}</h3>
                 </div>
                 <div>
                   <p className="desc">Adresse</p>
-                  <h3>Alger</h3>
+                  <h3>{profileData.address}</h3>
                 </div>
               </div>
               <div className="info-pro">
@@ -116,20 +159,20 @@ export default function Profile() {
                   <p className="desc">Données visibles par l’utilisateur</p>
                 </div>
                 <div>
-                  <p className="desc">Nom complet</p>
-                  <h3>Boudaoud Mohamed Reda</h3>
+                  <p className="desc">Poste</p>
+                  <h3>{profileData.position}</h3>
                 </div>
                 <div>
-                  <p className="desc">Email</p>
-                  <h3>reda@madar.com</h3>
+                  <p className="desc">Département</p>
+                  <h3>{profileData.department}</h3>
                 </div>
                 <div>
                   <p className="desc">Téléphone</p>
-                  <h3>+213551860590</h3>
+                  <h3>{profileData.phone}</h3>
                 </div>
                 <div>
                   <p className="desc">Adresse</p>
-                  <h3>Alger</h3>
+                  <h3>{profileData.address}</h3>
                 </div>
               </div>
             </div>
@@ -179,6 +222,14 @@ export default function Profile() {
             </div>
           </div>
         </div>
+        <Form
+          open={isEditOpen}
+          onClose={closeEditModal}
+          onSubmit={handleFormSubmit}
+          formData={formData}
+          onChange={handleFormChange}
+          onPhotoChange={handlePhotoChange}
+        />
       </div>
     </>
   );
