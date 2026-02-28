@@ -1,0 +1,131 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --error-bg-start: #f7f3ea;
+  --error-bg-end: #eef2ed;
+  --error-card: #ffffff;
+  --error-text: #1a1f1d;
+  --error-muted: #5f6b66;
+  --error-accent: #1f6f4a;
+}
+
+.error-page {
+  min-height: 100dvh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, var(--error-bg-start) 0%, var(--error-bg-end) 100%);
+  color: var(--error-text);
+  font-family: "Outfit", "Segoe UI", sans-serif;
+}
+
+.error-card {
+  width: 100%;
+  max-width: 580px;
+  background: var(--error-card);
+  border-radius: 20px;
+  padding: 40px 36px;
+  text-align: center;
+  box-shadow: 0 18px 40px rgba(20, 24, 22, 0.12);
+  border: 1px solid rgba(31, 111, 74, 0.14);
+  box-sizing: border-box;
+}
+
+.error-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin: 0 auto 4px;
+}
+
+.error-code {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(31, 111, 74, 0.12);
+  color: var(--error-accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.error-card h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.error-card p {
+  margin: 0;
+  color: var(--error-muted);
+  line-height: 1.6;
+}
+
+.error-actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.error-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-weight: 500;
+  box-sizing: border-box;
+  transition: transform 180ms ease, box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.error-button.primary {
+  background: var(--error-accent);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(31, 111, 74, 0.25);
+}
+
+.error-button.primary:hover {
+  transform: translateY(-2px);
+}
+
+.error-button.ghost {
+  background: rgba(31, 111, 74, 0.08);
+  color: var(--error-accent);
+  border: 1px solid rgba(31, 111, 74, 0.25);
+}
+
+.error-button.ghost:hover {
+  background: rgba(31, 111, 74, 0.14);
+}
+
+@media (max-width: 600px) {
+  .error-card {
+    border-radius: 16px;
+    padding: 30px 20px;
+  }
+
+  .error-card h1 {
+    font-size: 26px;
+  }
+
+  .error-actions {
+    margin-top: 22px;
+    gap: 10px;
+  }
+
+  .error-button {
+    min-width: 100%;
+  }
+}
