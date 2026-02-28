@@ -4,6 +4,7 @@ import Login from "../pages/Auth/Login";
 import Profile from "../pages/Profile/Profile";
 import Home from "../pages/Home";
 import Attendance from "../pages/Attendance";
+import Messagrie from "../pages/Messagrie";
 import Error from "../pages/Error";
 export default function Routers() {
   return (
@@ -16,6 +17,7 @@ export default function Routers() {
         <Route path="/login" element={<Login />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/attendance" element={<Attendance />} />
+        < Route path="/messagerie" element={<Messagrie />}/>
         <Route path="*" element={<Error />} />
       
       </Routes>
