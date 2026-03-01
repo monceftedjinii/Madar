@@ -1,6 +1,8 @@
 import React from "react";
 import Navbar from "../components/Navbar";
 import { useState } from "react";
+import "../styles/profile.css";
+import "../styles/messagrie.css";
 export default function Messagrie() {
   const [dark, setDark] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(true);
@@ -44,13 +46,25 @@ export default function Messagrie() {
                   {dark ? " mode clair" : " mode sombre"}
                 </button>
 
-                <button className="modifier" type="button"
-                
-                >
+                <button className="modifier" type="button">
                   nouveau message
                 </button>
               </div>
             </div>
+          </div>
+          <div className="contenu-page-mail">
+            <div className="block_one">
+              <h3>Dossier</h3>
+              <p>Organisation des emails</p>
+              <button>Composer</button>
+              <button>Boite</button>
+              <button>Importants</button>
+              <button>Envoyés</button>
+              <button>Brouillons</button>
+              <button> Corbeille</button>
+            </div>
+            <div></div>
+            <div></div>
           </div>
         </div>
       </div>
