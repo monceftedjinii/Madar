@@ -54,14 +54,18 @@ export default function Messagrie() {
           </div>
           <div className="contenu-page-mail">
             <div className="block_one">
-              <h3>Dossier</h3>
-              <p>Organisation des emails</p>
-              <button>Composer</button>
-              <button>Boite</button>
-              <button>Importants</button>
-              <button>Envoyés</button>
-              <button>Brouillons</button>
-              <button> Corbeille</button>
+              <div className="titles_block_one">
+                <h3 className="title_mail">Dossiers</h3>
+                <p className="morinfo size">Organisation des emails</p>
+              </div>
+              <div className="botton_mail">
+                <button>Composer</button>
+                <button>Boite</button>
+                <button>Importants</button>
+                <button>Envoyés</button>
+                <button>Brouillons</button>
+                <button> Corbeille</button>
+              </div>
             </div>
             <div></div>
             <div></div>

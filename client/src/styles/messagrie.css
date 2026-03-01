@@ -2,4 +2,34 @@
   width: 96%;
   margin: 20px auto;
   padding-bottom: 20px;
+  display: flex;
+  flex-flow: row wrap;
+}
+.block_one {
+  height: 800px;
+  width: 220px;
+  background-color: rgb(255, 255, 255);
+  display: flex;
+  flex-flow: column wrap;
+  gap: 30px;
+  border-radius: 15px;
+}
+.titles_block_one{
+    margin-left: 15px;
+}
+.title_mail {
+  margin-bottom: -10px;
+}
+ h3 {
+    font-size: 19px;
+    font-weight: 500;
+}
+.size {
+  font-size: 13px;
+  color: rgb(100, 118, 139);
+}
+.botton_mail {
+  display: flex;
+  flex-flow: column wrap;
+  align-items: center;
 }
