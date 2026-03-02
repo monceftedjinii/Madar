@@ -12,41 +12,12 @@ from .permissions import IsRHSimple, IsRHSenior, CanUploadDocument, CanValidateD
 from .models import Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag, Notification
 from .models import Document, DocumentHistory, DocumentType
 from django.utils import timezone
-from django.http import HttpResponse
-from django.db.models import Q
-from datetime import date, datetime, timedelta
-from io import BytesIO
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from datetime import date, datetime
 
 
-def notify(user, title, message, link=''):
+def notify(user, title, message):
 	"""Helper to create a notification."""
-	return Notification.objects.create(user=user, title=title, message=message, link=link)
-
-
-def _display_name(user):
-	if not user:
-		return 'Someone'
-	name = f"{user.first_name} {user.last_name}".strip()
-	return name or user.email
-
-
-def _notify_department_users(department_id, actor_user, title, message, link=''):
-	if not department_id:
-		return
-	for emp in Employee.objects.filter(department_id=department_id):
-		try:
-			user = User.objects.get(email=emp.email)
-		except User.DoesNotExist:
-			continue
-		if actor_user and user.id == actor_user.id:
-			continue
-		notify(user, title, message, link=link)
+	return Notification.objects.create(user=user, title=title, message=message)
 
 
 @api_view(['GET'])
@@ -80,25 +51,10 @@ def employees_list(request):
 	data = [
 		{
 			'id': e.id,
-			'first_name': e.first_name,
-			'last_name': e.last_name,
-			'email': e.email,
-			'department': {
-				'id': e.department.id,
-				'name': e.department.name,
-			} if e.department else None,
+			'full_name': f"{e.first_name} {e.last_name}",
+			'department': e.department.name if e.department else None,
 		}
 		for e in qs.order_by('id')
-	]
-	return Response(data)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def departments_list(request):
-	data = [
-		{'id': d.id, 'name': d.name}
-		for d in Department.objects.order_by('name')
 	]
 	return Response(data)
 
@@ -107,39 +63,25 @@ def departments_list(request):
 @permission_classes([IsAuthenticated, IsChef])
 def create_task(request):
 	# Chef assigns a task to an employee in his department only
-	import logging
-	logger = logging.getLogger(__name__)
-	
 	data = request.data
-	logger.info(f'create_task request from {request.user.email} with data: {data}')
-	
 	title = data.get('title')
 	if not title:
-		logger.warning(f'create_task: title is required')
 		return Response({'detail': 'title is required'}, status=status.HTTP_400_BAD_REQUEST)
-	
 	assigned_to_id = data.get('assigned_to')
 	if not assigned_to_id:
-		logger.warning(f'create_task: assigned_to is required')
 		return Response({'detail': 'assigned_to is required'}, status=status.HTTP_400_BAD_REQUEST)
-	
 	try:
 		emp = Employee.objects.get(id=assigned_to_id)
-		logger.info(f'create_task: found employee {emp.email}')
 	except Employee.DoesNotExist:
-		logger.warning(f'create_task: employee {assigned_to_id} not found')
 		return Response({'detail': 'assigned_to not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# ensure chef's department matches emp.department
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
-		logger.info(f'create_task: chef {chef_emp.email} found in dept {chef_emp.department.name}')
 	except Employee.DoesNotExist:
-		logger.warning(f'create_task: chef {request.user.email} has no employee record')
 		return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if emp.department_id != chef_emp.department_id:
-		logger.warning(f'create_task: chef dept {chef_emp.department_id} != employee dept {emp.department_id}')
 		return Response({'detail': 'cannot assign outside your department'}, status=status.HTTP_403_FORBIDDEN)
 
 	task = Task.objects.create(
@@ -149,19 +91,6 @@ def create_task(request):
 		assigned_to=emp,
 		assigned_by=request.user,
 	)
-
-	try:
-		assigned_user = User.objects.get(email=emp.email)
-		chef_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
-		notify(
-			assigned_user,
-			title='New task assigned',
-			message=f"{chef_name} assigned you a task: {title}",
-			link='/tasks'
-		)
-	except User.DoesNotExist:
-		pass
-	logger.info(f'create_task: task {task.id} created and assigned to {emp.email}')
 	return Response({'id': task.id}, status=status.HTTP_201_CREATED)
 
 
@@ -173,32 +102,14 @@ def my_tasks(request):
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response([], status=status.HTTP_200_OK)
-	qs = Task.objects.filter(assigned_to=emp).order_by('-created_at')
-	data = [{
-		'id': t.id,
-		'title': t.title,
-		'description': t.description,
-		'status': t.status,
-		'due_date': t.due_date,
-		'created_at': t.created_at,
-		'completed_at': t.completed_at,
-		'assigned_by': {
-			'id': t.assigned_by.id,
-			'email': t.assigned_by.email,
-			'first_name': t.assigned_by.first_name,
-			'last_name': t.assigned_by.last_name,
-		} if t.assigned_by else None
-	} for t in qs]
+	qs = Task.objects.filter(assigned_to=emp).order_by('id')
+	data = [{'id': t.id, 'title': t.title, 'status': t.status, 'due_date': t.due_date} for t in qs]
 	return Response(data)
 
 
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def mark_task_done(request, pk):
-	from django.utils import timezone
-	import logging
-	logger = logging.getLogger(__name__)
-	
 	try:
 		task = Task.objects.get(id=pk)
 	except Task.DoesNotExist:
@@ -209,81 +120,19 @@ def mark_task_done(request, pk):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	task.status = Task.Status.DONE
-	task.completed_at = timezone.now()
 	task.save()
-	
-	# Notify the chef who assigned this task
-	if task.assigned_by:
-		emp = task.assigned_to
-		chef_name = f"{task.assigned_by.first_name} {task.assigned_by.last_name}".strip() or task.assigned_by.email
-		notify(
-			task.assigned_by,
-			title=f"Task Completed",
-			message=f"{emp.first_name} {emp.last_name} marked '{task.title}' as done",
-			link='/tasks'
-		)
-		logger.info(f'mark_task_done: notified chef {task.assigned_by.email} that task {task.id} was completed')
-	
 	return Response({'ok': True})
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated, IsChef])
-def chef_tasks(request):
-	# Chef view of all tasks assigned by this chef
-	import logging
-	logger = logging.getLogger(__name__)
-	
-	qs = Task.objects.filter(assigned_by=request.user).order_by('-created_at')
-	logger.info(f'chef_tasks: fetching tasks for chef {request.user.email}, found {qs.count()} tasks')
-	
-	data = [{
-		'id': t.id,
-		'title': t.title,
-		'description': t.description,
-		'status': t.status,
-		'due_date': t.due_date,
-		'created_at': t.created_at,
-		'completed_at': t.completed_at,
-		'employee': {
-			'id': t.assigned_to.id,
-			'email': t.assigned_to.email,
-			'first_name': t.assigned_to.first_name,
-			'last_name': t.assigned_to.last_name,
-			'department': {
-				'id': t.assigned_to.department.id,
-				'name': t.assigned_to.department.name
-			} if t.assigned_to.department else None
-		},
-		'assigned_by': {
-			'id': t.assigned_by.id,
-			'email': t.assigned_by.email,
-			'first_name': t.assigned_by.first_name,
-			'last_name': t.assigned_by.last_name,
-		} if t.assigned_by else None
-	} for t in qs]
-	return Response(data)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsEmployee])
 def attendance_check_in(request):
-	pin = request.data.get('pin')
-	if not pin:
-		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
-	if not str(pin).isdigit() or len(str(pin)) != 4:
-		return Response({'detail': 'pin must be exactly 4 digits'}, status=status.HTTP_400_BAD_REQUEST)
+	now = timezone.now()
+	today = now.date()
 	try:
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
-	if not emp.attendance_pin:
-		return Response({'detail': 'pin not set'}, status=status.HTTP_400_BAD_REQUEST)
-	if str(pin) != emp.attendance_pin:
-		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
-
-	now = timezone.now()
-	today = now.date()
 
 	att, created = Attendance.objects.get_or_create(employee=emp, date=today)
 	if att.check_in_time:
@@ -297,22 +146,12 @@ def attendance_check_in(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsEmployee])
 def attendance_check_out(request):
-	pin = request.data.get('pin')
-	if not pin:
-		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
-	if not str(pin).isdigit() or len(str(pin)) != 4:
-		return Response({'detail': 'pin must be exactly 4 digits'}, status=status.HTTP_400_BAD_REQUEST)
+	now = timezone.now()
+	today = now.date()
 	try:
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
-	if not emp.attendance_pin:
-		return Response({'detail': 'pin not set'}, status=status.HTTP_400_BAD_REQUEST)
-	if str(pin) != emp.attendance_pin:
-		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
-
-	now = timezone.now()
-	today = now.date()
 
 	try:
 		att = Attendance.objects.get(employee=emp, date=today)
@@ -392,19 +231,15 @@ def create_leave(request):
 	if ltype == LeaveRequest.LeaveType.SICK and not request.FILES.get('attachment'):
 		return Response({'detail': 'attachment required for sick leave'}, status=status.HTTP_400_BAD_REQUEST)
 
-	# Business rule: block if employee has any PENDING request or ongoing ACCEPTED leave
-	today = date.today()
-	blocked = LeaveRequest.objects.filter(
-		employee=emp,
-		# PENDING: any
-		status=LeaveRequest.Status.PENDING
-	).exists() or LeaveRequest.objects.filter(
+	# Bonus: reject if overlaps with existing ACCEPTED leave for same employee
+	overlapping = LeaveRequest.objects.filter(
 		employee=emp,
 		status=LeaveRequest.Status.ACCEPTED,
-		end_date__gte=today
+		start_date__lte=ed,
+		end_date__gte=sd,
 	).exists()
-	if blocked:
-		return Response({'detail': "You can’t submit a new leave request while you have a pending request or an ongoing approved leave."}, status=status.HTTP_400_BAD_REQUEST)
+	if overlapping:
+		return Response({'detail': 'requested dates overlap with an existing accepted leave'}, status=status.HTTP_400_BAD_REQUEST)
 
 	leave = LeaveRequest.objects.create(
 		employee=emp,
@@ -415,18 +250,6 @@ def create_leave(request):
 		attachment=request.FILES.get('attachment') if request.FILES.get('attachment') else None,
 		status=LeaveRequest.Status.PENDING,
 	)
-
-	# Notify chef(s) in the same department
-	chef_emails = Employee.objects.filter(department=emp.department).values_list('email', flat=True)
-	chef_users = User.objects.filter(role=RoleChoices.CHEF, email__in=chef_emails)
-	for chef_user in chef_users:
-		notify(
-			chef_user,
-			'New leave request',
-			f'{emp.first_name} {emp.last_name} requested leave from {sd} to {ed}.',
-			link='/leaves/department'
-		)
-
 	return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
 
 
@@ -446,9 +269,6 @@ def my_leaves(request):
 			'type': l.type,
 			'status': l.status,
 			'reason': l.reason,
-			'chef_comment': l.chef_comment,
-			'decided_by': l.decided_by.email if l.decided_by else None,
-			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
 		}
 		for l in qs
 	]
@@ -503,12 +323,7 @@ def create_warning(request):
 	if flag.warning_count >= 3:
 		rh_senior_users = User.objects.filter(role=RoleChoices.RH_SENIOR)
 		for rh_user in rh_senior_users:
-			notify(
-				rh_user,
-				'Discipline Flag',
-				f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.',
-				link='/discipline/flags'
-			)
+			notify(rh_user, 'Discipline Flag', f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.')
 
 	return Response({'id': aw.id, 'warning_count': flag.warning_count}, status=status.HTTP_201_CREATED)
 
@@ -541,7 +356,6 @@ def list_notifications(request):
 			'id': n.id,
 			'title': n.title,
 			'message': n.message,
-			'link': n.link or None,
 			'is_read': n.is_read,
 			'created_at': n.created_at.isoformat(),
 		}
@@ -569,7 +383,7 @@ def mark_notification_read(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsChef])
 def department_pending_leaves(request):
-	# Chef lists all leaves in his department (history + pending)
+	# Chef lists PENDING leaves in his department
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
@@ -577,8 +391,7 @@ def department_pending_leaves(request):
 			{'detail': 'Chef has no Employee record / department assigned'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
-	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department).order_by('-created_at')
-	print(f"department_pending_leaves dept_id={chef_emp.department_id} total_count={qs.count()}")
+	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department, status=LeaveRequest.Status.PENDING).order_by('created_at')
 	data = [
 		{
 			'id': l.id,
@@ -592,10 +405,8 @@ def department_pending_leaves(request):
 			'end_date': l.end_date.isoformat(),
 			'type': l.type,
 			'reason': l.reason,
-			'attachment': request.build_absolute_uri(l.attachment.url) if l.attachment else None,
 			'status': l.status,
 		}
-		for l in qs
 	]
 	return Response(data)
 
@@ -632,12 +443,7 @@ def _chef_decide_common(request, pk, accept=True):
 		pass
 	if emp_user:
 		status_label = 'approved' if accept else 'rejected'
-		notify(
-			emp_user,
-			f'Leave {status_label}',
-			f'Your leave request from {lr.start_date} to {lr.end_date} has been {status_label}.',
-			link='/leaves'
-		)
+		notify(emp_user, f'Leave {status_label}', f'Your leave request from {lr.start_date} to {lr.end_date} has been {status_label}.')
 
 	return Response({'id': lr.id, 'status': lr.status})
 
@@ -654,15 +460,13 @@ def reject_leave(request, pk):
 	return _chef_decide_common(request, pk, accept=False)
 
 # Document Helper
-def create_doc_history(document, action, by_user, note='', parent=None, is_private=False):
+def create_doc_history(document, action, by_user, note=''):
 	"""Helper to create a document history entry."""
 	return DocumentHistory.objects.create(
 		document=document,
-		parent=parent,
 		action=action,
 		by_user=by_user,
-		note=note,
-		is_private=is_private,
+		note=note
 	)
 
 
@@ -671,55 +475,39 @@ def create_doc_history(document, action, by_user, note='', parent=None, is_priva
 @permission_classes([IsAuthenticated, CanUploadDocument])
 def upload_document(request):
 	"""Upload a new document (DRAFT status)."""
+	from rest_framework.parsers import MultiPartParser
+	
 	title = request.data.get('title')
-	file_obj = request.FILES.get('file')
-	if not all([title, file_obj]):
-		return Response({'detail': 'title and file required'}, status=status.HTTP_400_BAD_REQUEST)
-
 	doc_type_id = request.data.get('doc_type')
-	doc_type_name = request.data.get('type')
-	category = (request.data.get('category') or DocumentType.Category.INTERNAL).upper()
+	source_dept_id = request.data.get('source_department')
+	target_dept_id = request.data.get('target_department')
+	file_obj = request.FILES.get('file')
 
-	if doc_type_id:
+	if not all([title, doc_type_id, source_dept_id, file_obj]):
+		return Response({'detail': 'title, doc_type, source_department, file required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		doc_type = DocumentType.objects.get(id=doc_type_id)
+	except DocumentType.DoesNotExist:
+		return Response({'detail': 'doc_type not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		source_dept = Department.objects.get(id=source_dept_id)
+	except Department.DoesNotExist:
+		return Response({'detail': 'source_department not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	target_dept = None
+	if target_dept_id:
 		try:
-			doc_type = DocumentType.objects.get(id=doc_type_id)
-		except DocumentType.DoesNotExist:
-			return Response({'detail': 'doc_type not found'}, status=status.HTTP_400_BAD_REQUEST)
-	else:
-		if not doc_type_name:
-			return Response({'detail': 'type is required'}, status=status.HTTP_400_BAD_REQUEST)
-		doc_type, _ = DocumentType.objects.get_or_create(
-			name=doc_type_name,
-			defaults={'category': category},
-		)
-		if doc_type.category != category:
-			doc_type.category = category
-			doc_type.save()
-
-	def _resolve_department(value):
-		if not value:
-			return None
-		if str(value).isdigit():
-			return Department.objects.filter(id=int(value)).first()
-		return Department.objects.filter(name=value).first()
-
-	source_dept = _resolve_department(request.data.get('source_department'))
-	if not source_dept:
-		try:
-			user_emp = Employee.objects.get(email=request.user.email)
-			source_dept = user_emp.department
-		except Employee.DoesNotExist:
-			return Response({'detail': 'source_department is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-	target_dept = _resolve_department(request.data.get('target_department'))
-	if request.user.role == RoleChoices.CHEF and not target_dept:
-		return Response({'detail': 'target_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+			target_dept = Department.objects.get(id=target_dept_id)
+		except Department.DoesNotExist:
+			return Response({'detail': 'target_department not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# Permission check: employee/chef must upload for their own department
 	if request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF]:
 		try:
 			emp = Employee.objects.get(email=request.user.email)
-			if source_dept and emp.department_id != source_dept.id:
+			if emp.department_id != int(source_dept_id):
 				return Response({'detail': 'can only upload for own department'}, status=status.HTTP_403_FORBIDDEN)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
@@ -740,25 +528,7 @@ def upload_document(request):
 
 	create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
-	file_url = request.build_absolute_uri(doc.file.url) if doc.file else None
-	created_by_name = None
-	if doc.created_by:
-		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
-		created_by_name = name or doc.created_by.email
-	return Response({
-		'id': doc.id,
-		'title': doc.title,
-		'doc_type': doc.doc_type.name,
-		'doc_type_category': doc.doc_type.category,
-		'status': doc.status,
-		'source_department': doc.source_department.name if doc.source_department else None,
-		'target_department': doc.target_department.name if doc.target_department else None,
-		'created_by': doc.created_by.email if doc.created_by else None,
-		'created_by_name': created_by_name,
-		'created_at': doc.created_at.isoformat() if doc.created_at else None,
-		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
-		'file_url': file_url,
-	}, status=status.HTTP_201_CREATED)
+	return Response({'id': doc.id, 'status': doc.status}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -772,9 +542,6 @@ def send_document(request, pk):
 
 	if doc.status != Document.Status.DRAFT:
 		return Response({'detail': 'can only send DRAFT documents'}, status=status.HTTP_400_BAD_REQUEST)
-
-	if not doc.target_department_id:
-		return Response({'detail': 'target_department is required to send'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# Permission: only creator or chef of source department
 	is_creator = doc.created_by_id == request.user.id
@@ -790,25 +557,10 @@ def send_document(request, pk):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.status = Document.Status.SENT
-	doc.sent_at = timezone.now()
 	doc.save()
 	create_doc_history(doc, DocumentHistory.Action.SENT, request.user)
 
-	if doc.target_department_id:
-		dept_emps = Employee.objects.filter(department_id=doc.target_department_id)
-		for emp in dept_emps:
-			try:
-				user = User.objects.get(email=emp.email)
-			except User.DoesNotExist:
-				continue
-			notify(
-				user,
-				title='New document received',
-				message=f"{doc.title} was sent to your department.",
-				link=f"/documents?docId={doc.id}"
-			)
-
-	return Response({'id': doc.id, 'status': doc.status, 'sent_at': doc.sent_at.isoformat()})
+	return Response({'id': doc.id, 'status': doc.status})
 
 
 @api_view(['GET'])
@@ -842,111 +594,26 @@ def list_documents_scoped(request):
 			from django.db.models import Q
 			qs = Document.objects.filter(
 				Q(created_by=request.user) |
-				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
-				Q(source_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
+				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.filter(created_by=request.user)
 	else:
 		qs = Document.objects.none()
 
-	data = []
-	for d in qs.order_by('-created_at'):
-		created_by_name = None
-		if d.created_by:
-			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
-			created_by_name = name or d.created_by.email
-		data.append({
+	data = [
+		{
 			'id': d.id,
 			'title': d.title,
 			'doc_type': d.doc_type.name,
-			'doc_type_category': d.doc_type.category,
 			'status': d.status,
-			'source_department': d.source_department.name if d.source_department else None,
+			'source_department': d.source_department.name,
 			'target_department': d.target_department.name if d.target_department else None,
 			'created_by': d.created_by.email if d.created_by else None,
-			'created_by_name': created_by_name,
 			'created_at': d.created_at.isoformat() if d.created_at else None,
-			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
-			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		})
-	return Response(data)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def documents_feed(request):
-	"""Employee feed: documents sent to the employee's department."""
-	if request.user.role != RoleChoices.EMPLOYEE:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	try:
-		emp = Employee.objects.get(email=request.user.email)
-	except Employee.DoesNotExist:
-		return Response([], status=status.HTTP_200_OK)
-
-	qs = Document.objects.filter(
-		target_department_id=emp.department_id,
-		status=Document.Status.SENT
-	)
-
-	data = []
-	for d in qs.order_by('-sent_at', '-created_at'):
-		created_by_name = None
-		if d.created_by:
-			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
-			created_by_name = name or d.created_by.email
-		data.append({
-			'id': d.id,
-			'title': d.title,
-			'doc_type': d.doc_type.name,
-			'doc_type_category': d.doc_type.category,
-			'status': d.status,
-			'source_department': d.source_department.name if d.source_department else None,
-			'target_department': d.target_department.name if d.target_department else None,
-			'created_by': d.created_by.email if d.created_by else None,
-			'created_by_name': created_by_name,
-			'created_at': d.created_at.isoformat() if d.created_at else None,
-			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
-			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		})
-	return Response(data)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def documents_mine(request):
-	"""Chef history: documents posted from the chef's department."""
-	if request.user.role != RoleChoices.CHEF:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	try:
-		chef_emp = Employee.objects.get(email=request.user.email)
-	except Employee.DoesNotExist:
-		return Response([], status=status.HTTP_200_OK)
-
-	qs = Document.objects.filter(source_department_id=chef_emp.department_id)
-
-	data = []
-	for d in qs.order_by('-created_at'):
-		created_by_name = None
-		if d.created_by:
-			name = f"{d.created_by.first_name} {d.created_by.last_name}".strip()
-			created_by_name = name or d.created_by.email
-		data.append({
-			'id': d.id,
-			'title': d.title,
-			'doc_type': d.doc_type.name,
-			'doc_type_category': d.doc_type.category,
-			'status': d.status,
-			'source_department': d.source_department.name if d.source_department else None,
-			'target_department': d.target_department.name if d.target_department else None,
-			'created_by': d.created_by.email if d.created_by else None,
-			'created_by_name': created_by_name,
-			'created_at': d.created_at.isoformat() if d.created_at else None,
-			'sent_at': d.sent_at.isoformat() if d.sent_at else None,
-			'file_url': request.build_absolute_uri(d.file.url) if d.file else None,
-		})
+		}
+		for d in qs.order_by('-created_at')
+	]
 	return Response(data)
 
 
@@ -959,221 +626,29 @@ def comment_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	def _can_access_comments(user, document):
-		# creator, chef of source/target, RH_SENIOR, GRH, or employee in source/target dept
-		if user.id == document.created_by_id:
-			return True
-		if user.role == RoleChoices.CHEF:
-			try:
-				chef_emp = Employee.objects.get(email=user.email)
-				return (
-					chef_emp.department_id == document.source_department_id or
-					(document.target_department_id and chef_emp.department_id == document.target_department_id)
-				)
-			except Employee.DoesNotExist:
-				return False
-		if user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
-			return True
-		if user.role == RoleChoices.EMPLOYEE:
-			try:
-				emp = Employee.objects.get(email=user.email)
-				return (
-					emp.department_id == document.source_department_id or
-					(document.target_department_id and emp.department_id == document.target_department_id)
-				)
-			except Employee.DoesNotExist:
-				return False
-		return False
+	# Permission: creator, chef of source or target dept, RH_SENIOR, GRH
+	can_comment = request.user.id == doc.created_by_id
 
-	if not _can_access_comments(request.user, doc):
+	if not can_comment and request.user.role == RoleChoices.CHEF:
+		try:
+			chef_emp = Employee.objects.get(email=request.user.email)
+			can_comment = (chef_emp.department_id == doc.source_department_id or 
+						   (doc.target_department_id and chef_emp.department_id == doc.target_department_id))
+		except Employee.DoesNotExist:
+			pass
+
+	if not can_comment and request.user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+		can_comment = True
+
+	if not can_comment:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	comment = request.data.get('comment', '')
 	if not comment:
 		return Response({'detail': 'comment required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	parent = None
-	parent_id = request.data.get('parent_id')
-	if parent_id:
-		try:
-			parent = DocumentHistory.objects.get(
-				id=parent_id,
-				document=doc,
-				action=DocumentHistory.Action.COMMENTED
-			)
-		except DocumentHistory.DoesNotExist:
-			return Response({'detail': 'parent comment not found'}, status=status.HTTP_400_BAD_REQUEST)
-		if parent.is_private and request.user not in [doc.created_by, parent.by_user]:
-			return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	is_private = bool(request.data.get('is_private'))
-	if parent and parent.is_private:
-		is_private = True
-
-	comment_entry = create_doc_history(
-		doc,
-		DocumentHistory.Action.COMMENTED,
-		request.user,
-		note=comment,
-		parent=parent,
-		is_private=is_private
-	)
-
-	comment_link = f"/documents?docId={doc.id}&commentId={comment_entry.id}"
-
-	actor_name = _display_name(request.user)
-	# Notify document owner and parent commenter as needed
-	owner = doc.created_by
-	if parent:
-		if parent.by_user and parent.by_user != request.user:
-			if parent.is_private or is_private:
-				notify(
-					parent.by_user,
-					'Reply to private comment',
-					f"{actor_name} replied to your private comment on {doc.title}.",
-					link=comment_link
-				)
-			else:
-				notify(
-					parent.by_user,
-					'New reply',
-					f"{actor_name} replied to your comment on {doc.title}.",
-					link=comment_link
-				)
-		# Also notify owner when someone else replies (public or private)
-		if owner and owner != request.user and owner != parent.by_user:
-			if is_private:
-				notify(
-					owner,
-					'Private reply',
-					f"{actor_name} replied privately on {doc.title}.",
-					link=comment_link
-				)
-			else:
-				notify(
-					owner,
-					'New reply',
-					f"{actor_name} replied on {doc.title}.",
-					link=comment_link
-				)
-	else:
-		if owner and owner != request.user:
-			if is_private:
-				notify(
-					owner,
-					'Private comment',
-					f"{actor_name} left a private comment on {doc.title}.",
-					link=comment_link
-				)
-			else:
-				notify(
-					owner,
-					'New comment',
-					f"{actor_name} commented on {doc.title}.",
-					link=comment_link
-				)
-
-	# Public top-level comments notify department users
-	if not parent and not is_private:
-		if doc.target_department_id:
-			_notify_department_users(
-				doc.target_department_id,
-				request.user,
-				'New comment',
-				f"{actor_name} commented on {doc.title}.",
-				link=comment_link
-			)
-		elif doc.source_department_id:
-			_notify_department_users(
-				doc.source_department_id,
-				request.user,
-				'New comment',
-				f"{actor_name} commented on {doc.title}.",
-				link=comment_link
-			)
-
+	create_doc_history(doc, DocumentHistory.Action.COMMENTED, request.user, note=comment)
 	return Response({'detail': 'comment added'})
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def document_comments(request, pk):
-	"""List comments for a document."""
-	try:
-		doc = Document.objects.get(id=pk)
-	except Document.DoesNotExist:
-		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
-
-	def _can_access_comments(user, document):
-		if user.id == document.created_by_id:
-			return True
-		if user.role == RoleChoices.CHEF:
-			try:
-				chef_emp = Employee.objects.get(email=user.email)
-				return (
-					chef_emp.department_id == document.source_department_id or
-					(document.target_department_id and chef_emp.department_id == document.target_department_id)
-				)
-			except Employee.DoesNotExist:
-				return False
-		if user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
-			return True
-		if user.role == RoleChoices.EMPLOYEE:
-			try:
-				emp = Employee.objects.get(email=user.email)
-				return (
-					emp.department_id == document.source_department_id or
-					(document.target_department_id and emp.department_id == document.target_department_id)
-				)
-			except Employee.DoesNotExist:
-				return False
-		return False
-
-	if not _can_access_comments(request.user, doc):
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	from django.db.models import Q
-
-	visibility_filter = Q(is_private=False)
-	if request.user == doc.created_by:
-		visibility_filter = Q()
-	else:
-		visibility_filter |= Q(is_private=True, by_user=request.user)
-		visibility_filter |= Q(is_private=True, parent__by_user=request.user)
-
-	comments = DocumentHistory.objects.filter(
-		document=doc,
-		action=DocumentHistory.Action.COMMENTED
-	).filter(visibility_filter).select_related('by_user', 'parent').order_by('created_at')
-
-	comment_map = {}
-	ordered = []
-	for c in comments:
-		by_user_name = None
-		if c.by_user:
-			name = f"{c.by_user.first_name} {c.by_user.last_name}".strip()
-			by_user_name = name or c.by_user.email
-		item = {
-			'id': c.id,
-			'note': c.note,
-			'by_user': c.by_user.email if c.by_user else None,
-			'by_user_name': by_user_name,
-			'created_at': c.created_at.isoformat() if c.created_at else None,
-			'parent_id': c.parent_id,
-			'is_private': c.is_private,
-			'replies': [],
-		}
-		comment_map[c.id] = item
-		ordered.append(item)
-
-	data = []
-	for item in ordered:
-		if item['parent_id'] and item['parent_id'] in comment_map:
-			comment_map[item['parent_id']]['replies'].append(item)
-		else:
-			data.append(item)
-
-	return Response(data)
 
 
 @api_view(['POST'])
@@ -1220,143 +695,28 @@ def archive_document(request, pk):
 
 
 # Reports & Statistics Helpers
-def _parse_date_str(value):
-	if not value:
-		return None
-	try:
-		return date.fromisoformat(value)
-	except ValueError:
-		pass
-	if '/' in value:
-		parts = value.split('/')
-		if len(parts) == 3:
-			day, month, year = parts
-			return date(int(year), int(month), int(day))
-	raise ValueError('invalid date format')
-
-
 def parse_date_range(request):
 	"""Parse ?from= and ?to= query params. Default to current month."""
+	from datetime import date, timedelta
+	
 	from_param = request.query_params.get('from')
 	to_param = request.query_params.get('to')
-
+	
 	today = date.today()
-
-	if from_param:
-		from_date = _parse_date_str(from_param)
+	
+	if from_param and to_param:
+		from_date = date.fromisoformat(from_param)
+		to_date = date.fromisoformat(to_param)
 	else:
+		# Default to current month
 		from_date = date(today.year, today.month, 1)
-
-	if to_param:
-		to_date = _parse_date_str(to_param)
-	else:
-		# Default to end of current month
+		# Last day of month
 		if today.month == 12:
 			to_date = date(today.year + 1, 1, 1) - timedelta(days=1)
 		else:
 			to_date = date(today.year, today.month + 1, 1) - timedelta(days=1)
-
+	
 	return from_date, to_date
-
-
-EXPORT_LATE_THRESHOLD = datetime.strptime('09:00', '%H:%M').time()
-
-
-def _make_export_response(buffer, filename, content_type):
-	response = HttpResponse(buffer.getvalue(), content_type=content_type)
-	response['Content-Disposition'] = f'attachment; filename="{filename}"'
-	return response
-
-
-def _build_excel_report(title, headers, rows):
-	workbook = Workbook()
-	worksheet = workbook.active
-	worksheet.title = 'Report'
-
-	worksheet.append([title])
-	worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
-	worksheet['A1'].font = Font(bold=True, size=14)
-	worksheet['A1'].alignment = Alignment(horizontal='center')
-
-	worksheet.append(headers)
-	for cell in worksheet[2]:
-		cell.font = Font(bold=True)
-		cell.alignment = Alignment(horizontal='center')
-
-	for row in rows:
-		worksheet.append(row)
-
-	from openpyxl.utils import get_column_letter
-	for col_idx in range(1, len(headers) + 1):
-		max_len = 0
-		for cell in worksheet.iter_cols(min_col=col_idx, max_col=col_idx, values_only=True):
-			for value in cell:
-				if value is not None:
-					max_len = max(max_len, len(str(value)))
-		col_letter = get_column_letter(col_idx)
-		worksheet.column_dimensions[col_letter].width = min(max_len + 2, 40)
-
-	output = BytesIO()
-	workbook.save(output)
-	output.seek(0)
-	return output
-
-
-def _build_pdf_report(title, headers, rows):
-	output = BytesIO()
-	doc = SimpleDocTemplate(output, pagesize=landscape(letter), topMargin=24, bottomMargin=24)
-	styles = getSampleStyleSheet()
-	story = [Paragraph(title, styles['Title']), Spacer(1, 12)]
-
-	data = [headers] + rows
-	table = Table(data, repeatRows=1)
-	table.setStyle(TableStyle([
-		('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
-		('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-		('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-		('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-		('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-		('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-	]))
-
-	story.append(table)
-	doc.build(story)
-	output.seek(0)
-	return output
-
-
-def _resolve_employee_scope(user):
-	if user.role == RoleChoices.EMPLOYEE:
-		try:
-			emp = Employee.objects.get(email=user.email)
-		except Employee.DoesNotExist:
-			return None
-		return Employee.objects.filter(id=emp.id)
-	if user.role == RoleChoices.CHEF:
-		try:
-			chef_emp = Employee.objects.get(email=user.email)
-		except Employee.DoesNotExist:
-			return None
-		return Employee.objects.filter(department_id=chef_emp.department_id)
-	if user.role == RoleChoices.GRH:
-		return Employee.objects.all()
-	return None
-
-
-def _format_time(value):
-	if not value:
-		return '-'
-	return value.strftime('%H:%M')
-
-
-def _format_date(value):
-	if not value:
-		return '-'
-	return value.isoformat()
-
-
-def _format_hours(value):
-	return f"{value:.2f}"
 
 
 def get_employee_scope(user):
@@ -1493,223 +853,6 @@ def get_documents_counts(user, from_date, to_date):
 		'documents_created_count': qs.count(),
 		'documents_validated_count': qs.filter(status=Document.Status.VALIDATED).count(),
 	}
-
-
-def _parse_export_format(request):
-	file_format = (request.query_params.get('file_format') or request.query_params.get('format') or 'pdf').lower()
-	if file_format not in ('pdf', 'xlsx'):
-		return None
-	return file_format
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def export_attendance_report(request):
-	file_format = _parse_export_format(request)
-	if not file_format:
-		return Response({'detail': 'invalid format'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		from_date, to_date = parse_date_range(request)
-	except (ValueError, TypeError):
-		return Response({'detail': 'invalid date format (use YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
-
-	employees_qs = _resolve_employee_scope(request.user)
-	if employees_qs is None:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	employee_id = request.query_params.get('employee_id')
-	if employee_id:
-		if request.user.role not in (RoleChoices.CHEF, RoleChoices.GRH):
-			return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-		employees_qs = employees_qs.filter(id=employee_id)
-
-	attendance_qs = Attendance.objects.filter(
-		employee__in=employees_qs,
-		date__gte=from_date,
-		date__lte=to_date
-	).select_related('employee')
-	attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
-	employees = list(employees_qs.order_by('last_name', 'first_name'))
-
-	rows = []
-	current_date = from_date
-	while current_date <= to_date:
-		for emp in employees:
-			attendance = attendance_map.get((emp.id, current_date))
-			if attendance and attendance.check_in_time:
-				status_label = 'Late' if attendance.check_in_time > EXPORT_LATE_THRESHOLD else 'Present'
-			else:
-				status_label = 'Absent'
-
-			worked_hours = 0.0
-			if attendance and attendance.check_in_time and attendance.check_out_time:
-				start_dt = datetime.combine(current_date, attendance.check_in_time)
-				end_dt = datetime.combine(current_date, attendance.check_out_time)
-				if end_dt < start_dt:
-					end_dt = end_dt + timedelta(days=1)
-				worked_hours = round((end_dt - start_dt).total_seconds() / 3600, 2)
-
-			rows.append([
-				f"{emp.first_name} {emp.last_name}",
-				_format_date(current_date),
-				_format_time(attendance.check_in_time if attendance else None),
-				_format_time(attendance.check_out_time if attendance else None),
-				_format_hours(worked_hours),
-				status_label,
-			])
-		current_date += timedelta(days=1)
-
-	headers = ['Employee', 'Date', 'Check-in', 'Check-out', 'Worked Hours', 'Status']
-	title = f"Attendance Report ({from_date.isoformat()} to {to_date.isoformat()})"
-	filename = f"attendance_report_{from_date.isoformat()}_{to_date.isoformat()}.{file_format}"
-
-	if file_format == 'xlsx':
-		output = _build_excel_report(title, headers, rows)
-		return _make_export_response(output, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-	output = _build_pdf_report(title, headers, rows)
-	return _make_export_response(output, filename, 'application/pdf')
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def export_leaves_report(request):
-	file_format = _parse_export_format(request)
-	if not file_format:
-		return Response({'detail': 'invalid format'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		from_date, to_date = parse_date_range(request)
-	except (ValueError, TypeError):
-		return Response({'detail': 'invalid date format (use YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
-
-	user = request.user
-	qs = LeaveRequest.objects.all().select_related('employee')
-	if user.role == RoleChoices.EMPLOYEE:
-		try:
-			emp = Employee.objects.get(email=user.email)
-		except Employee.DoesNotExist:
-			return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
-		qs = qs.filter(employee=emp)
-	elif user.role == RoleChoices.CHEF:
-		try:
-			chef_emp = Employee.objects.get(email=user.email)
-		except Employee.DoesNotExist:
-			return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
-		qs = qs.filter(employee__department_id=chef_emp.department_id)
-	elif user.role != RoleChoices.GRH:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	status_filter = request.query_params.get('status')
-	if status_filter:
-		qs = qs.filter(status=status_filter.upper())
-
-	type_filter = request.query_params.get('type')
-	if type_filter:
-		qs = qs.filter(type=type_filter.upper())
-
-	qs = qs.filter(start_date__lte=to_date, end_date__gte=from_date).order_by('start_date')
-
-	rows = []
-	for leave in qs:
-		days = (leave.end_date - leave.start_date).days + 1
-		rows.append([
-			f"{leave.employee.first_name} {leave.employee.last_name}",
-			leave.type,
-			leave.start_date.isoformat(),
-			leave.end_date.isoformat(),
-			str(days),
-			leave.status,
-			leave.chef_comment or '-',
-		])
-
-	headers = ['Employee', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Chef Comment']
-	title = f"Leave History Report ({from_date.isoformat()} to {to_date.isoformat()})"
-	filename = f"leave_report_{from_date.isoformat()}_{to_date.isoformat()}.{file_format}"
-
-	if file_format == 'xlsx':
-		output = _build_excel_report(title, headers, rows)
-		return _make_export_response(output, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-	output = _build_pdf_report(title, headers, rows)
-	return _make_export_response(output, filename, 'application/pdf')
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def export_tasks_report(request):
-	file_format = _parse_export_format(request)
-	if not file_format:
-		return Response({'detail': 'invalid format'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		from_date, to_date = parse_date_range(request)
-	except (ValueError, TypeError):
-		return Response({'detail': 'invalid date format (use YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
-
-	user = request.user
-	qs = Task.objects.all().select_related('assigned_by', 'assigned_to')
-	if user.role == RoleChoices.EMPLOYEE:
-		try:
-			emp = Employee.objects.get(email=user.email)
-		except Employee.DoesNotExist:
-			return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
-		qs = qs.filter(assigned_to=emp)
-	elif user.role == RoleChoices.CHEF:
-		qs = qs.filter(assigned_by=user)
-	elif user.role != RoleChoices.GRH:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	qs = qs.filter(created_at__date__gte=from_date, created_at__date__lte=to_date)
-
-	employee_id = request.query_params.get('employee_id')
-	if employee_id and user.role in (RoleChoices.CHEF, RoleChoices.GRH):
-		qs = qs.filter(assigned_to_id=employee_id)
-
-	status_filter = (request.query_params.get('status') or '').lower()
-	if status_filter == 'done':
-		qs = qs.filter(status=Task.Status.DONE)
-	elif status_filter == 'overdue':
-		today = timezone.now().date()
-		qs = qs.filter(status=Task.Status.TODO, due_date__lt=today)
-	elif status_filter == 'assigned':
-		today = timezone.now().date()
-		qs = qs.filter(status=Task.Status.TODO).filter(Q(due_date__gte=today) | Q(due_date__isnull=True))
-
-	rows = []
-	today = timezone.now().date()
-	for task in qs.order_by('-created_at'):
-		assigned_by = f"{task.assigned_by.first_name} {task.assigned_by.last_name}".strip() if task.assigned_by else '-'
-		assigned_to = f"{task.assigned_to.first_name} {task.assigned_to.last_name}" if task.assigned_to else '-'
-
-		if task.status == Task.Status.DONE:
-			status_label = 'Done'
-		elif task.due_date and task.due_date < today:
-			status_label = 'Overdue'
-		else:
-			status_label = 'Assigned'
-
-		rows.append([
-			task.title,
-			task.description or '-',
-			assigned_by or '-',
-			assigned_to,
-			_format_date(task.due_date),
-			status_label,
-			_format_date(task.completed_at.date() if task.completed_at else None),
-		])
-
-	headers = ['Title', 'Description', 'Assigned By', 'Assigned To', 'Due Date', 'Status', 'Completion Date']
-	title = f"Task Report ({from_date.isoformat()} to {to_date.isoformat()})"
-	filename = f"task_report_{from_date.isoformat()}_{to_date.isoformat()}.{file_format}"
-
-	if file_format == 'xlsx':
-		output = _build_excel_report(title, headers, rows)
-		return _make_export_response(output, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-	output = _build_pdf_report(title, headers, rows)
-	return _make_export_response(output, filename, 'application/pdf')
 
 
 @api_view(['GET'])
