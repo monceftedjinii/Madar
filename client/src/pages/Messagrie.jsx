@@ -78,9 +78,10 @@ export default function Messagrie() {
                 <input
                   type="text"
                   className="input"
-                  placeholder={  ` ${(<SearchIcon />)} chercher un mail`}
+                  placeholder={  ` ${(<SearchIcon />)} chercher un maail`}
                 />
-              </div>
+
+              </div> 
             </div>
             <div className="block_three">
               {/* block pour voir le message selectioner */}
