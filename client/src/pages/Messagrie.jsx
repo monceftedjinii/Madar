@@ -1,4 +1,8 @@
 import React from "react";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchIcon from "@mui/icons-material/Search";
+// import SearchIcon from "@mui/icons-material/Search";
 import Navbar from "../components/Navbar";
 import { useState } from "react";
 import "../styles/profile.css";
@@ -68,8 +72,19 @@ export default function Messagrie() {
                 <button className="all_buttons"> Corbeille</button>
               </div>
             </div>
-            <div></div>
-            <div></div>
+            <div className="block_two">
+              {/* block pour les messages  */}
+              <div className="top_block_two">
+                <input
+                  type="text"
+                  className="input"
+                  placeholder={  ` ${(<SearchIcon />)} chercher un mail`}
+                />
+              </div>
+            </div>
+            <div className="block_three">
+              {/* block pour voir le message selectioner */}
+            </div>
           </div>
         </div>
       </div>

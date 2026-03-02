@@ -4,9 +4,10 @@
   padding-bottom: 20px;
   display: flex;
   flex-flow: row wrap;
+  gap: 20px;
 }
 .block_one {
-  height: 800px;
+  min-height: 800px;
   width: 220px;
   background-color: rgb(255, 255, 255);
   display: flex;
@@ -68,4 +69,31 @@ h3 {
   transform: scale(1);
   background-color: rgb(244, 240, 232);
   border: 1px solid rgb(216, 199, 160);
+}
+.block_two {
+  width: 523px;
+  height: 800px;
+  background-color: rgb(255, 255, 255);
+  border-radius: 15px;
+}
+.top_block_two {
+  margin-top: 20px;
+  width: 88%;
+  margin: auto;
+  /* background-color: aqua; */
+  height: 100%;
+}
+.input {
+  margin-top: 50px;
+  /* width: 100%; */
+  border-radius: 5px;
+  /* color: ; */
+  /* font-weight: bold; */
+  height: 30px;
+  outline: none;
+  background-color: rgb(251, 251, 252);
+  border: 1px solid rgb(168, 169, 172);
+  text-indent: 12px;
+
+  /* padding: 10px;  */
 }
