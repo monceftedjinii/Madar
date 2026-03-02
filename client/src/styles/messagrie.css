@@ -77,10 +77,16 @@ h3 {
   border-radius: 15px;
 }
 .top_block_two {
-  margin-top: 20px;
   width: 88%;
-  margin: auto;
-  height: 100%;
+  margin: 20px auto 0;
+  height: auto;
+  margin-top: 0px;
+}
+.mail-divider {
+  width: 100%;
+  margin: 14px 0 0;
+  border: 0;
+  border-top: 1px solid rgb(229, 231, 235);
 }
 .input {
   margin-top: -5px;

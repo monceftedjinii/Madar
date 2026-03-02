@@ -83,12 +83,11 @@ export default function Messagrie() {
                 />
                 <div className="button-block-two">
                   <button className="rc c">Tous</button>
-                  <button className="rc" >Non lus</button>
-                  <button className="rc" >Importants</button>
+                  <button className="rc">Non lus</button>
+                  <button className="rc">Importants</button>
                 </div>
-                <hr />
               </div>
-              <hr />
+              <hr className="mail-divider" />
             </div>
             <div className="block_three">
               {/* block pour voir le message selectioner */}
