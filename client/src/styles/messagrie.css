@@ -50,12 +50,15 @@ h3 {
 }
 .all_buttons {
   border: 1px solid rgb(229, 231, 235);
-  padding: 10px 73px;
+  /* padding: 10px 73px; */
+  width: 180px;
+  height: 40px;
   border-radius: 10px;
   font-weight: bold;
   background-color: rgb(251, 251, 252);
   transition: all 0.3s;
   cursor: pointer;
+  gap: 10px;
 }
 .all_buttons:hover {
   transform: scale(1.02);
