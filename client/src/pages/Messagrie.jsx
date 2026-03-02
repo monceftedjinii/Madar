@@ -74,14 +74,20 @@ export default function Messagrie() {
             </div>
             <div className="block_two">
               {/* block pour les messages  */}
+
               <div className="top_block_two">
+                <SearchIcon className="rr" />
                 <input
                   type="text"
                   className="input"
-                  placeholder={  ` ${(<SearchIcon />)} chercher un maail`}
+                  placeholder={`chercher un mail`}
                 />
-
-              </div> 
+                <div className="button-block-two">
+                  <button>Tous</button>
+                  <button>Non lus</button>
+                  <button>Importants</button>
+                </div>
+              </div>
             </div>
             <div className="block_three">
               {/* block pour voir le message selectioner */}
