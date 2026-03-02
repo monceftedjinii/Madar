@@ -59,12 +59,13 @@ export default function Messagrie() {
                 <p className="morinfo size">Organisation des emails</p>
               </div>
               <div className="botton_mail">
-                <button>Composer</button>
-                <button>Boite</button>
-                <button>Importants</button>
-                <button>Envoyés</button>
-                <button>Brouillons</button>
-                <button> Corbeille</button>
+                <button className="composer">Composer</button>
+                <button className="all_buttons">Boite</button>
+                <button className="all_buttons">Importants</button>
+                <button className="all_buttons">Envoyés</button>
+                <button className="all_buttons">Réçus</button>
+                <button className="all_buttons">Brouillons</button>
+                <button className="all_buttons"> Corbeille</button>
               </div>
             </div>
             <div></div>

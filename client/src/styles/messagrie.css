@@ -11,18 +11,18 @@
   background-color: rgb(255, 255, 255);
   display: flex;
   flex-flow: column wrap;
-  gap: 30px;
+  gap: 20px;
   border-radius: 15px;
 }
-.titles_block_one{
-    margin-left: 15px;
+.titles_block_one {
+  margin-left: 15px;
 }
 .title_mail {
   margin-bottom: -10px;
 }
- h3 {
-    font-size: 19px;
-    font-weight: 500;
+h3 {
+  font-size: 19px;
+  font-weight: 500;
 }
 .size {
   font-size: 13px;
@@ -32,4 +32,37 @@
   display: flex;
   flex-flow: column wrap;
   align-items: center;
+  gap: 20px;
+}
+.composer {
+  padding: 10px 55px;
+  border-radius: 10px;
+  background-color: rgb(9, 96, 42);
+  border: none;
+  color: white;
+  transition: all 0.3s;
+  cursor: pointer;
+  font-weight: bold;
+}
+.composer:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.all_buttons {
+  border: 1px solid rgb(229, 231, 235);
+  padding: 10px 73px;
+  border-radius: 10px;
+  font-weight: bold;
+  background-color: rgb(251, 251, 252);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.all_buttons:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.all_buttons:click {
+  transform: scale(1);
+  background-color: rgb(244, 240, 232);
+  border: 1px solid rgb(216, 199, 160);
 }
