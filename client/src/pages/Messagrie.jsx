@@ -82,11 +82,13 @@ export default function Messagrie() {
                   placeholder={`chercher un mail`}
                 />
                 <div className="button-block-two">
-                  <button>Tous</button>
-                  <button>Non lus</button>
-                  <button>Importants</button>
+                  <button className="rc c">Tous</button>
+                  <button className="rc" >Non lus</button>
+                  <button className="rc" >Importants</button>
                 </div>
+                <hr />
               </div>
+              <hr />
             </div>
             <div className="block_three">
               {/* block pour voir le message selectioner */}
