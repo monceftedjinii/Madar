@@ -87,16 +87,14 @@ h3 {
   width: 100%;
   border-radius: 5px;
   /* color: rgb(117, 117, 117); */
-   font-weight: bold; 
+  font-weight: bold;
   height: 30px;
   outline: none;
   background-color: rgb(251, 251, 252);
   border: 1px solid rgb(168, 169, 172);
   text-indent: 40px;
-
-  /* padding: 10px;  */
 }
-.rr{
+.rr {
   position: relative;
   top: 28px;
   left: 6px;
