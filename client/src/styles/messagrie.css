@@ -16,10 +16,10 @@
   border-radius: 15px;
 }
 .titles_block_one {
-  margin-left: 15px;
+  margin: 20px 0 0 15px;
 }
 .title_mail {
-  margin-bottom: -10px;
+  margin: 0 0 6px;
 }
 h3 {
   font-size: 19px;
@@ -76,11 +76,17 @@ h3 {
   background-color: rgb(255, 255, 255);
   border-radius: 15px;
 }
+.block_three {
+  width: 523px;
+  height: 800px;
+  background-color: rgb(255, 255, 255);
+  border-radius: 15px;
+}
 .top_block_two {
   width: 88%;
   margin: 20px auto 0;
   height: auto;
-  margin-top: 0px;
+  position: relative;
 }
 .mail-divider {
   width: 100%;
@@ -89,21 +95,21 @@ h3 {
   border-top: 1px solid rgb(229, 231, 235);
 }
 .input {
-  margin-top: -5px;
+  margin-top: 0;
   width: 100%;
   border-radius: 5px;
   /* color: rgb(117, 117, 117); */
   font-weight: bolder;
-  height: 30px;
+  height: 38px;
   outline: none;
   background-color: rgb(251, 251, 252);
   border: 1px solid rgb(168, 169, 172);
   text-indent: 40px;
 }
 .rr {
-  position: relative;
-  top: 28px;
-  left: 6px;
+  position: absolute;
+  top: 10px;
+  left: 8px;
   color: rgb(117, 117, 117);
 }
 .rc {
@@ -126,5 +132,57 @@ h3 {
 .rc:hover:not(.c){
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== DARK MODE (page mail) ===== */
+.profile-page.dark .block_one,
+.profile-page.dark .block_two,
+.profile-page.dark .block_three {
+  background-color: #1a2035;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-page.dark .title_mail,
+.profile-page.dark .size {
+  color: #cbd5e1;
+}
+
+.profile-page.dark .all_buttons {
+  background-color: #232d46;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.profile-page.dark .all_buttons:click {
+  background-color: #1f273d;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.profile-page.dark .input {
+  background-color: #1a2035;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+}
+
+.profile-page.dark .input::placeholder {
+  color: #94a3b8;
+}
+
+.profile-page.dark .rr {
+  color: #94a3b8;
+}
+
+.profile-page.dark .rc {
+  background-color: #232d46;
+  color: #e2e8f0;
+}
+
+.profile-page.dark .rc.c {
+  background-color: rgb(0, 104, 40);
+  color: #ffffff;
+}
+
+.profile-page.dark .mail-divider {
+  border-top-color: rgba(255, 255, 255, 0.12);
 }
 
