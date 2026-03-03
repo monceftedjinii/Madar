@@ -25,6 +25,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Documents', href: '/documents' },
       { label: 'Notifications', href: '/notifications' },
       { label: 'Reports', href: '/reports' },
+      { label: 'Profile', href: '/profile' },
     ],
     CHEF: [
       { label: 'Employees', href: '/employees' },
@@ -34,6 +35,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
+      { label: 'Profile', href: '/profile' },
     ],
     RH_SIMPLE: [
       { label: 'Absences (Yesterday)', href: '/absences/yesterday' },
@@ -42,6 +44,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
+      { label: 'Profile', href: '/profile' },
     ],
     RH_SENIOR: [
       { label: 'Discipline Flags', href: '/discipline/flags' },
@@ -49,6 +52,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
+      { label: 'Profile', href: '/profile' },
     ],
     GRH: [
       { label: 'Reports', href: '/reports' },
@@ -56,6 +60,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Employees', href: '/employees' },
       { label: 'Messages', href: '/messages' },
       { label: 'Notifications', href: '/notifications' },
+      { label: 'Profile', href: '/profile' },
     ],
   }
 

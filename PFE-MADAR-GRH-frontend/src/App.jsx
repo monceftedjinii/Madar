@@ -15,6 +15,7 @@ import Reports from './pages/Reports'
 import Employees from './pages/Employees'
 import AddEmployee from './pages/AddEmployee'
 import Messages from './pages/Messages/Messages'
+import Profile from './pages/Profile'
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('access_token')
@@ -152,6 +153,14 @@ function App() {
           element={
             <PrivateRoute>
               <Messages />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <Profile />
             </PrivateRoute>
           }
         />
