@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import api from '../../api';
+import api, { API_URL } from '../../api';
 import ReplyModal from './ReplyModal';
 import ReportModal from './ReportModal';
 
@@ -326,7 +326,7 @@ export default function MessageDetail({ message, onBack, onDelete, onRefresh }) 
             {message.attachments.map((att) => (
               <div key={att.id} style={styles.attachmentItem}>
                 <a
-                  href={att.file_url}
+                  href={`${API_URL}${att.file_url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={styles.attachmentLink}
