@@ -2,7 +2,7 @@
 # Central re-export: keeps config/urls.py intact (no changes needed there).
 
 from .auth import ping, rbac_test, whoami
-from .employees import employees_list, departments_list
+from .employees import employees_list, departments_list, create_employee
 from .tasks import create_task, my_tasks, chef_tasks, mark_task_done
 from .attendance import attendance_check_in, attendance_check_out, attendance_me
 from .leaves import create_leave, my_leaves, department_pending_leaves, approve_leave, reject_leave
@@ -49,7 +49,7 @@ __all__ = [
 	# auth
 	'ping', 'rbac_test', 'whoami',
 	# employees
-	'employees_list', 'departments_list',
+	'employees_list', 'departments_list', 'create_employee',
 	# tasks
 	'create_task', 'my_tasks', 'chef_tasks', 'mark_task_done',
 	# attendance
