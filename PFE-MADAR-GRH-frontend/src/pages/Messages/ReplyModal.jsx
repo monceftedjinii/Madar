@@ -58,11 +58,7 @@ export default function ReplyModal({ originalMessage, isForward = false, onClose
 
       onSuccess();
     } catch (err) {
-      if (err.response?.status === 403) {
-        setError('User has blocked you');
-      } else {
         setError(err.response?.data?.detail || `Failed to ${isForward ? 'forward' : 'reply to'} message`);
-      }
     } finally {
       setSending(false);
     }

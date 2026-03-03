@@ -115,12 +115,7 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
         }, 1000);
       }
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      if (detail && detail.includes('blocked')) {
-        setError('❌ User has blocked you. Cannot send message.');
-      } else {
         setError(err.response?.data?.detail || 'Failed to send message');
-      }
     } finally {
       setSending(false);
     }

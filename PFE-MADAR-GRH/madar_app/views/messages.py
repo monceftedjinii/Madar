@@ -268,14 +268,6 @@ def send_message(request):
     if recipient == request.user:
         return Response({'detail': 'Cannot send message to yourself'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Check blocking
-    if is_user_blocked(request.user, recipient):
-        logger.warning(f'send_message blocked: {request.user.email} is blocked by {recipient.email}')
-        return Response(
-            {'detail': 'This user has blocked you. You cannot send them messages.'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
     # Get messaging settings
     settings = get_messaging_settings()
     
@@ -355,13 +347,6 @@ def reply_message(request, pk):
     if not body:
         return Response({'detail': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Check blocking
-    if is_user_blocked(request.user, reply_recipient):
-        return Response(
-            {'detail': 'This user has blocked you. You cannot send them messages.'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
     # Create reply message
     reply_msg = Message.objects.create(
         sender=request.user,
@@ -400,13 +385,6 @@ def forward_message(request, pk):
     
     if new_recipient == request.user:
         return Response({'detail': 'Cannot forward to yourself'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Check blocking
-    if is_user_blocked(request.user, new_recipient):
-        return Response(
-            {'detail': 'This user has blocked you. You cannot send them messages.'},
-            status=status.HTTP_403_FORBIDDEN
-        )
     
     # Create forwarded message
     forwarded_msg = Message.objects.create(
