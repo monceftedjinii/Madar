@@ -66,6 +66,43 @@ urlpatterns = [
     path('api/reports/attendance/export', madar_views.export_attendance_report, name='api-reports-attendance-export-noslash'),
     path('api/reports/leaves/export', madar_views.export_leaves_report, name='api-reports-leaves-export-noslash'),
     path('api/reports/tasks/export', madar_views.export_tasks_report, name='api-reports-tasks-export-noslash'),
+    
+    # MODULE 10: INTERNAL MESSAGING
+    # Employee: Inbox & Message Management
+    path('api/messages/inbox/', madar_views.inbox, name='api-messages-inbox'),
+    path('api/messages/sent/', madar_views.sent, name='api-messages-sent'),
+    path('api/messages/<int:pk>/', madar_views.get_message, name='api-messages-get'),
+    path('api/messages/<int:pk>/read-status/', madar_views.mark_message_read_unread, name='api-messages-read-status'),
+    path('api/messages/<int:pk>/delete/', madar_views.delete_message, name='api-messages-delete'),
+    path('api/messages/search/', madar_views.search_messages, name='api-messages-search'),
+    
+    # Employee: Compose & Send
+    path('api/messages/send/', madar_views.send_message, name='api-messages-send'),
+    path('api/messages/<int:pk>/reply/', madar_views.reply_message, name='api-messages-reply'),
+    path('api/messages/<int:pk>/forward/', madar_views.forward_message, name='api-messages-forward'),
+    
+    # Employee: Drafts
+    path('api/messages/drafts/', madar_views.drafts_list, name='api-messages-drafts'),
+    path('api/messages/save-draft/', madar_views.save_draft, name='api-messages-save-draft'),
+    path('api/messages/drafts/<int:pk>/delete/', madar_views.delete_draft, name='api-messages-delete-draft'),
+    
+    # Employee: Reporting & Blocking
+    path('api/messages/<int:pk>/report/', madar_views.report_message, name='api-messages-report'),
+    path('api/users/<int:user_id>/block/', madar_views.block_user, name='api-users-block'),
+    path('api/users/<int:user_id>/unblock/', madar_views.unblock_user, name='api-users-unblock'),
+    path('api/users/blocked/', madar_views.blocked_users_list, name='api-users-blocked'),
+    
+    # Admin: View & Moderate Reports
+    path('api/admin/message-reports/', madar_views.admin_reports_list, name='api-admin-message-reports'),
+    path('api/admin/message-reports/<int:pk>/resolve/', madar_views.admin_resolve_report, name='api-admin-resolve-report'),
+    
+    # Admin: Announcements
+    path('api/announcements/', madar_views.announcements_list, name='api-announcements'),
+    path('api/announcements/create/', madar_views.create_announcement, name='api-announcements-create'),
+    
+    # Admin: Messaging Settings
+    path('api/admin/messaging-settings/', madar_views.messaging_settings, name='api-messaging-settings'),
+    path('api/admin/messaging-settings/update/', madar_views.update_messaging_settings, name='api-messaging-settings-update'),
 ]
 # Serve media files in development
 if settings.DEBUG:

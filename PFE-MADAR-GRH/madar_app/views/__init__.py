@@ -20,6 +20,30 @@ from .documents import (
 	archive_document,
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
+from .messages import (
+	inbox,
+	sent,
+	get_message,
+	mark_message_read_unread,
+	delete_message,
+	search_messages,
+	send_message,
+	reply_message,
+	forward_message,
+	drafts_list,
+	save_draft,
+	delete_draft,
+	report_message,
+	block_user,
+	unblock_user,
+	blocked_users_list,
+	admin_reports_list,
+	admin_resolve_report,
+	announcements_list,
+	create_announcement,
+	messaging_settings,
+	update_messaging_settings,
+)
 
 __all__ = [
 	# auth
@@ -42,4 +66,12 @@ __all__ = [
 	'document_comments', 'validate_document', 'archive_document',
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
+	# messages
+	'inbox', 'sent', 'get_message', 'mark_message_read_unread', 'delete_message',
+	'search_messages', 'send_message', 'reply_message', 'forward_message',
+	'drafts_list', 'save_draft', 'delete_draft', 'report_message',
+	'block_user', 'unblock_user', 'blocked_users_list',
+	'admin_reports_list', 'admin_resolve_report',
+	'announcements_list', 'create_announcement',
+	'messaging_settings', 'update_messaging_settings',
 ]

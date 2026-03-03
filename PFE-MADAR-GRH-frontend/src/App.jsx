@@ -13,6 +13,7 @@ import DisciplineFlags from './pages/DisciplineFlags'
 import Documents from './pages/Documents'
 import Reports from './pages/Reports'
 import Employees from './pages/Employees'
+import Messages from './pages/Messages/Messages'
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('access_token')
@@ -134,6 +135,14 @@ function App() {
           element={
             <PrivateRoute>
               <Employees />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <PrivateRoute>
+              <Messages />
             </PrivateRoute>
           }
         />

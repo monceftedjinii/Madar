@@ -21,6 +21,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Tasks', href: '/tasks' },
       { label: 'Attendance', href: '/attendance' },
       { label: 'Leaves', href: '/leaves' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Notifications', href: '/notifications' },
       { label: 'Reports', href: '/reports' },
@@ -29,6 +30,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Employees', href: '/employees' },
       { label: 'Leaves (Department)', href: '/leaves/department' },
       { label: 'Assign Task', href: '/tasks/assign' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
@@ -36,12 +38,14 @@ function Dashboard({ user, setUser }) {
     RH_SIMPLE: [
       { label: 'Absences (Yesterday)', href: '/absences/yesterday' },
       { label: 'Leaves', href: '/leaves' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
     ],
     RH_SENIOR: [
       { label: 'Discipline Flags', href: '/discipline/flags' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
@@ -50,6 +54,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Reports', href: '/reports' },
       { label: 'Documents', href: '/documents' },
       { label: 'Employees', href: '/employees' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Notifications', href: '/notifications' },
     ],
   }
