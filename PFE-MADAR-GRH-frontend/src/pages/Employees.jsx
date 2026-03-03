@@ -6,10 +6,91 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const canAddEmployee = user?.role === 'GRH';
+  const canManageEmployees = user?.role === 'GRH';
+
+  const handleDeleteEmployee = async (employee) => {
+    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.email;
+    const confirmed = window.confirm(`Delete employee ${fullName}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setError(null);
+      setSuccess(null);
+      await api.delete(`/api/employees/${employee.id}/delete/`);
+      setSuccess(`Employee ${fullName} deleted successfully.`);
+      fetchEmployees();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete employee');
+    }
+  };
+
+  const handleResetPassword = async (employee) => {
+    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.email;
+    const confirmed = window.confirm(`Generate a new password for ${fullName}?`);
+    if (!confirmed) return;
+
+    try {
+      setError(null);
+      setSuccess(null);
+      const response = await api.post(`/api/employees/${employee.id}/reset-password/`);
+      const creds = response.data?.credentials;
+      const message = creds
+        ? `New password for ${creds.email}: ${creds.temporary_password}`
+        : `Password reset successfully for ${fullName}`;
+      setSuccess(message);
+      if (creds?.temporary_password) {
+        window.alert(message);
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to reset password');
+    }
+  };
+
+  const handleEditEmployee = async (employee) => {
+    const first_name = window.prompt('First name', employee.first_name || '');
+    if (first_name === null) return;
+
+    const last_name = window.prompt('Last name', employee.last_name || '');
+    if (last_name === null) return;
+
+    const email = window.prompt('Email', employee.email || '');
+    if (email === null) return;
+
+    const salary = window.prompt('Salary', String(employee.salary || '0.00'));
+    if (salary === null) return;
+
+    const hired_at = window.prompt('Hire date (YYYY-MM-DD)', employee.hired_at || new Date().toISOString().split('T')[0]);
+    if (hired_at === null) return;
+
+    const attendance_pin = window.prompt('Attendance PIN (optional)', employee.attendance_pin || '');
+    if (attendance_pin === null) return;
+
+    const departmentInput = window.prompt('Department ID', String(employee.department?.id || ''));
+    if (departmentInput === null) return;
+
+    try {
+      setError(null);
+      setSuccess(null);
+      await api.put(`/api/employees/${employee.id}/update/`, {
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        email: email.trim().toLowerCase(),
+        salary,
+        hired_at,
+        attendance_pin,
+        department: Number(departmentInput),
+      });
+      setSuccess('Employee updated successfully.');
+      fetchEmployees();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update employee');
+    }
+  };
 
   useEffect(() => {
     fetchEmployees();
@@ -118,6 +199,11 @@ export default function Employees() {
       color: 'inherit',
       padding: '0'
     },
+    successBanner: {
+      backgroundColor: '#e7f8ee',
+      color: '#1f7a3e',
+      border: '1px solid #9bd3b0'
+    },
     tableSection: {
       backgroundColor: 'white',
       border: '1px solid #ddd',
@@ -163,6 +249,29 @@ export default function Employees() {
       fontSize: '13px',
       color: '#666'
     },
+    actionsCell: {
+      padding: '12px 16px',
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap'
+    },
+    actionBtn: {
+      border: '1px solid #d0d5dd',
+      background: '#fff',
+      borderRadius: '4px',
+      padding: '6px 10px',
+      fontSize: '12px',
+      cursor: 'pointer'
+    },
+    editBtn: {
+      color: '#1d4ed8'
+    },
+    resetBtn: {
+      color: '#7c2d12'
+    },
+    deleteBtn: {
+      color: '#b42318'
+    },
     resultInfo: {
       padding: '0 20px',
       fontSize: '12px',
@@ -197,6 +306,13 @@ export default function Employees() {
         </div>
       )}
 
+      {success && (
+        <div style={{...styles.alertBanner, ...styles.successBanner}}>
+          <span>{success}</span>
+          <button style={styles.closeButton} onClick={() => setSuccess(null)}>×</button>
+        </div>
+      )}
+
       {/* Search Filter */}
       <div style={styles.filterSection}>
         <label style={styles.filterLabel}>Search by Name or Email</label>
@@ -225,6 +341,7 @@ export default function Employees() {
                   <th style={styles.tableHeaderCell}>Full Name</th>
                   <th style={styles.tableHeaderCell}>Email</th>
                   <th style={styles.tableHeaderCell}>Department</th>
+                  {canManageEmployees && <th style={styles.tableHeaderCell}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +359,28 @@ export default function Employees() {
                     <td style={styles.tableCell}>
                       {emp.department?.name || emp.department_name || '-'}
                     </td>
+                    {canManageEmployees && (
+                      <td style={styles.actionsCell}>
+                        <button
+                          style={{ ...styles.actionBtn, ...styles.editBtn }}
+                          onClick={() => handleEditEmployee(emp)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          style={{ ...styles.actionBtn, ...styles.resetBtn }}
+                          onClick={() => handleResetPassword(emp)}
+                        >
+                          Reset Password
+                        </button>
+                        <button
+                          style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                          onClick={() => handleDeleteEmployee(emp)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

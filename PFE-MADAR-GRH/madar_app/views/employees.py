@@ -19,6 +19,9 @@ def employees_list(request):
 			'first_name': e.first_name,
 			'last_name': e.last_name,
 			'email': e.email,
+			'salary': str(e.salary),
+			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
+			'attendance_pin': e.attendance_pin,
 			'department': {
 				'id': e.department.id,
 				'name': e.department.name,
@@ -137,3 +140,146 @@ def create_employee(request):
 			'message': f'Employee created successfully. Share these credentials with the employee to log in.'
 		}
 	}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated, IsGRH])
+def update_employee(request, pk):
+	"""Update employee information (GRH only)."""
+	try:
+		employee = Employee.objects.get(id=pk)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	first_name = request.data.get('first_name', employee.first_name).strip()
+	last_name = request.data.get('last_name', employee.last_name).strip()
+	email = request.data.get('email', employee.email).strip().lower()
+	department_id = request.data.get('department', employee.department_id)
+	salary = request.data.get('salary', employee.salary)
+	hired_at_str = request.data.get('hired_at', employee.hired_at.isoformat())
+	attendance_pin = request.data.get('attendance_pin', employee.attendance_pin)
+
+	if not all([first_name, last_name, email, department_id]):
+		return Response(
+			{'detail': 'first_name, last_name, email, department required'},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+
+	# Validate salary
+	try:
+		float(salary)
+	except (ValueError, TypeError):
+		return Response({'detail': 'salary must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+
+	# Validate date
+	try:
+		hired_at = date_type.fromisoformat(hired_at_str)
+	except (ValueError, TypeError):
+		return Response({'detail': 'hired_at must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
+
+	# Validate department
+	try:
+		dept = Department.objects.get(id=department_id)
+	except Department.DoesNotExist:
+		return Response({'detail': 'Department not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	# Email uniqueness check (exclude current employee)
+	if Employee.objects.filter(email=email).exclude(id=employee.id).exists():
+		return Response({'detail': 'Employee with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+	# If email changed, keep User in sync and check user email conflicts
+	old_email = employee.email
+	if old_email != email:
+		if User.objects.filter(email=email).exclude(email=old_email).exists():
+			return Response({'detail': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+		related_user = User.objects.filter(email=old_email).first()
+		if related_user:
+			related_user.email = email
+			related_user.save(update_fields=['email'])
+
+	employee.first_name = first_name
+	employee.last_name = last_name
+	employee.email = email
+	employee.department = dept
+	employee.salary = salary
+	employee.hired_at = hired_at
+	employee.attendance_pin = attendance_pin or ''
+	employee.save()
+
+	return Response({
+		'success': True,
+		'employee': {
+			'id': employee.id,
+			'first_name': employee.first_name,
+			'last_name': employee.last_name,
+			'email': employee.email,
+			'department': {
+				'id': employee.department.id,
+				'name': employee.department.name,
+			},
+			'salary': str(employee.salary),
+			'hired_at': employee.hired_at.isoformat(),
+		}
+	})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, IsGRH])
+def delete_employee(request, pk):
+	"""Delete employee and linked user account (GRH only)."""
+	try:
+		employee = Employee.objects.get(id=pk)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	email = employee.email
+	employee.delete()
+
+	# Also remove linked User account if it exists
+	related_user = User.objects.filter(email=email).first()
+	if related_user:
+		related_user.delete()
+
+	return Response({'success': True, 'detail': 'Employee deleted successfully'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsGRH])
+def reset_employee_password(request, pk):
+	"""Generate and set a new temporary password for employee user account (GRH only)."""
+	try:
+		employee = Employee.objects.get(id=pk)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	user = User.objects.filter(email=employee.email).first()
+	if not user:
+		# Recreate user if missing
+		temp_password = secrets.token_urlsafe(12)
+		user = User.objects.create_user(
+			email=employee.email,
+			password=temp_password,
+			role='employee'
+		)
+		return Response({
+			'success': True,
+			'detail': 'User account was missing and has been recreated',
+			'credentials': {
+				'email': user.email,
+				'temporary_password': temp_password,
+			}
+		})
+
+	new_password = secrets.token_urlsafe(12)
+	user.set_password(new_password)
+	user.save(update_fields=['password'])
+
+	return Response({
+		'success': True,
+		'detail': 'Password reset successfully',
+		'credentials': {
+			'email': user.email,
+			'temporary_password': new_password,
+		}
+	})
