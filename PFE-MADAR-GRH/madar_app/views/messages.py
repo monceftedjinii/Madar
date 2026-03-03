@@ -28,6 +28,27 @@ def is_user_blocked(sender, recipient):
     """Check if sender is blocked by recipient."""
     return BlockedUser.objects.filter(blocker=recipient, blocked=sender).exists()
 
+def get_user_display_name(user):
+    """Get display name for a user from Employee model if available, fallback to User details."""
+    try:
+        employee = Employee.objects.get(email=user.email)
+        full_name = f"{employee.first_name} {employee.last_name}".strip()
+        if full_name:
+            return full_name
+    except Employee.DoesNotExist:
+        pass
+    
+    # Fallback to User first_name and last_name
+    if user.first_name and user.last_name:
+        return f"{user.first_name} {user.last_name}"
+    elif user.first_name:
+        return user.first_name
+    elif user.last_name:
+        return user.last_name
+    
+    # Final fallback to email
+    return user.email
+
 def serialize_message(msg, requesting_user=None):
     """Serialize a message with attachments and report status."""
     data = {
@@ -35,12 +56,12 @@ def serialize_message(msg, requesting_user=None):
         'sender': {
             'id': msg.sender.id,
             'email': msg.sender.email,
-            'name': f"{msg.sender.first_name} {msg.sender.last_name}".strip() or msg.sender.email
+            'name': get_user_display_name(msg.sender)
         },
         'recipient': {
             'id': msg.recipient.id,
             'email': msg.recipient.email,
-            'name': f"{msg.recipient.first_name} {msg.recipient.last_name}".strip() or msg.recipient.email
+            'name': get_user_display_name(msg.recipient)
         },
         'subject': msg.subject,
         'body': msg.body,

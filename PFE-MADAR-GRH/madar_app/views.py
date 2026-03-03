@@ -51,7 +51,10 @@ def employees_list(request):
 	data = [
 		{
 			'id': e.id,
+			'first_name': e.first_name,
+			'last_name': e.last_name,
 			'full_name': f"{e.first_name} {e.last_name}",
+			'email': e.email,
 			'department': e.department.name if e.department else None,
 		}
 		for e in qs.order_by('id')
