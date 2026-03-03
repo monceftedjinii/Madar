@@ -3,7 +3,7 @@ Django signals for automatic User creation when Employees are created.
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Employee, User
+from .models import Employee, User, RoleChoices
 import secrets
 
 
@@ -25,7 +25,7 @@ def create_user_for_employee(sender, instance, created, **kwargs):
             user = User.objects.create_user(
                 email=instance.email,
                 password=temp_password,
-                role='employee'
+                role=RoleChoices.EMPLOYEE
             )
-            print(f"[SIGNAL] Created User account for employee {instance.email} (role: employee)")
+            print(f"[SIGNAL] Created User account for employee {instance.email} (role: EMPLOYEE)")
             print(f"[SIGNAL] Temporary password: {temp_password} (should be reset by user)")

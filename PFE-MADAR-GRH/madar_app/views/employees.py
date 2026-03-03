@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from ..models import Department, Employee, User
+from ..models import Department, Employee, User, RoleChoices
 from ..permissions import IsGRH
 from ..scopes import employee_queryset_for
 import secrets
@@ -98,7 +98,7 @@ def create_employee(request):
 	user = User.objects.create_user(
 		email=email,
 		password=temp_password,
-		role='employee'
+		role=RoleChoices.EMPLOYEE
 	)
 	print(f"[API] Created User account for {email}")
 	
@@ -260,7 +260,7 @@ def reset_employee_password(request, pk):
 		user = User.objects.create_user(
 			email=employee.email,
 			password=temp_password,
-			role='employee'
+			role=RoleChoices.EMPLOYEE
 		)
 		return Response({
 			'success': True,
