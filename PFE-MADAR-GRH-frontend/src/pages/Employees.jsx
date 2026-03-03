@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 
 export default function Employees() {
@@ -6,6 +7,9 @@ export default function Employees() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const canAddEmployee = user?.role === 'GRH';
 
   useEffect(() => {
     fetchEmployees();
@@ -40,7 +44,14 @@ export default function Employees() {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     },
     header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
       marginBottom: '30px'
+    },
+    headerText: {
+      display: 'flex',
+      flexDirection: 'column'
     },
     title: {
       fontSize: '28px',
@@ -51,6 +62,16 @@ export default function Employees() {
     subtitle: {
       fontSize: '14px',
       color: '#666'
+    },
+    addButton: {
+      display: 'inline-block',
+      padding: '10px 14px',
+      fontSize: '13px',
+      fontWeight: '600',
+      color: '#fff',
+      backgroundColor: '#2563eb',
+      borderRadius: '6px',
+      textDecoration: 'none'
     },
     filterSection: {
       backgroundColor: 'white',
@@ -158,8 +179,15 @@ export default function Employees() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Employees</h1>
-        <p style={styles.subtitle}>View all employees in your department</p>
+        <div style={styles.headerText}>
+          <h1 style={styles.title}>Employees</h1>
+          <p style={styles.subtitle}>View all employees in your department</p>
+        </div>
+        {canAddEmployee && (
+          <Link to="/employees/add" style={styles.addButton}>
+            + Add Employee
+          </Link>
+        )}
       </div>
 
       {error && (
