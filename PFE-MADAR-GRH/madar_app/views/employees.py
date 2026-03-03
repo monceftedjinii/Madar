@@ -12,23 +12,50 @@ from datetime import date as date_type
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def employees_list(request):
-	qs = employee_queryset_for(request.user)
-	data = [
-		{
+	# Check if this is for messaging (should return all employees for message recipients)
+	for_messaging = request.query_params.get('for_messaging', 'false').lower() == 'true'
+	
+	if for_messaging:
+		# For messaging, return all employees so users can message anyone (except themselves)
+		qs = Employee.objects.all()
+	else:
+		# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
+		qs = employee_queryset_for(request.user)
+	
+	data = []
+	current_user_id = request.user.id
+	current_user_email = request.user.email
+	
+	for e in qs.order_by('id'):
+		employee_data = {
 			'id': e.id,
 			'first_name': e.first_name,
 			'last_name': e.last_name,
 			'email': e.email,
-			'salary': str(e.salary),
+			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
-			'attendance_pin': e.attendance_pin,
+			'attendance_pin': e.attendance_pin if not for_messaging else None,
 			'department': {
 				'id': e.department.id,
 				'name': e.department.name,
 			} if e.department else None,
 		}
-		for e in qs.order_by('id')
-	]
+		
+		# For messaging, find the User ID for this employee
+		if for_messaging:
+			try:
+				user = User.objects.get(email=e.email)
+				# Skip the current user by comparing IDs - can't message themselves
+				if user.id == current_user_id:
+					continue
+				employee_data['user_id'] = user.id
+				data.append(employee_data)
+			except User.DoesNotExist:
+				# For messaging, skip employees without User accounts
+				continue
+		else:
+			data.append(employee_data)
+	
 	return Response(data)
 
 

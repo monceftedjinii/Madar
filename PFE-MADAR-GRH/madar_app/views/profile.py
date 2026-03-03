@@ -7,41 +7,45 @@ from django.db import transaction
 from ..models import User, Employee
 
 
+def _employee_for_user(user):
+    return Employee.objects.filter(email=user.email).select_related('department').first()
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_profile(request):
     """Get current user's profile information"""
     user = request.user
+    employee = _employee_for_user(user)
+
+    first_name = user.first_name or (employee.first_name if employee else '')
+    last_name = user.last_name or (employee.last_name if employee else '')
     
     profile_data = {
         'id': user.id,
         'email': user.email,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
+        'first_name': first_name,
+        'last_name': last_name,
         'role': user.role,
         'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
         'employee_info': None
     }
     
-    # Try to get employee information if this user is linked to an employee
-    try:
-        employee = Employee.objects.get(user=user)
+    if employee:
         profile_data['employee_info'] = {
             'id': employee.id,
-            'phone_number': employee.phone_number,
-            'address': employee.address,
-            'date_of_birth': employee.date_of_birth,
-            'hire_date': employee.hire_date,
-            'salary': employee.salary,
-            'position': employee.position,
+            'phone_number': None,
+            'address': None,
+            'date_of_birth': None,
+            'hire_date': employee.hired_at.isoformat() if employee.hired_at else None,
+            'salary': str(employee.salary) if employee.salary is not None else None,
+            'position': None,
             'department': {
                 'id': employee.department.id,
                 'name': employee.department.name,
-                'description': employee.department.description
+                'description': None
             } if employee.department else None
         }
-    except Employee.DoesNotExist:
-        pass
     
     return Response(profile_data)
 
@@ -55,6 +59,8 @@ def update_profile(request):
     
     try:
         with transaction.atomic():
+            employee = _employee_for_user(user)
+
             # Update user fields
             if 'first_name' in request.data:
                 user.first_name = request.data['first_name']
@@ -70,24 +76,19 @@ def update_profile(request):
             
             user.save()
             
-            # Update employee info if exists and data provided
-            try:
-                employee = Employee.objects.get(user=user)
-                
-                if 'phone_number' in request.data:
-                    employee.phone_number = request.data['phone_number']
-                if 'address' in request.data:
-                    employee.address = request.data['address']
-                
-                # Update employee profile picture to match user
+            # Keep Employee names/picture in sync when linked by email
+            if employee:
+                if 'first_name' in request.data:
+                    employee.first_name = request.data['first_name']
+                if 'last_name' in request.data:
+                    employee.last_name = request.data['last_name']
+
                 if 'profile_picture' in request.FILES:
                     if employee.profile_picture:
                         employee.profile_picture.delete(save=False)
                     employee.profile_picture = request.FILES['profile_picture']
-                
+
                 employee.save()
-            except Employee.DoesNotExist:
-                pass
             
             # Return updated profile
             profile_data = {
@@ -109,3 +110,34 @@ def update_profile(request):
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """Change password for current authenticated user."""
+    user = request.user
+
+    current_password = request.data.get('current_password', '')
+    new_password = request.data.get('new_password', '')
+    confirm_password = request.data.get('confirm_password', '')
+
+    if not current_password or not new_password or not confirm_password:
+        return Response({'detail': 'current_password, new_password, confirm_password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not user.check_password(current_password):
+        return Response({'detail': 'Current password is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != confirm_password:
+        return Response({'detail': 'New password and confirmation do not match'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response({'detail': 'New password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if current_password == new_password:
+        return Response({'detail': 'New password must be different from current password'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+
+    return Response({'success': True, 'detail': 'Password changed successfully'})

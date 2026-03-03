@@ -18,6 +18,13 @@ export default function Profile() {
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [activeSection, setActiveSection] = useState('account');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
 
   useEffect(() => {
     fetchProfile();
@@ -102,6 +109,42 @@ export default function Profile() {
     navigate('/login');
   };
 
+  const handlePasswordInputChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!passwordForm.current_password || !passwordForm.new_password || !passwordForm.confirm_password) {
+      setError('Please fill all password fields');
+      return;
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setError('New password and confirmation do not match');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const response = await api.post('/api/profile/change-password/', passwordForm);
+      setSuccess(response.data?.detail || 'Password changed successfully');
+      setPasswordForm({
+        current_password: '',
+        new_password: '',
+        confirm_password: '',
+      });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return <div style={styles.loading}>Loading profile...</div>;
   }
@@ -121,8 +164,28 @@ export default function Profile() {
             <button style={styles.menuItem} onClick={() => navigate('/dashboard')}>
               Dashboard
             </button>
-            <button style={{ ...styles.menuItem, ...styles.menuItemActive }} type="button">
+            <button
+              style={{ ...styles.menuItem, ...(activeSection === 'account' ? styles.menuItemActive : {}) }}
+              type="button"
+              onClick={() => {
+                setActiveSection('account');
+                setError('');
+                setSuccess('');
+              }}
+            >
               Account Details
+            </button>
+            <button
+              style={{ ...styles.menuItem, ...(activeSection === 'password' ? styles.menuItemActive : {}) }}
+              type="button"
+              onClick={() => {
+                setActiveSection('password');
+                setError('');
+                setSuccess('');
+                setIsEditing(false);
+              }}
+            >
+              Change Password
             </button>
             <button style={styles.menuItem} type="button" onClick={handleLogout}>
               Logout
@@ -136,6 +199,7 @@ export default function Profile() {
           {error && <div style={styles.error}>{error}</div>}
           {success && <div style={styles.success}>{success}</div>}
 
+          {activeSection === 'account' ? (
           <form onSubmit={handleSubmit}>
             <div style={styles.fieldGroup}>
               <label style={styles.label}>Email address</label>
@@ -223,6 +287,48 @@ export default function Profile() {
               )}
             </div>
           </form>
+          ) : (
+          <form onSubmit={handleChangePassword}>
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Current password</label>
+              <input
+                type="password"
+                name="current_password"
+                value={passwordForm.current_password}
+                onChange={handlePasswordInputChange}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>New password</label>
+              <input
+                type="password"
+                name="new_password"
+                value={passwordForm.new_password}
+                onChange={handlePasswordInputChange}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Confirm new password</label>
+              <input
+                type="password"
+                name="confirm_password"
+                value={passwordForm.confirm_password}
+                onChange={handlePasswordInputChange}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.actions}>
+              <button type="submit" style={styles.primaryButton} disabled={changingPassword}>
+                {changingPassword ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </form>
+          )}
         </main>
       </div>
     </div>

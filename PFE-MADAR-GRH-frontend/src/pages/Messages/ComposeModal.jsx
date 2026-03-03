@@ -23,10 +23,14 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
       // Backend now excludes current user automatically from recipient list
       console.log('[MESSAGING] Recipients list from backend:', response.data);
       console.log('[MESSAGING] Number of recipients:', response.data?.length || 0);
+      if (response.data.length === 0) {
+        console.warn('[MESSAGING] WARNING: Empty recipient list! Check backend logs for details.');
+        setError('No recipients available. Check if employees have user accounts.');
+      }
       setRecipients(response.data || []);
     } catch (err) {
       console.error('Failed to fetch employees:', err);
-      setError('Failed to load recipients');
+      setError(`Failed to load recipients: ${err.message}`);
     }
   };
 
@@ -322,11 +326,13 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
               onChange={(e) => setRecipientId(e.target.value)}
             >
               <option value="">Select a recipient...</option>
-              {recipients.map((emp) => (
-                <option key={emp.id} value={emp.user_id || emp.id}>
-                  {getRecipientName(emp)} ({emp.email})
-                </option>
-              ))}
+              {recipients
+                .filter(emp => emp.user_id) // Only show recipients with user_id
+                .map((emp) => (
+                  <option key={emp.id} value={emp.user_id}>
+                    {getRecipientName(emp)} ({emp.email})
+                  </option>
+                ))}
             </select>
           </div>
 

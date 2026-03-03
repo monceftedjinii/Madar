@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/whoami/', madar_views.whoami, name='api-whoami'),
     path('api/profile/', madar_views.get_profile, name='api-profile'),
     path('api/profile/update/', madar_views.update_profile, name='api-profile-update'),
+    path('api/profile/change-password/', madar_views.change_password, name='api-profile-change-password'),
     path('api/employees/', madar_views.employees_list, name='api-employees'),
     path('api/employees/create/', madar_views.create_employee, name='api-employees-create'),
     path('api/employees/<int:pk>/update/', madar_views.update_employee, name='api-employees-update'),
