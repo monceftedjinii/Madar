@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import api from '../api';
 
 export default function AddEmployee() {
   const [formData, setFormData] = useState({
