@@ -47,9 +47,19 @@ def whoami(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def employees_list(request):
-	qs = employee_queryset_for(request.user)
-	data = [
-		{
+	# Check if this is for messaging (should return all employees for message recipients)
+	for_messaging = request.query_params.get('for_messaging', 'false').lower() == 'true'
+	
+	if for_messaging:
+		# For messaging, return all employees so users can message anyone
+		qs = Employee.objects.all()
+	else:
+		# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
+		qs = employee_queryset_for(request.user)
+	
+	data = []
+	for e in qs.order_by('id'):
+		employee_data = {
 			'id': e.id,
 			'first_name': e.first_name,
 			'last_name': e.last_name,
@@ -57,8 +67,18 @@ def employees_list(request):
 			'email': e.email,
 			'department': e.department.name if e.department else None,
 		}
-		for e in qs.order_by('id')
-	]
+		
+		# For messaging, also include the User ID
+		if for_messaging:
+			try:
+				user = User.objects.get(email=e.email)
+				employee_data['user_id'] = user.id
+			except User.DoesNotExist:
+				# Skip employees without User accounts when for_messaging=true
+				continue
+		
+		data.append(employee_data)
+	
 	return Response(data)
 
 

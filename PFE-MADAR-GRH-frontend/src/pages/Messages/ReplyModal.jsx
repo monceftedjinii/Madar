@@ -16,7 +16,7 @@ export default function ReplyModal({ originalMessage, isForward = false, onClose
 
   const fetchEmployees = async () => {
     try {
-      const response = await api.get('/api/employees/');
+      const response = await api.get('/api/employees/?for_messaging=true');
       setEmployees(response.data);
     } catch (err) {
       console.error('Failed to fetch employees', err);
@@ -205,8 +205,8 @@ export default function ReplyModal({ originalMessage, isForward = false, onClose
             >
               <option value="">-- Select recipient --</option>
               {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.email})
+                <option key={emp.id} value={emp.user_id || emp.id}>
+                  {emp.full_name || `${emp.first_name} ${emp.last_name}` || emp.email} ({emp.email})
                 </option>
               ))}
             </select>

@@ -19,7 +19,7 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
 
   const fetchRecipients = async () => {
     try {
-      const response = await api.get('/api/employees/');
+      const response = await api.get('/api/employees/?for_messaging=true');
       setRecipients(response.data || []);
     } catch (err) {
       console.error('Failed to fetch employees:', err);
@@ -104,18 +104,27 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
         formData.append('attachments', file);
       });
 
-      const response = await api.post('/api/messages/send/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.post('/api/messages/send/', formData);
 
       if (response.data.success) {
-        setSuccess('Message sent successfully!');
+        const attachmentCount = response.data.attachments_count || 0;
+        const msg = attachmentCount > 0 
+          ? `Message sent successfully with ${attachmentCount} attachment(s)!`
+          : 'Message sent successfully!';
+        setSuccess(msg);
+        console.log('Message sent response:', response.data);
         setTimeout(() => {
           onSent();
         }, 1000);
       }
     } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to send message');
+        const detail = err.response?.data?.detail;
+        const attachmentErrors = err.response?.data?.attachment_errors;
+        let errorMsg = detail || 'Failed to send message';
+        if (attachmentErrors && attachmentErrors.length > 0) {
+          errorMsg += '\n\nAttachment errors:\n' + attachmentErrors.join('\n');
+        }
+        setError(errorMsg);
     } finally {
       setSending(false);
     }
@@ -311,7 +320,7 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
             >
               <option value="">Select a recipient...</option>
               {recipients.map((emp) => (
-                <option key={emp.id} value={emp.id}>
+                <option key={emp.id} value={emp.user_id || emp.id}>
                   {getRecipientName(emp)} ({emp.email})
                 </option>
               ))}

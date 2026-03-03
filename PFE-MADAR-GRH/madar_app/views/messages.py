@@ -315,36 +315,53 @@ def send_message(request):
     # Handle attachments
     files = request.FILES.getlist('attachments')
     attachment_errors = []
+    attachment_count = 0
     
-    for file in files:
-        # Validate file size
-        file_size_mb = file.size / (1024 * 1024)
-        if file_size_mb > settings.max_attachment_size_mb:
-            attachment_errors.append(f'{file.name}: exceeds max size of {settings.max_attachment_size_mb}MB')
-            file.close()
-            continue
-        
-        # Validate file extension
-        file_ext = os.path.splitext(file.name)[1].lstrip('.').lower()
-        allowed_exts = [ext.strip() for ext in settings.allowed_file_extensions.split(',')]
-        if file_ext and file_ext not in allowed_exts:
-            attachment_errors.append(f'{file.name}: file type not allowed (allowed: {settings.allowed_file_extensions})')
-            file.close()
-            continue
-        
-        # Create attachment
-        MessageAttachment.objects.create(
-            message=msg,
-            file=file,
-            file_name=file.name,
-            file_size=file.size,
-        )
+    logger.info(f'send_message: received {len(files)} files, message {msg.id} created')
     
-    logger.info(f'send_message: message {msg.id} created')
+    for i, file in enumerate(files):
+        try:
+            # Validate file size
+            file_size_mb = file.size / (1024 * 1024)
+            if file_size_mb > settings.max_attachment_size_mb:
+                error_msg = f'{file.name}: exceeds max size of {settings.max_attachment_size_mb}MB'
+                attachment_errors.append(error_msg)
+                logger.warning(f'send_message: {error_msg}')
+                file.close()
+                continue
+            
+            # Validate file extension
+            file_ext = os.path.splitext(file.name)[1].lstrip('.').lower()
+            allowed_exts = [ext.strip() for ext in settings.allowed_file_extensions.split(',')]
+            if file_ext and file_ext not in allowed_exts:
+                error_msg = f'{file.name}: file type not allowed (allowed: {settings.allowed_file_extensions})'
+                attachment_errors.append(error_msg)
+                logger.warning(f'send_message: {error_msg}')
+                file.close()
+                continue
+            
+            logger.info(f'send_message: saving attachment {i+1}/{len(files)}: {file.name} ({file_size_mb:.2f}MB)')
+            
+            # Create attachment
+            att = MessageAttachment.objects.create(
+                message=msg,
+                file=file,
+                file_name=file.name,
+                file_size=file.size,
+            )
+            attachment_count += 1
+            logger.info(f'send_message: attachment {att.id} saved successfully for message {msg.id}')
+        except Exception as e:
+            error_msg = f'{file.name}: upload error - {str(e)}'
+            attachment_errors.append(error_msg)
+            logger.error(f'send_message: {error_msg}')
+    
+    logger.info(f'send_message: completed - message {msg.id} with {attachment_count}/{len(files)} attachments')
     
     return Response({
         'id': msg.id,
         'success': True,
+        'attachments_count': attachment_count,
         'attachment_errors': attachment_errors if attachment_errors else None
     }, status=status.HTTP_201_CREATED)
 
