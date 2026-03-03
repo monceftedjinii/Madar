@@ -13,6 +13,7 @@ import DisciplineFlags from './pages/DisciplineFlags'
 import Documents from './pages/Documents'
 import Reports from './pages/Reports'
 import Employees from './pages/Employees'
+import AddEmployee from './pages/AddEmployee'
 import Messages from './pages/Messages/Messages'
 
 function PrivateRoute({ children }) {
@@ -135,6 +136,14 @@ function App() {
           element={
             <PrivateRoute>
               <Employees />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/employees/add"
+          element={
+            <PrivateRoute>
+              <AddEmployee />
             </PrivateRoute>
           }
         />

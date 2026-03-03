@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/whoami/', madar_views.whoami, name='api-whoami'),
     path('api/employees/', madar_views.employees_list, name='api-employees'),
+    path('api/employees/create/', madar_views.create_employee, name='api-employees-create'),
     path('api/departments/', madar_views.departments_list, name='api-departments'),
     path('api/tasks/', madar_views.create_task, name='api-tasks-create'),
     path('api/tasks/me/', madar_views.my_tasks, name='api-tasks-me'),

@@ -67,11 +67,11 @@ export default function SentView({ onSelectMessage, refreshTrigger }) {
     },
     recipient: {
       fontWeight: 600,
-      color: '#333',
-      flex: '0 0 150px',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
+      color: '#666',
+      flex: '0 0 200px',
+      whiteSpace: 'normal',
+      fontSize: '13px',
+      lineHeight: '1.4'
     },
     content: {
       flex: 1,
@@ -165,7 +165,8 @@ export default function SentView({ onSelectMessage, refreshTrigger }) {
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
           >
             <div style={styles.recipient}>
-              To: {msg.recipient.name || msg.recipient.email}
+              <div><strong>From:</strong> You</div>
+              <div><strong>To:</strong> {msg.recipient.name || msg.recipient.email}</div>
             </div>
             
             <div style={styles.content}>

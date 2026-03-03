@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.utils.html import format_html
 from .models import User, Department, Employee
 from .models import Task
 from .models import Attendance
@@ -8,6 +9,7 @@ from .models import LeaveRequest
 from .models import AbsenceWarning, DisciplineFlag, Notification
 from .models import DocumentType, Document, DocumentHistory
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
+import secrets
 
 
 
@@ -48,10 +50,67 @@ admin.site.register(Department)
 
 
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'department', 'attendance_pin')
+	list_display = ('email', 'first_name', 'last_name', 'department', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name')
 	list_filter = ('department',)
-	fields = ('first_name', 'last_name', 'email', 'department', 'hired_at', 'salary', 'attendance_pin')
+	fields = ('first_name', 'last_name', 'email', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	readonly_fields = ('user_login_info',)
+	actions = ['reset_user_password']
+
+	def user_status(self, obj):
+		"""Display if employee has a User account."""
+		try:
+			user = User.objects.get(email=obj.email)
+			return format_html(
+				'<span style="color: green;">✓ User</span>'
+			)
+		except User.DoesNotExist:
+			return format_html(
+				'<span style="color: red;">✗ No User</span>'
+			)
+	user_status.short_description = 'Login Status'
+
+	def user_login_info(self, obj):
+		"""Display employee's login information."""
+		try:
+			user = User.objects.get(email=obj.email)
+			return format_html(
+				'<div style="background: #e8f4f8; padding: 12px; border-radius: 4px;">'
+				'<strong>Email:</strong> {}<br>'
+				'<strong>Login:</strong> Use email + password set by admin<br>'
+				'<em>To reset password: Select employee and use "Reset user password" action below</em>'
+				'</div>',
+				user.email
+			)
+		except User.DoesNotExist:
+			return format_html(
+				'<div style="background: #f8e8e8; padding: 12px; border-radius: 4px;">'
+				'<em>No User account - will be created when saved</em>'
+				'</div>'
+			)
+	user_login_info.short_description = 'User Account Information'
+
+	def reset_user_password(self, request, queryset):
+		"""Admin action to reset user password."""
+		updated_count = 0
+		for employee in queryset:
+			try:
+				user = User.objects.get(email=employee.email)
+				# Generate new temporary password
+				new_password = secrets.token_urlsafe(12)
+				user.set_password(new_password)
+				user.save()
+				updated_count += 1
+				# Print to console so admin can see it
+				print(f"[ADMIN] Reset password for {user.email}: {new_password}")
+				self.message_user(request, f'✓ Reset password for {employee.email} to: {new_password}')
+			except User.DoesNotExist:
+				self.message_user(request, f'✗ No User account for {employee.email}', level='error')
+		
+		# Show final message
+		msg = f'Password reset for {updated_count} employee(s). Check browser notifications for passwords.'
+		self.message_user(request, msg)
+	reset_user_password.short_description = 'Reset user password(s)'
 
 
 admin.site.register(Employee, EmployeeAdmin)

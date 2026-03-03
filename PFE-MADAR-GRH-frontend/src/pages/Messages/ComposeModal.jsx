@@ -20,6 +20,9 @@ export default function ComposeModal({ onClose, onSent, onComposed }) {
   const fetchRecipients = async () => {
     try {
       const response = await api.get('/api/employees/?for_messaging=true');
+      // Backend now excludes current user automatically from recipient list
+      console.log('[MESSAGING] Recipients list from backend:', response.data);
+      console.log('[MESSAGING] Number of recipients:', response.data?.length || 0);
       setRecipients(response.data || []);
     } catch (err) {
       console.error('Failed to fetch employees:', err);

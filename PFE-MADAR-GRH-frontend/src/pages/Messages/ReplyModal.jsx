@@ -17,6 +17,7 @@ export default function ReplyModal({ originalMessage, isForward = false, onClose
   const fetchEmployees = async () => {
     try {
       const response = await api.get('/api/employees/?for_messaging=true');
+      // Backend now excludes current user automatically from recipient list
       setEmployees(response.data);
     } catch (err) {
       console.error('Failed to fetch employees', err);
