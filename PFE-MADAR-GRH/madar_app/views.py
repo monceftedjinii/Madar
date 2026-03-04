@@ -37,10 +37,23 @@ def rbac_test(request):
 @permission_classes([IsAuthenticated])
 def whoami(request):
 	user = request.user
+	emp = Employee.objects.filter(email=user.email).select_related('department', 'position').first()
+	
+	first_name = user.first_name or (emp.first_name if emp else "")
+	last_name = user.last_name or (emp.last_name if emp else "")
+	
 	return Response({
 		'id': user.id,
 		'email': user.email,
+		'first_name': first_name,
+		'last_name': last_name,
 		'role': getattr(user, 'role', None),
+		'position': (emp.position.name if emp and emp.position else user.role) or "Assistant",
+		'department': emp.department.name if emp and emp.department else "General",
+		'phone_number': emp.phone_number if emp else "",
+		'address': emp.address if emp else "",
+		'profile_picture': user.profile_picture.url if user.profile_picture else (emp.profile_picture.url if emp and emp.profile_picture else None),
+		'is_online': True, # Placeholder for online status
 	})
 
 
