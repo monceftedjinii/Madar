@@ -2,11 +2,20 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from django.conf import settings
+from django.utils import timezone
 from ..models import Department, Employee, Position, User, RoleChoices
 from ..permissions import IsGRH
 from ..scopes import employee_queryset_for
 import secrets
 from datetime import date as date_type
+
+
+def _is_user_online(user):
+	if not user or not user.last_seen:
+		return False
+	window_seconds = getattr(settings, 'ONLINE_WINDOW_SECONDS', 300)
+	return (timezone.now() - user.last_seen).total_seconds() <= window_seconds
 
 
 def _resolve_position(position_value):
@@ -37,12 +46,17 @@ def employees_list(request):
 	else:
 		# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
 		qs = employee_queryset_for(request.user)
+
+	employees = list(qs.order_by('id'))
+	emails = [e.email for e in employees]
+	users_by_email = {u.email: u for u in User.objects.filter(email__in=emails)}
 	
 	data = []
 	current_user_id = request.user.id
 	current_user_email = request.user.email
 	
-	for e in qs.order_by('id'):
+	for e in employees:
+		related_user = users_by_email.get(e.email)
 		employee_data = {
 			'id': e.id,
 			'first_name': e.first_name,
@@ -50,6 +64,7 @@ def employees_list(request):
 			'position': e.position.name if e.position else '',
 			'position_id': e.position.id if e.position else None,
 			'email': e.email,
+			'is_online': _is_user_online(related_user),
 			'phone_number': e.phone_number if not for_messaging else None,
 			'address': e.address if not for_messaging else None,
 			'salary': str(e.salary) if not for_messaging else None,
@@ -64,7 +79,7 @@ def employees_list(request):
 		# For messaging, find the User ID for this employee
 		if for_messaging:
 			try:
-				user = User.objects.get(email=e.email)
+				user = related_user or User.objects.get(email=e.email)
 				# Skip the current user by comparing IDs - can't message themselves
 				if user.id == current_user_id:
 					continue

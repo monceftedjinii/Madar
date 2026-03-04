@@ -1,8 +1,34 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+from django.utils import timezone
 from ..permissions import IsGRH
 from ..models import Employee
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+def is_user_online(user):
+	if not user or not user.last_seen:
+		return False
+	window_seconds = getattr(settings, 'ONLINE_WINDOW_SECONDS', 300)
+	return (timezone.now() - user.last_seen).total_seconds() <= window_seconds
+
+
+class ActiveTokenObtainPairSerializer(TokenObtainPairSerializer):
+	def validate(self, attrs):
+		data = super().validate(attrs)
+		self.user.last_seen = timezone.now()
+		self.user.save(update_fields=['last_seen'])
+		return data
+
+
+class ActiveTokenObtainPairView(TokenObtainPairView):
+	serializer_class = ActiveTokenObtainPairSerializer
+
+
+token_obtain_pair = ActiveTokenObtainPairView.as_view()
 
 
 @api_view(['GET'])
@@ -37,4 +63,5 @@ def whoami(request):
 		'phone_number': employee.phone_number if employee else None,
 		'address': employee.address if employee else None,
 		'profile_picture': user_picture or employee_picture,
+		'is_online': is_user_online(user),
 	})

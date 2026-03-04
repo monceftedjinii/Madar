@@ -140,7 +140,7 @@ AUTH_USER_MODEL = 'madar_app.User'
 # Django REST Framework config: prefer JWTAuthentication but keep SessionAuth
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'madar_app.authentication.ActivityJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
 }

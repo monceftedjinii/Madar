@@ -19,16 +19,13 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from madar_app import views as madar_views
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/ping/', madar_views.ping, name='api-ping'),
     path('api/rbac-test/', madar_views.rbac_test, name='api-rbac-test'),
-    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/', madar_views.token_obtain_pair, name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/whoami/', madar_views.whoami, name='api-whoami'),
     path('api/profile/', madar_views.get_profile, name='api-profile'),

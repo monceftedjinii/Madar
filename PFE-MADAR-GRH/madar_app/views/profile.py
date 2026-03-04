@@ -4,11 +4,20 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction
+from django.conf import settings
+from django.utils import timezone
 from ..models import User, Employee
 
 
 def _employee_for_user(user):
     return Employee.objects.filter(email=user.email).select_related('department', 'position').first()
+
+
+def _is_user_online(user):
+    if not user or not user.last_seen:
+        return False
+    window_seconds = getattr(settings, 'ONLINE_WINDOW_SECONDS', 300)
+    return (timezone.now() - user.last_seen).total_seconds() <= window_seconds
 
 
 @api_view(['GET'])
@@ -27,6 +36,7 @@ def get_profile(request):
         'first_name': first_name,
         'last_name': last_name,
         'role': user.role,
+        'is_online': _is_user_online(user),
         'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
         'employee_info': None
     }
@@ -40,6 +50,7 @@ def get_profile(request):
             'hire_date': employee.hired_at.isoformat() if employee.hired_at else None,
             'salary': str(employee.salary) if employee.salary is not None else None,
             'position': employee.position.name if employee.position else None,
+            'is_online': _is_user_online(user),
             'department': {
                 'id': employee.department.id,
                 'name': employee.department.name,

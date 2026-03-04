@@ -262,6 +262,25 @@ export default function Employees() {
       fontSize: '13px',
       color: '#666'
     },
+    statusBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 8px',
+      borderRadius: '999px',
+      fontSize: '12px',
+      fontWeight: '600'
+    },
+    onlineBadge: {
+      backgroundColor: '#e7f8ee',
+      color: '#1f7a3e',
+      border: '1px solid #9bd3b0'
+    },
+    offlineBadge: {
+      backgroundColor: '#f1f3f5',
+      color: '#5f6773',
+      border: '1px solid #d0d5dd'
+    },
     actionsCell: {
       padding: '12px 16px',
       display: 'flex',
@@ -352,6 +371,7 @@ export default function Employees() {
               <thead style={styles.tableHeader}>
                 <tr>
                   <th style={styles.tableHeaderCell}>Full Name</th>
+                  <th style={styles.tableHeaderCell}>Status</th>
                   <th style={styles.tableHeaderCell}>Phone</th>
                   <th style={styles.tableHeaderCell}>Address</th>
                   <th style={styles.tableHeaderCell}>Poste</th>
@@ -370,6 +390,16 @@ export default function Employees() {
                   >
                     <td style={styles.tableCell}>
                       {`${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || `User #${emp.id}`}
+                    </td>
+                    <td style={styles.tableCell}>
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          ...(emp.is_online ? styles.onlineBadge : styles.offlineBadge),
+                        }}
+                      >
+                        {emp.is_online ? '● Online' : '○ Offline'}
+                      </span>
                     </td>
                     <td style={styles.tableCell}>{emp.phone_number || '-'}</td>
                     <td style={styles.tableCell}>{emp.address || '-'}</td>

@@ -1,7 +1,7 @@
 # madar_app/views/__init__.py
 # Central re-export: keeps config/urls.py intact (no changes needed there).
 
-from .auth import ping, rbac_test, whoami
+from .auth import ping, rbac_test, whoami, token_obtain_pair
 from .employees import employees_list, departments_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, mark_task_done
@@ -60,7 +60,7 @@ from .messages import (
 
 __all__ = [
 	# auth
-	'ping', 'rbac_test', 'whoami',
+	'ping', 'rbac_test', 'whoami', 'token_obtain_pair',
 	# employees
 	'employees_list', 'departments_list', 'positions_list', 'create_employee', 'update_employee', 'delete_employee', 'reset_employee_password',
 	# profile
