@@ -7,6 +7,7 @@ class RoleChoices(models.TextChoices):
     EMPLOYEE = 'EMPLOYEE', 'Employee'
     CHEF = 'CHEF', 'Chef'
     RH_SIMPLE = 'RH_SIMPLE', 'RH'
+    RH_AGENT = 'RH_AGENT', 'RH Agent'
     RH_SENIOR = 'RH_SENIOR', 'Senior RH'
     GRH = 'GRH', 'GRH'
 
