@@ -47,15 +47,53 @@ def whoami(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def employees_list(request):
-	qs = employee_queryset_for(request.user)
-	data = [
-		{
+	# Check if this is for messaging (should return all employees for message recipients)
+	for_messaging = request.query_params.get('for_messaging', 'false').lower() == 'true'
+	
+	if for_messaging:
+		# For messaging, return all employees so users can message anyone (except themselves)
+		qs = Employee.objects.all()
+	else:
+		# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
+		qs = employee_queryset_for(request.user)
+	
+	data = []
+	current_user_id = request.user.id
+	current_user_email = request.user.email
+	print(f"[MESSAGING] Current user ID: {current_user_id}, Email: {current_user_email}")
+	print(f"[MESSAGING] Total employees to process: {qs.count()}")
+	
+	for e in qs.order_by('id'):
+		employee_data = {
 			'id': e.id,
+			'first_name': e.first_name,
+			'last_name': e.last_name,
 			'full_name': f"{e.first_name} {e.last_name}",
+			'email': e.email,
 			'department': e.department.name if e.department else None,
 		}
-		for e in qs.order_by('id')
-	]
+		
+		# For messaging, find the User ID for this employee
+		if for_messaging:
+			try:
+				user = User.objects.get(email=e.email)
+				# Skip the current user by comparing IDs - can't message themselves
+				if user.id == current_user_id:
+					print(f"[MESSAGING] Excluding user ID {user.id} ({user.email}) - current user")
+					continue
+				print(f"[MESSAGING] Including user ID {user.id} ({user.email}) as recipient")
+				employee_data['user_id'] = user.id
+				data.append(employee_data)
+			except User.DoesNotExist:
+				# For messaging, skip employees without User accounts
+				print(f"[MESSAGING] Skipping employee {e.email} - no User account")
+				continue
+		else:
+			data.append(employee_data)
+	
+	if for_messaging:
+		print(f"[MESSAGING] Final recipient count: {len(data)}")
+	
 	return Response(data)
 
 
@@ -888,3 +926,106 @@ def reports_summary(request):
 	data['user_role'] = request.user.role
 	
 	return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsGRH])
+def create_employee(request):
+	"""Create a new employee and auto-generate login credentials (GRH only)."""
+	import secrets
+	from datetime import date as date_type
+	
+	first_name = request.data.get('first_name', '').strip()
+	last_name = request.data.get('last_name', '').strip()
+	email = request.data.get('email', '').strip().lower()
+	department_id = request.data.get('department')
+	salary = request.data.get('salary', '0.00')
+	hired_at_str = request.data.get('hired_at')
+	attendance_pin = request.data.get('attendance_pin', '')
+	
+	# Validation
+	if not all([first_name, last_name, email, department_id]):
+		return Response(
+			{'detail': 'first_name, last_name, email, department required'}, 
+			status=status.HTTP_400_BAD_REQUEST
+		)
+	
+	# Validate salary is numeric
+	try:
+		float(salary)
+	except (ValueError, TypeError):
+		return Response({'detail': 'salary must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+	
+	# Check if email already exists
+	if Employee.objects.filter(email=email).exists():
+		return Response({'detail': 'Employee with this email already exists'}, 
+						status=status.HTTP_400_BAD_REQUEST)
+	
+	if User.objects.filter(email=email).exists():
+		return Response({'detail': 'User with this email already exists'}, 
+						status=status.HTTP_400_BAD_REQUEST)
+	
+	# Parse hired_at date
+	try:
+		if hired_at_str:
+			hired_at = date_type.fromisoformat(hired_at_str)
+		else:
+			hired_at = date_type.today()
+	except (ValueError, TypeError):
+		return Response({'detail': 'hired_at must be YYYY-MM-DD format'}, 
+						status=status.HTTP_400_BAD_REQUEST)
+	
+	# Get department
+	try:
+		dept = Department.objects.get(id=department_id)
+	except Department.DoesNotExist:
+		return Response({'detail': 'Department not found'}, 
+						status=status.HTTP_400_BAD_REQUEST)
+	
+	# Create User first (so signal sees it exists)
+	temp_password = secrets.token_urlsafe(12)
+	user = User.objects.create_user(
+		email=email,
+		password=temp_password,
+		role='employee'
+	)
+	print(f"[API] Created User account for {email}")
+	
+	# Create Employee (signal will check and skip User creation)
+	try:
+		employee = Employee.objects.create(
+			first_name=first_name,
+			last_name=last_name,
+			email=email,
+			department=dept,
+			salary=salary,
+			hired_at=hired_at,
+			attendance_pin=attendance_pin
+		)
+		print(f"[API] Created Employee {email}")
+	except Exception as e:
+		# If Employee creation fails, delete the User
+		user.delete()
+		print(f"[API] Failed to create Employee: {str(e)}")
+		return Response({'detail': f'Failed to create employee: {str(e)}'}, 
+						status=status.HTTP_400_BAD_REQUEST)
+	
+	return Response({
+		'success': True,
+		'employee': {
+			'id': employee.id,
+			'first_name': employee.first_name,
+			'last_name': employee.last_name,
+			'email': employee.email,
+			'department': dept.name,
+		},
+		'user': {
+			'id': user.id,
+			'email': user.email,
+		},
+		'credentials': {
+			'email': email,
+			'temporary_password': temp_password,
+			'message': f'Employee created successfully. Share these credentials with the employee to log in.'
+		}
+	}, status=status.HTTP_201_CREATED)

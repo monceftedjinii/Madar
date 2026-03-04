@@ -13,6 +13,11 @@ import DisciplineFlags from './pages/DisciplineFlags'
 import Documents from './pages/Documents'
 import Reports from './pages/Reports'
 import Employees from './pages/Employees'
+import AddEmployee from './pages/AddEmployee'
+import Messages from './pages/Messages/Messages'
+import Profile from './pages/Profile'
+import Formation from './pages/Formation'
+import AgentFormations from './pages/AgentFormations'
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('access_token')
@@ -134,6 +139,46 @@ function App() {
           element={
             <PrivateRoute>
               <Employees />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/employees/add"
+          element={
+            <PrivateRoute>
+              <AddEmployee />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <PrivateRoute>
+              <Messages />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/formation"
+          element={
+            <PrivateRoute>
+              <Formation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/agent/formations"
+          element={
+            <PrivateRoute>
+              <AgentFormations />
             </PrivateRoute>
           }
         />

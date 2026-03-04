@@ -7,6 +7,7 @@ class RoleChoices(models.TextChoices):
     EMPLOYEE = 'EMPLOYEE', 'Employee'
     CHEF = 'CHEF', 'Chef'
     RH_SIMPLE = 'RH_SIMPLE', 'RH'
+    RH_AGENT = 'RH_AGENT', 'RH Agent'
     RH_SENIOR = 'RH_SENIOR', 'Senior RH'
     GRH = 'GRH', 'GRH'
 
@@ -43,6 +44,7 @@ class User(AbstractUser):
     email = models.EmailField('email address', unique=True)
     role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.EMPLOYEE)
     attendance_pin_hash = models.CharField(max_length=128, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -88,6 +90,7 @@ class Employee(models.Model):
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     attendance_pin = models.CharField(max_length=4, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -252,3 +255,189 @@ class DocumentHistory(models.Model):
 
     def __str__(self):
         return f"{self.document} {self.action} by {self.by_user}"
+
+
+# ============================================================
+# MODULE 10: INTERNAL MESSAGING
+# ============================================================
+
+class Message(models.Model):
+    """Main message model for internal messaging system."""
+    sender = models.ForeignKey('User', on_delete=models.CASCADE, related_name='sent_messages')
+    recipient = models.ForeignKey('User', on_delete=models.CASCADE, related_name='received_messages')
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    is_read = models.BooleanField(default=False)
+    is_deleted_by_sender = models.BooleanField(default=False)
+    is_deleted_by_recipient = models.BooleanField(default=False)
+    parent_message = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    is_reply = models.BooleanField(default=False)
+    is_forward = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Message from {self.sender.email} to {self.recipient.email}: {self.subject}"
+
+
+class MessageAttachment(models.Model):
+    """File attachments for messages."""
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='message_attachments/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField()  # in bytes
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Attachment {self.file_name} for message {self.message.id}"
+
+
+class Draft(models.Model):
+    """Draft messages (only visible to creator, editable)."""
+    creator = models.ForeignKey('User', on_delete=models.CASCADE, related_name='drafts')
+    recipient = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='received_drafts')
+    subject = models.CharField(max_length=255, blank=True)
+    body = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Draft by {self.creator.email}: {self.subject}"
+
+
+class BlockedUser(models.Model):
+    """User blocking system."""
+    blocker = models.ForeignKey('User', on_delete=models.CASCADE, related_name='blocked_users')
+    blocked = models.ForeignKey('User', on_delete=models.CASCADE, related_name='blocked_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+
+    def __str__(self):
+        return f"{self.blocker.email} blocked {self.blocked.email}"
+
+
+class MessageReport(models.Model):
+    """Reported messages for moderation."""
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reports')
+    reporter = models.ForeignKey('User', on_delete=models.CASCADE, related_name='message_reports')
+    reason = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_reports')
+    resolution_note = models.TextField(blank=True)
+    message_hidden = models.BooleanField(default=False)
+    sender_blocked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('message', 'reporter')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report {self.id} on message {self.message.id} by {self.reporter.email}"
+
+
+class Announcement(models.Model):
+    """Internal announcements from Admin RH/DRH."""
+    class TargetScope(models.TextChoices):
+        GLOBAL = 'GLOBAL', 'All Users'
+        DEPARTMENT = 'DEPARTMENT', 'Specific Department'
+
+    creator = models.ForeignKey('User', on_delete=models.CASCADE, related_name='announcements')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    scope = models.CharField(max_length=20, choices=TargetScope.choices, default=TargetScope.GLOBAL)
+    target_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, related_name='announcements')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Announcement: {self.title}"
+
+
+class MessagingSettings(models.Model):
+    """Global messaging rules and settings (singleton)."""
+    max_attachment_size_mb = models.IntegerField(default=10)  # in MB
+    allowed_file_extensions = models.CharField(
+        max_length=500,
+        default='pdf,txt,doc,docx,xls,xlsx,jpg,jpeg,png,gif',
+        help_text='Comma-separated file extensions without dot'
+    )
+    blocking_enabled = models.BooleanField(default=True)
+    announcements_global_default = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'Messaging Settings'
+
+    def __str__(self):
+        return 'Messaging Settings'
+
+
+class FormationRequest(models.Model):
+    """Formation/Training request from Chef."""
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'En Attente'
+        WAITING_FOR_PEOPLE = 'WAITING_FOR_PEOPLE', 'Waiting for People List'
+        APPROVED = 'APPROVED', 'Approuvé'
+        REJECTED = 'REJECTED', 'Rejeté'
+
+    requested_by = models.ForeignKey('User', on_delete=models.CASCADE, related_name='formation_requests')
+    nom = models.CharField(max_length=255, help_text='Formation name')
+    description = models.TextField(help_text='Formation description')
+    reasons = models.TextField(blank=True, help_text='Reasons for requesting this formation')
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
+    approved_formation = models.ForeignKey('FormationCatalog', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.nom} - {self.get_status_display()}"
+
+
+class FormationCatalog(models.Model):
+    """Formation definitions managed by RH Agent."""
+    name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
+    duration_hours = models.PositiveIntegerField()
+    people_required = models.PositiveIntegerField(default=1)
+    company_email = models.EmailField()
+    company_phone = models.CharField(max_length=30)
+    company_address = models.CharField(max_length=500)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='created_formations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} - {self.company_name}"
+
+
+class FormationParticipant(models.Model):
+    """Participants assigned to a formation request."""
+    formation_request = models.ForeignKey(FormationRequest, on_delete=models.CASCADE, related_name='participants')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='formation_participations')
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('formation_request', 'employee')
+        ordering = ['added_at']
+
+    def __str__(self):
+        return f"{self.employee} in {self.formation_request.nom}"
