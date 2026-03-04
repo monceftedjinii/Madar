@@ -9,6 +9,7 @@ import "../styles/messagrie.css";
 export default function Messagrie() {
   const [dark, setDark] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(true);
+  const [search, setSearch] = useState("");
   return (
     <>
       <div
@@ -80,6 +81,8 @@ export default function Messagrie() {
                   type="text"
                   className="input"
                   placeholder={`chercher un mail`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
                 <div className="button-block-two">
                   <button className="rc c">Tous</button>
