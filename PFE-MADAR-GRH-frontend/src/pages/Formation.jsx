@@ -12,6 +12,7 @@ export default function Formation() {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [peopleStep, setPeopleStep] = useState('select') // 'select' or 'review'
   const [formData, setFormData] = useState({
     nom: '',
     description: '',
@@ -72,6 +73,7 @@ export default function Formation() {
   const handleAddPeople = async (formation) => {
     setSelectedFormation(formation);
     setSelectedEmployees([]);
+    setPeopleStep('select');
     setError('');
     
     try {
@@ -84,31 +86,39 @@ export default function Formation() {
   };
 
   const toggleEmployeeSelection = (employeeId) => {
-    const peopleRequired = selectedFormation?.approved_formation?.people_required || 0;
-    const alreadySelected = selectedFormation?.participants?.length || 0;
-    const remainingSpots = peopleRequired - alreadySelected;
-
     setSelectedEmployees((prev) => {
       if (prev.includes(employeeId)) {
         return prev.filter((id) => id !== employeeId);
       } else {
-        // Only allow selection if we haven't reached the limit
-        if (prev.length < remainingSpots) {
-          return [...prev, employeeId];
-        } else {
-          setError(`You can only select ${remainingSpots} more participant(s)`);
-          return prev;
-        }
+        return [...prev, employeeId];
       }
     });
   };
 
-  const handleSubmitParticipants = async () => {
+  const handleReviewParticipants = () => {
+    const peopleRequired = selectedFormation?.approved_formation?.people_required || 0;
     if (selectedEmployees.length === 0) {
       setError('Please select at least one employee');
       return;
     }
+    if (selectedEmployees.length > peopleRequired) {
+      setError(`You selected ${selectedEmployees.length} but only need ${peopleRequired}. Please adjust your selection.`);
+      return;
+    }
+    setError('');
+    setPeopleStep('review');
+  };
 
+  const handleRemoveParticipant = (employeeId) => {
+    setSelectedEmployees((prev) => prev.filter((id) => id !== employeeId));
+  };
+
+  const handleBackToSelect = () => {
+    setError('');
+    setPeopleStep('select');
+  };
+
+  const handleSubmitParticipants = async () => {
     try {
       setSubmitting(true);
       await api.post(`/api/formations/${selectedFormation.id}/add-participants/`, {
@@ -117,6 +127,7 @@ export default function Formation() {
       setShowPeopleModal(false);
       setSelectedFormation(null);
       setSelectedEmployees([]);
+      setPeopleStep('select');
       setError('');
       await fetchFormations();
     } catch (err) {
@@ -205,12 +216,12 @@ export default function Formation() {
                   <small style={styles.date}>
                     Requested: {new Date(formation.created_at).toLocaleDateString()}
                   </small>
-                  {formation.status === 'WAITING_FOR_PEOPLE' && (
+                  {(formation.status === 'WAITING_FOR_PEOPLE' || formation.status === 'APPROVED') && (
                     <button
                       style={styles.addPeopleBtn}
                       onClick={() => handleAddPeople(formation)}
                     >
-                      Add Participants
+                      {formation.status === 'APPROVED' ? 'Add More Participants' : 'Add Participants'}
                     </button>
                   )}
                 </div>
@@ -311,85 +322,162 @@ export default function Formation() {
             </div>
 
             {selectedFormation?.approved_formation && (
-              <div style={{padding: '0 0 16px 0', borderBottom: '1px solid #e2e8f0', marginBottom: '16px', background: '#f0f9ff', padding: '12px', borderRadius: '6px'}}>
+              <div style={{padding: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px', background: '#f0f9ff', borderRadius: '6px'}}>
                 <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e', fontWeight: '600'}}>
                   <strong>Formation:</strong> {selectedFormation.approved_formation.name}
                 </p>
                 <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e'}}>
                   <strong>People Required:</strong> {selectedFormation.approved_formation.people_required}
                 </p>
-                <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e'}}>
-                  <strong>Already Added:</strong> {selectedFormation.participants?.length || 0}
-                </p>
                 <p style={{margin: '8px 0', fontSize: '15px', fontWeight: '600', color: '#059669'}}>
-                  <strong>Remaining Spots:</strong> {(selectedFormation.approved_formation.people_required) - (selectedFormation.participants?.length || 0)}
+                  <strong>Step {peopleStep === 'select' ? '1' : '2'} - Currently Selected: {selectedEmployees.length}/{selectedFormation.approved_formation.people_required}</strong>
                 </p>
               </div>
             )}
 
             {error && <div style={styles.error}>{error}</div>}
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Select Employees (from your department)</label>
-              {employees.length === 0 ? (
-                <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
-                  No employees available
+            {peopleStep === 'select' ? (
+              <>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Select Employees (from your department)</label>
+                  {employees.length === 0 ? (
+                    <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                      No employees available
+                    </div>
+                  ) : (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto'}}>
+                      {employees
+                        .filter(emp => !selectedFormation?.participants?.some(p => p.employee_id === emp.id))
+                        .map((emp) => (
+                          <label 
+                            key={emp.id} 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '12px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              backgroundColor: selectedEmployees.includes(emp.id) ? '#eff6ff' : '#fff',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedEmployees.includes(emp.id)}
+                              onChange={() => toggleEmployeeSelection(emp.id)}
+                              style={{marginRight: '12px', cursor: 'pointer'}}
+                            />
+                            <div>
+                              <div style={{fontSize: '15px', fontWeight: '500', color: '#111827'}}>
+                                {emp.first_name} {emp.last_name}
+                              </div>
+                              <div style={{fontSize: '13px', color: '#6b7280'}}>
+                                {emp.email}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto'}}>
-                  {employees
-                    .filter(emp => !selectedFormation?.participants?.some(p => p.employee_id === emp.id))
-                    .map((emp) => (
-                      <label 
-                        key={emp.id} 
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '12px',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          backgroundColor: selectedEmployees.includes(emp.id) ? '#eff6ff' : '#fff',
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedEmployees.includes(emp.id)}
-                          onChange={() => toggleEmployeeSelection(emp.id)}
-                          style={{marginRight: '12px', cursor: 'pointer'}}
-                        />
-                        <div>
-                          <div style={{fontSize: '15px', fontWeight: '500', color: '#111827'}}>
-                            {emp.first_name} {emp.last_name}
-                          </div>
-                          <div style={{fontSize: '13px', color: '#6b7280'}}>
-                            {emp.email}
-                          </div>
-                        </div>
-                      </label>
-                    ))}
-                </div>
-              )}
-            </div>
 
-            <div style={styles.formActions}>
-              <button
-                type="button"
-                style={styles.cancelBtn}
-                onClick={() => setShowPeopleModal(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                style={styles.submitBtn}
-                onClick={handleSubmitParticipants}
-                disabled={submitting || selectedEmployees.length === 0}
-              >
-                {submitting ? 'Adding...' : `Add ${selectedEmployees.length} Participant(s)`}
-              </button>
-            </div>
+                <div style={styles.formActions}>
+                  <button
+                    type="button"
+                    style={styles.cancelBtn}
+                    onClick={() => setShowPeopleModal(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.submitBtn}
+                    onClick={handleReviewParticipants}
+                    disabled={submitting || selectedEmployees.length === 0}
+                  >
+                    Next - Review Selection ({selectedEmployees.length})
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{...styles.formGroup, background: '#fafafa', padding: '16px', borderRadius: '8px'}}>
+                  <label style={styles.label}>Review Selected Participants</label>
+                  {selectedEmployees.length === 0 ? (
+                    <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                      No participants selected
+                    </div>
+                  ) : (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                      {selectedEmployees.map((empId) => {
+                        const emp = employees.find(e => e.id === empId);
+                        return emp ? (
+                          <div 
+                            key={empId}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '12px',
+                              background: '#fff',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px'
+                            }}
+                          >
+                            <div>
+                              <div style={{fontSize: '15px', fontWeight: '500', color: '#111827'}}>
+                                {emp.first_name} {emp.last_name}
+                              </div>
+                              <div style={{fontSize: '13px', color: '#6b7280'}}>
+                                {emp.email}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              style={{
+                                background: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '6px 12px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                              }}
+                              onClick={() => handleRemoveParticipant(empId)}
+                              disabled={submitting}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div style={styles.formActions}>
+                  <button
+                    type="button"
+                    style={styles.cancelBtn}
+                    onClick={handleBackToSelect}
+                    disabled={submitting}
+                  >
+                    ← Back to Edit
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.submitBtn}
+                    onClick={handleSubmitParticipants}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Submitting...' : 'Confirm & Submit'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

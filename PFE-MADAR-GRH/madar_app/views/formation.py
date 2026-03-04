@@ -325,9 +325,9 @@ def add_formation_participants(request, pk):
         formation_request = FormationRequest.objects.select_related('approved_formation').get(id=pk, requested_by=request.user)
     except FormationRequest.DoesNotExist:
         return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if formation_request.status != FormationRequest.Status.WAITING_FOR_PEOPLE:
-        return Response({'detail': 'Request is not in waiting for people status'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if formation_request.status not in [FormationRequest.Status.WAITING_FOR_PEOPLE, FormationRequest.Status.APPROVED]:
+        return Response({'detail': 'Request is not in waiting for people or approved status'}, status=status.HTTP_400_BAD_REQUEST)
     
     employee_ids = request.data.get('employee_ids', [])
     if not employee_ids:
