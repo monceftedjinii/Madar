@@ -31,6 +31,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Employees', href: '/employees' },
       { label: 'Leaves (Department)', href: '/leaves/department' },
       { label: 'Assign Task', href: '/tasks/assign' },
+      { label: 'Formation', href: '/formation' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
