@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from .models import User, Department, Employee
+from .models import User, Department, Employee, Position
 from .models import Task
 from .models import Attendance
 from .models import LeaveRequest
@@ -47,13 +47,14 @@ class UserAdmin(BaseUserAdmin):
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Department)
+admin.site.register(Position)
 
 
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'department', 'attendance_pin', 'user_status')
-	search_fields = ('email', 'first_name', 'last_name')
-	list_filter = ('department',)
-	fields = ('first_name', 'last_name', 'email', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	list_display = ('email', 'first_name', 'last_name', 'position', 'department', 'attendance_pin', 'user_status')
+	search_fields = ('email', 'first_name', 'last_name', 'position__name')
+	list_filter = ('department', 'position')
+	fields = ('first_name', 'last_name', 'email', 'position', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
 	readonly_fields = ('user_login_info',)
 	actions = ['reset_user_password']
 

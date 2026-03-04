@@ -61,6 +61,9 @@ export default function Employees() {
     const email = window.prompt('Email', employee.email || '');
     if (email === null) return;
 
+    const position = window.prompt('Poste / Position', employee.position || '');
+    if (position === null) return;
+
     const salary = window.prompt('Salary', String(employee.salary || '0.00'));
     if (salary === null) return;
 
@@ -80,6 +83,7 @@ export default function Employees() {
         first_name: first_name.trim(),
         last_name: last_name.trim(),
         email: email.trim().toLowerCase(),
+        position: position.trim(),
         salary,
         hired_at,
         attendance_pin,
@@ -109,12 +113,13 @@ export default function Employees() {
     }
   };
 
-  // Client-side filter by name or email
+  // Client-side filter by name, email or position
   const filteredEmployees = employees.filter((emp) => {
     const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.toLowerCase();
     const email = `${emp.email || ''}`.toLowerCase();
+    const position = `${emp.position || ''}`.toLowerCase();
     const term = searchTerm.toLowerCase();
-    return fullName.includes(term) || email.includes(term);
+    return fullName.includes(term) || email.includes(term) || position.includes(term);
   });
 
   const styles = {
@@ -315,11 +320,11 @@ export default function Employees() {
 
       {/* Search Filter */}
       <div style={styles.filterSection}>
-        <label style={styles.filterLabel}>Search by Name or Email</label>
+        <label style={styles.filterLabel}>Search by Name, Email or Poste</label>
         <input
           style={styles.filterInput}
           type="text"
-          placeholder="Enter employee name or email..."
+          placeholder="Enter employee name, email or poste..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -339,6 +344,7 @@ export default function Employees() {
               <thead style={styles.tableHeader}>
                 <tr>
                   <th style={styles.tableHeaderCell}>Full Name</th>
+                  <th style={styles.tableHeaderCell}>Poste</th>
                   <th style={styles.tableHeaderCell}>Email</th>
                   <th style={styles.tableHeaderCell}>Department</th>
                   {canManageEmployees && <th style={styles.tableHeaderCell}>Actions</th>}
@@ -355,6 +361,7 @@ export default function Employees() {
                     <td style={styles.tableCell}>
                       {`${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || `User #${emp.id}`}
                     </td>
+                    <td style={styles.tableCell}>{emp.position || '-'}</td>
                     <td style={styles.tableCell}>{emp.email || `User #${emp.id}`}</td>
                     <td style={styles.tableCell}>
                       {emp.department?.name || emp.department_name || '-'}

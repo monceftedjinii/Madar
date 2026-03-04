@@ -82,10 +82,21 @@ class Department(models.Model):
         return self.name
 
 
+class Position(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Employee(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
+    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     hired_at = models.DateField()
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     salary = models.DecimalField(max_digits=10, decimal_places=2)

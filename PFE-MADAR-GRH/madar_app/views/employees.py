@@ -2,11 +2,27 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from ..models import Department, Employee, User, RoleChoices
+from ..models import Department, Employee, Position, User, RoleChoices
 from ..permissions import IsGRH
 from ..scopes import employee_queryset_for
 import secrets
 from datetime import date as date_type
+
+
+def _resolve_position(position_value):
+	if position_value in [None, '']:
+		return None
+
+	if isinstance(position_value, int) or (isinstance(position_value, str) and position_value.isdigit()):
+		try:
+			return Position.objects.get(id=int(position_value))
+		except Position.DoesNotExist:
+			return None
+
+	if isinstance(position_value, str):
+		return Position.objects.filter(name=position_value.strip()).first()
+
+	return None
 
 
 @api_view(['GET'])
@@ -31,6 +47,8 @@ def employees_list(request):
 			'id': e.id,
 			'first_name': e.first_name,
 			'last_name': e.last_name,
+			'position': e.position.name if e.position else '',
+			'position_id': e.position.id if e.position else None,
 			'email': e.email,
 			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
@@ -69,6 +87,16 @@ def departments_list(request):
 	return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def positions_list(request):
+	data = [
+		{'id': p.id, 'name': p.name}
+		for p in Position.objects.order_by('name')
+	]
+	return Response(data)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsGRH])
 def create_employee(request):
@@ -77,6 +105,7 @@ def create_employee(request):
 	last_name = request.data.get('last_name', '').strip()
 	email = request.data.get('email', '').strip().lower()
 	department_id = request.data.get('department')
+	position_value = request.data.get('position', '')
 	salary = request.data.get('salary', '0.00')
 	hired_at_str = request.data.get('hired_at')
 	attendance_pin = request.data.get('attendance_pin', '')
@@ -119,6 +148,10 @@ def create_employee(request):
 	except Department.DoesNotExist:
 		return Response({'detail': 'Department not found'}, 
 						status=status.HTTP_400_BAD_REQUEST)
+
+	position = _resolve_position(position_value)
+	if position_value not in [None, ''] and not position:
+		return Response({'detail': 'Position not found. Please create it in admin first.'}, status=status.HTTP_400_BAD_REQUEST)
 	
 	# Create User first (so signal sees it exists)
 	temp_password = secrets.token_urlsafe(12)
@@ -135,6 +168,7 @@ def create_employee(request):
 			first_name=first_name,
 			last_name=last_name,
 			email=email,
+			position=position,
 			department=dept,
 			salary=salary,
 			hired_at=hired_at,
@@ -154,6 +188,8 @@ def create_employee(request):
 			'id': employee.id,
 			'first_name': employee.first_name,
 			'last_name': employee.last_name,
+			'position': employee.position.name if employee.position else '',
+			'position_id': employee.position.id if employee.position else None,
 			'email': employee.email,
 			'department': dept.name,
 		},
@@ -181,6 +217,7 @@ def update_employee(request, pk):
 	first_name = request.data.get('first_name', employee.first_name).strip()
 	last_name = request.data.get('last_name', employee.last_name).strip()
 	email = request.data.get('email', employee.email).strip().lower()
+	position_value = request.data.get('position', employee.position_id)
 	department_id = request.data.get('department', employee.department_id)
 	salary = request.data.get('salary', employee.salary)
 	hired_at_str = request.data.get('hired_at', employee.hired_at.isoformat())
@@ -210,6 +247,10 @@ def update_employee(request, pk):
 	except Department.DoesNotExist:
 		return Response({'detail': 'Department not found'}, status=status.HTTP_400_BAD_REQUEST)
 
+	position = _resolve_position(position_value)
+	if position_value not in [None, ''] and not position:
+		return Response({'detail': 'Position not found. Please create it in admin first.'}, status=status.HTTP_400_BAD_REQUEST)
+
 	# Email uniqueness check (exclude current employee)
 	if Employee.objects.filter(email=email).exclude(id=employee.id).exists():
 		return Response({'detail': 'Employee with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
@@ -228,6 +269,7 @@ def update_employee(request, pk):
 	employee.first_name = first_name
 	employee.last_name = last_name
 	employee.email = email
+	employee.position = position
 	employee.department = dept
 	employee.salary = salary
 	employee.hired_at = hired_at
@@ -240,6 +282,8 @@ def update_employee(request, pk):
 			'id': employee.id,
 			'first_name': employee.first_name,
 			'last_name': employee.last_name,
+			'position': employee.position.name if employee.position else '',
+			'position_id': employee.position.id if employee.position else None,
 			'email': employee.email,
 			'department': {
 				'id': employee.department.id,

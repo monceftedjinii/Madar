@@ -6,6 +6,7 @@ export default function AddEmployee() {
     first_name: '',
     last_name: '',
     email: '',
+    position: '',
     department: '',
     salary: '',
     hired_at: new Date().toISOString().split('T')[0],
@@ -13,6 +14,7 @@ export default function AddEmployee() {
   });
   
   const [departments, setDepartments] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -20,6 +22,7 @@ export default function AddEmployee() {
 
   useEffect(() => {
     fetchDepartments();
+    fetchPositions();
   }, []);
 
   const fetchDepartments = async () => {
@@ -29,6 +32,15 @@ export default function AddEmployee() {
     } catch (err) {
       console.error('Failed to fetch departments:', err);
       setError('Failed to load departments');
+    }
+  };
+
+  const fetchPositions = async () => {
+    try {
+      const response = await api.get('/api/positions/');
+      setPositions(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
     }
   };
 
@@ -64,6 +76,7 @@ export default function AddEmployee() {
           first_name: '',
           last_name: '',
           email: '',
+          position: '',
           department: '',
           salary: '',
           hired_at: new Date().toISOString().split('T')[0],
@@ -258,6 +271,22 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Poste / Position:</label>
+            <select
+              name="position"
+              style={styles.select}
+              value={formData.position}
+              onChange={handleChange}
+              disabled={loading}
+            >
+              <option value="">-- Select Poste --</option>
+              {positions.map((position) => (
+                <option key={position.id} value={position.id}>{position.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
             <label style={styles.label}>Department:</label>
             <select
               name="department"
@@ -323,6 +352,7 @@ export default function AddEmployee() {
                 first_name: '',
                 last_name: '',
                 email: '',
+                position: '',
                 department: '',
                 salary: '',
                 hired_at: new Date().toISOString().split('T')[0],
@@ -350,6 +380,13 @@ export default function AddEmployee() {
               <span style={styles.credentialLabel}>Name:</span>
               <div style={styles.credentialValue}>
                 {createdEmployee.employee.first_name} {createdEmployee.employee.last_name}
+              </div>
+            </div>
+
+            <div style={styles.credentialRow}>
+              <span style={styles.credentialLabel}>Poste:</span>
+              <div style={styles.credentialValue}>
+                {createdEmployee.employee.position || '-'}
               </div>
             </div>
 

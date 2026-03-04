@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from madar_app.models import Department, Employee, Task, LeaveRequest, DocumentType, Notification
+from madar_app.models import Department, Employee, Position, Task, LeaveRequest, DocumentType, Notification
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -18,6 +18,20 @@ class Command(BaseCommand):
         dept_hr, _ = Department.objects.get_or_create(name='HR')
         dept_sales, _ = Department.objects.get_or_create(name='Sales')
         self.stdout.write(self.style.SUCCESS('✓ Departments created'))
+
+        # Create positions
+        positions = {
+            'Comptable': Position.objects.get_or_create(name='Comptable')[0],
+            'Femme de ménage': Position.objects.get_or_create(name='Femme de ménage')[0],
+            'Extra': Position.objects.get_or_create(name='Extra')[0],
+            'Technicien': Position.objects.get_or_create(name='Technicien')[0],
+            'Assistant RH': Position.objects.get_or_create(name='Assistant RH')[0],
+            'Commercial': Position.objects.get_or_create(name='Commercial')[0],
+            'Chef de service': Position.objects.get_or_create(name='Chef de service')[0],
+            'Responsable RH': Position.objects.get_or_create(name='Responsable RH')[0],
+            'Directeur RH': Position.objects.get_or_create(name='Directeur RH')[0],
+        }
+        self.stdout.write(self.style.SUCCESS('✓ Positions created'))
 
         # Create users with roles
         demo_users = {
@@ -52,6 +66,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'Employee',
                 'last_name': 'User',
+                'position': positions['Extra'],
                 'department': dept_it,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('50000.00'),
@@ -67,6 +82,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'Chef',
                 'last_name': 'Manager',
+                'position': positions['Chef de service'],
                 'department': dept_sales,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('65000.00'),
@@ -82,6 +98,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'RH',
                 'last_name': 'Officer',
+                'position': positions['Assistant RH'],
                 'department': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('60000.00'),
@@ -97,6 +114,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'RH',
                 'last_name': 'Manager',
+                'position': positions['Responsable RH'],
                 'department': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('75000.00'),
@@ -112,6 +130,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'GRH',
                 'last_name': 'Director',
+                'position': positions['Directeur RH'],
                 'department': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('90000.00'),
@@ -130,11 +149,48 @@ class Command(BaseCommand):
                 defaults={
                     'first_name': f'Employee{i}',
                     'last_name': f'Test',
+                    'position': positions['Commercial'],
                     'department': dept_sales,
                     'hired_at': datetime.now().date(),
                     'salary': Decimal('55000.00'),
                 }
             )
+
+        Employee.objects.get_or_create(
+            email='comptable@example.com',
+            defaults={
+                'first_name': 'Nadia',
+                'last_name': 'Comptable',
+                'position': positions['Comptable'],
+                'department': dept_hr,
+                'hired_at': datetime.now().date(),
+                'salary': Decimal('58000.00'),
+            }
+        )
+
+        Employee.objects.get_or_create(
+            email='femme.menage@example.com',
+            defaults={
+                'first_name': 'Amina',
+                'last_name': 'Service',
+                'position': positions['Femme de ménage'],
+                'department': dept_sales,
+                'hired_at': datetime.now().date(),
+                'salary': Decimal('32000.00'),
+            }
+        )
+
+        Employee.objects.get_or_create(
+            email='extra.staff@example.com',
+            defaults={
+                'first_name': 'Yassine',
+                'last_name': 'Extra',
+                'position': positions['Extra'],
+                'department': dept_it,
+                'hired_at': datetime.now().date(),
+                'salary': Decimal('30000.00'),
+            }
+        )
 
         self.stdout.write(self.style.SUCCESS('✓ Additional demo employees created'))
 
