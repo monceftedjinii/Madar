@@ -17,9 +17,8 @@ export default function Routers() {
         <Route path="/login" element={<Login />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/attendance" element={<Attendance />} />
-        < Route path="/messagerie" element={<Messagrie />}/>
+        <Route path="/messagerie" element={<Messagrie />} />
         <Route path="*" element={<Error />} />
-      
       </Routes>
     </>
   );

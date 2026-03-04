@@ -1,5 +1,5 @@
-﻿// import { useEffect } from "react";
-// import axios from "axios";
+﻿import { useEffect } from "react";
+import axios from "axios";
 import { useState } from "react";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
@@ -9,25 +9,34 @@ export default function Profile() {
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [profileData, setProfileData] = useState({
-    fullName: "Boudaoud Mohamed Reda",
-    email: "reda@madar.com",
-    phone: "+213551860590",
-    address: "Alger, Algerie",
-    position: "Assistant RH",
-    department: "Ressources Humaines",
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    position: "",
+    department: "",
     photoName: "",
   });
   const [formData, setFormData] = useState(profileData);
-  // let access = localStorage.getItem("access_token");
-  // const fetchProfile = async () => {
-  //   const me = await axios.get("/api/whoami/", {
-  //     headers: { Authorization: `Bearer ${access}` },
-  //   });
-  //   console.log(me.data);
-  // };
-  // useEffect(() => {
-  //   fetchProfile();
-  // }, []);
+  let access = localStorage.getItem("access_token");
+  const fetchProfile = async () => {
+    var me = await axios.get("/api/whoami/", {
+      headers: { Authorization: `Bearer ${access}` },
+    });
+    console.log(me.data);
+    setProfileData({
+      fullName: me.data.first_name + " " + me.data.last_name,
+      email: me.data.email,
+      phone: me.data.phone,
+      address: me.data.address,
+      position: me.data.position,
+      department: me.data.department,
+      photoName: me.data.profile_picture,
+    });
+  };
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const openEditModal = () => {
     setFormData(profileData);
@@ -65,7 +74,11 @@ export default function Profile() {
         }`}
       >
         <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
-          <Navbar />
+          <Navbar
+            fullName={profileData.fullName}
+            post={profileData.position}
+            image={profileData.photoName}
+          />
         </div>
         {isNavOpen && (
           <div
@@ -99,7 +112,11 @@ export default function Profile() {
                   {dark ? " mode clair" : " mode sombre"}
                 </button>
                 <button className="btn-logout">déconnecter</button>
-                <button className="modifier" type="button" onClick={openEditModal}>
+                <button
+                  className="modifier"
+                  type="button"
+                  onClick={openEditModal}
+                >
                   modifier
                 </button>
               </div>

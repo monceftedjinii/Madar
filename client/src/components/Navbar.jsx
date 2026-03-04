@@ -1,7 +1,8 @@
 import React from "react";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
-export default function Navbar() {
+export default function Navbar(props) {
+  const { fullName, post, image } = props;
   return (
     <div className="container_navbar">
       <div className="grh-navbar">
@@ -26,14 +27,18 @@ export default function Navbar() {
       <div className="profile-navbar">
         <div className="profile-img">
           <img
-            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            src={
+              image
+                ? image
+                : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            }
             alt="Profile"
             className="profile-picture"
           />
         </div>
         <div className="profile-name">
-          <h4>Boudaoud mohamed reda </h4>
-          <p className="text-nav">khdam basit</p>
+          <h4>{fullName}</h4>
+          <p className="text-nav">{post} </p>
         </div>
       </div>
     </div>
