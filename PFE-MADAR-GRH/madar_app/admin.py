@@ -51,12 +51,18 @@ admin.site.register(Position)
 
 
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'position', 'department', 'attendance_pin', 'user_status')
+	list_display = ('email', 'first_name', 'last_name', 'profile_preview', 'position', 'department', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name', 'position__name')
 	list_filter = ('department', 'position')
-	fields = ('first_name', 'last_name', 'email', 'position', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
-	readonly_fields = ('user_login_info',)
+	fields = ('first_name', 'last_name', 'email', 'profile_picture', 'profile_preview', 'position', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	readonly_fields = ('profile_preview', 'user_login_info',)
 	actions = ['reset_user_password']
+
+	def profile_preview(self, obj):
+		if obj.profile_picture:
+			return format_html('<img src="{}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%;" />', obj.profile_picture.url)
+		return '-'
+	profile_preview.short_description = 'Photo'
 
 	def user_status(self, obj):
 		"""Display if employee has a User account."""
