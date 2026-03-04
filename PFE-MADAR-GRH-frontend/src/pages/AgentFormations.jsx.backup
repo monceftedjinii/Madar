@@ -9,8 +9,6 @@ export default function AgentFormations() {
   const [error, setError] = useState('')
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showFormationSelectModal, setShowFormationSelectModal] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -18,7 +16,6 @@ export default function AgentFormations() {
     name: '',
     company_name: '',
     duration_hours: '',
-    people_required: '1',
     company_email: '',
     company_phone: '',
     company_address: '',
@@ -65,7 +62,6 @@ export default function AgentFormations() {
       !formData.name.trim() ||
       !formData.company_name.trim() ||
       !formData.duration_hours ||
-      !formData.people_required ||
       !formData.company_email.trim() ||
       !formData.company_phone.trim() ||
       !formData.company_address.trim()
@@ -79,14 +75,12 @@ export default function AgentFormations() {
       await api.post('/api/agent/formations/catalog/', {
         ...formData,
         duration_hours: Number(formData.duration_hours),
-        people_required: Number(formData.people_required),
       })
       setShowCreateModal(false)
       setFormData({
         name: '',
         company_name: '',
         duration_hours: '',
-        people_required: '1',
         company_email: '',
         company_phone: '',
         company_address: '',
@@ -94,43 +88,6 @@ export default function AgentFormations() {
       await loadFormations(searchTerm.trim())
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create formation')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleReject = async (requestId) => {
-    if (!confirm('Are you sure you want to reject this request?')) {
-      return
-    }
-
-    try {
-      setSubmitting(true)
-      await api.post(`/api/agent/formations/requests/${requestId}/reject/`)
-      await loadRequests()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to reject request')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleSelectFormation = (request) => {
-    setSelectedRequest(request)
-    setShowFormationSelectModal(true)
-  }
-
-  const handleApproveWithFormation = async (formationId) => {
-    try {
-      setSubmitting(true)
-      await api.post(`/api/agent/formations/requests/${selectedRequest.id}/approve/`, {
-        formation_id: formationId
-      })
-      setShowFormationSelectModal(false)
-      setSelectedRequest(null)
-      await loadRequests()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to approve request')
     } finally {
       setSubmitting(false)
     }
@@ -155,25 +112,6 @@ export default function AgentFormations() {
             )}
             <p style={styles.cardText}><strong>Description:</strong> {req.description}</p>
             <p style={styles.cardText}><strong>Reasons:</strong> {req.reasons || '-'}</p>
-            
-            {req.status === 'PENDING' && (
-              <div style={styles.cardActions}>
-                <button 
-                  style={styles.rejectBtn} 
-                  onClick={() => handleReject(req.id)}
-                  disabled={submitting}
-                >
-                  Reject
-                </button>
-                <button 
-                  style={styles.selectFormationBtn} 
-                  onClick={() => handleSelectFormation(req)}
-                  disabled={submitting}
-                >
-                  Select Formation
-                </button>
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -278,14 +216,6 @@ export default function AgentFormations() {
               />
               <input
                 style={styles.inputFull}
-                type="number"
-                min="1"
-                placeholder="People Required"
-                value={formData.people_required}
-                onChange={(e) => setFormData((prev) => ({ ...prev, people_required: e.target.value }))}
-              />
-              <input
-                style={styles.inputFull}
                 type="email"
                 placeholder="Company Email"
                 value={formData.company_email}
@@ -313,55 +243,6 @@ export default function AgentFormations() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {showFormationSelectModal && (
-        <div style={styles.modalOverlay} onClick={() => !submitting && setShowFormationSelectModal(false)}>
-          <div style={{...styles.modal, maxHeight: '80vh', overflowY: 'auto'}} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Select Formation for "{selectedRequest?.nom}"</h3>
-            
-            {formations.length === 0 ? (
-              <div style={styles.emptyState}>No formations available</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {formations.map((formation) => (
-                  <div key={formation.id} style={styles.formationSelectCard}>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: '0 0 8px 0' }}>{formation.name}</h4>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                        <strong>Company:</strong> {formation.company_name}
-                      </p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                        <strong>Duration:</strong> {formation.duration_hours} hours
-                      </p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: '#666' }}>
-                        <strong>People Required:</strong> {formation.people_required}
-                      </p>
-                    </div>
-                    <button 
-                      style={styles.approveBtn} 
-                      onClick={() => handleApproveWithFormation(formation.id)}
-                      disabled={submitting}
-                    >
-                      Approve
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ marginTop: '20px', textAlign: 'right' }}>
-              <button 
-                type="button" 
-                style={styles.cancelBtn} 
-                onClick={() => setShowFormationSelectModal(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -544,47 +425,5 @@ const styles = {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '8px',
-  },
-  cardActions: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '12px',
-  },
-  rejectBtn: {
-    border: 'none',
-    background: '#dc2626',
-    color: '#fff',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  selectFormationBtn: {
-    border: 'none',
-    background: '#2563eb',
-    color: '#fff',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  approveBtn: {
-    border: 'none',
-    background: '#16a34a',
-    color: '#fff',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    whiteSpace: 'nowrap',
-  },
-  formationSelectCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '12px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    background: '#f9fafb',
   },
 }

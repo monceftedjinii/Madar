@@ -7,6 +7,10 @@ export default function Formation() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showPeopleModal, setShowPeopleModal] = useState(false);
+  const [selectedFormation, setSelectedFormation] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     nom: '',
@@ -60,6 +64,53 @@ export default function Formation() {
       console.error('Response data:', err.response?.data);
       console.error('Status:', err.response?.status);
       setError(err.response?.data?.detail || err.message || 'Failed to submit formation request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddPeople = async (formation) => {
+    setSelectedFormation(formation);
+    setSelectedEmployees([]);
+    setError('');
+    
+    try {
+      const response = await api.get('/api/formations/department-employees/');
+      setEmployees(response.data);
+      setShowPeopleModal(true);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to load employees');
+    }
+  };
+
+  const toggleEmployeeSelection = (employeeId) => {
+    setSelectedEmployees((prev) => {
+      if (prev.includes(employeeId)) {
+        return prev.filter((id) => id !== employeeId);
+      } else {
+        return [...prev, employeeId];
+      }
+    });
+  };
+
+  const handleSubmitParticipants = async () => {
+    if (selectedEmployees.length === 0) {
+      setError('Please select at least one employee');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await api.post(`/api/formations/${selectedFormation.id}/add-participants/`, {
+        employee_ids: selectedEmployees
+      });
+      setShowPeopleModal(false);
+      setSelectedFormation(null);
+      setSelectedEmployees([]);
+      setError('');
+      await fetchFormations();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to add participants');
     } finally {
       setSubmitting(false);
     }
@@ -119,10 +170,39 @@ export default function Formation() {
                   <strong style={styles.reasonsLabel}>Reasons:</strong>
                   <p style={styles.reasons}>{formation.reasons}</p>
                 </div>
+                {formation.approved_formation && (
+                  <div style={styles.reasonsSection}>
+                    <strong style={styles.reasonsLabel}>Approved Formation:</strong>
+                    <p style={styles.reasons}>{formation.approved_formation.name}</p>
+                    <p style={{...styles.reasons, fontSize: '13px', color: '#666'}}>
+                      People Required: {formation.approved_formation.people_required}
+                    </p>
+                  </div>
+                )}
+                {formation.participants && formation.participants.length > 0 && (
+                  <div style={styles.reasonsSection}>
+                    <strong style={styles.reasonsLabel}>Participants ({formation.participants.length}):</strong>
+                    <ul style={{margin: '4px 0', paddingLeft: '20px'}}>
+                      {formation.participants.map((p, idx) => (
+                        <li key={idx} style={{fontSize: '14px', color: '#374151'}}>
+                          {p.employee_name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div style={styles.cardFooter}>
                   <small style={styles.date}>
                     Requested: {new Date(formation.created_at).toLocaleDateString()}
                   </small>
+                  {formation.status === 'WAITING_FOR_PEOPLE' && (
+                    <button
+                      style={styles.addPeopleBtn}
+                      onClick={() => handleAddPeople(formation)}
+                    >
+                      Add Participants
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -202,6 +282,101 @@ export default function Formation() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showPeopleModal && (
+        <div style={styles.overlay} onClick={() => !submitting && setShowPeopleModal(false)}>
+          <div style={{...styles.modal, maxHeight: '80vh', overflowY: 'auto'}} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2>Add Participants to "{selectedFormation?.nom}"</h2>
+              <button
+                style={styles.closeBtn}
+                onClick={() => !submitting && setShowPeopleModal(false)}
+                disabled={submitting}
+              >
+                ×
+              </button>
+            </div>
+
+            {selectedFormation?.approved_formation && (
+              <div style={{padding: '0 0 16px 0', borderBottom: '1px solid #e2e8f0', marginBottom: '16px'}}>
+                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
+                  <strong>Formation:</strong> {selectedFormation.approved_formation.name}
+                </p>
+                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
+                  <strong>People Required:</strong> {selectedFormation.approved_formation.people_required}
+                </p>
+                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
+                  <strong>Already Selected:</strong> {selectedFormation.participants?.length || 0}
+                </p>
+              </div>
+            )}
+
+            {error && <div style={styles.error}>{error}</div>}
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Select Employees (from your department)</label>
+              {employees.length === 0 ? (
+                <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                  No employees available
+                </div>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto'}}>
+                  {employees
+                    .filter(emp => !selectedFormation?.participants?.some(p => p.employee_id === emp.id))
+                    .map((emp) => (
+                      <label 
+                        key={emp.id} 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '12px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          backgroundColor: selectedEmployees.includes(emp.id) ? '#eff6ff' : '#fff',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedEmployees.includes(emp.id)}
+                          onChange={() => toggleEmployeeSelection(emp.id)}
+                          style={{marginRight: '12px', cursor: 'pointer'}}
+                        />
+                        <div>
+                          <div style={{fontSize: '15px', fontWeight: '500', color: '#111827'}}>
+                            {emp.first_name} {emp.last_name}
+                          </div>
+                          <div style={{fontSize: '13px', color: '#6b7280'}}>
+                            {emp.email}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.formActions}>
+              <button
+                type="button"
+                style={styles.cancelBtn}
+                onClick={() => setShowPeopleModal(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={styles.submitBtn}
+                onClick={handleSubmitParticipants}
+                disabled={submitting || selectedEmployees.length === 0}
+              >
+                {submitting ? 'Adding...' : `Add ${selectedEmployees.length} Participant(s)`}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -315,10 +490,24 @@ const styles = {
     marginTop: '12px',
     paddingTop: '12px',
     borderTop: '1px solid #f0f0f0',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   date: {
     color: '#999',
     fontSize: '12px',
+  },
+  addPeopleBtn: {
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
   },
   loading: {
     display: 'flex',

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db.models import Q
-from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee
+from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Department
 
 
 def _is_agent_or_grh(user):
@@ -16,13 +16,14 @@ def formation_list(request):
     """Get all formation requests (for current authenticated user)."""
     # Chefs can see their own formation requests
     if request.user.role == RoleChoices.CHEF:
-        requests = FormationRequest.objects.filter(requested_by=request.user).order_by('-created_at')
+        requests = FormationRequest.objects.filter(requested_by=request.user).select_related('approved_formation').prefetch_related('participants__employee').order_by('-created_at')
     else:
         # Others can't access formation requests
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
     
-    data = [
-        {
+    data = []
+    for r in requests:
+        item = {
             'id': r.id,
             'nom': r.nom,
             'description': r.description,
@@ -32,8 +33,21 @@ def formation_list(request):
             'created_at': r.created_at.isoformat(),
             'updated_at': r.updated_at.isoformat(),
         }
-        for r in requests
-    ]
+        if r.approved_formation:
+            item['approved_formation'] = {
+                'id': r.approved_formation.id,
+                'name': r.approved_formation.name,
+                'people_required': r.approved_formation.people_required,
+            }
+        item['participants'] = [
+            {
+                'id': p.employee.id,
+                'name': f"{p.employee.first_name} {p.employee.last_name}",
+                'email': p.employee.email,
+            }
+            for p in r.participants.all()
+        ]
+        data.append(item)
     return Response(data)
 
 
@@ -105,7 +119,7 @@ def agent_formation_requests(request):
     if not _is_agent_or_grh(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-    requests = FormationRequest.objects.select_related('requested_by').order_by('-created_at')
+    requests = FormationRequest.objects.select_related('requested_by', 'approved_formation').prefetch_related('participants__employee').order_by('-created_at')
     data = []
     for r in requests:
         # Lookup department via Employee email match
@@ -116,7 +130,7 @@ def agent_formation_requests(request):
         except Employee.DoesNotExist:
             pass
         
-        data.append({
+        item = {
             'id': r.id,
             'nom': r.nom,
             'description': r.description,
@@ -127,7 +141,22 @@ def agent_formation_requests(request):
             'department': department_name,
             'created_at': r.created_at.isoformat(),
             'updated_at': r.updated_at.isoformat(),
-        })
+        }
+        if r.approved_formation:
+            item['approved_formation'] = {
+                'id': r.approved_formation.id,
+                'name': r.approved_formation.name,
+                'people_required': r.approved_formation.people_required,
+            }
+        item['participants'] = [
+            {
+                'id': p.employee.id,
+                'name': f"{p.employee.first_name} {p.employee.last_name}",
+                'email': p.employee.email,
+            }
+            for p in r.participants.all()
+        ]
+        data.append(item)
     return Response(data)
 
 
@@ -156,6 +185,7 @@ def agent_formations_catalog(request):
                 'name': f.name,
                 'company_name': f.company_name,
                 'duration_hours': f.duration_hours,
+                'people_required': f.people_required,
                 'company_email': f.company_email,
                 'company_phone': f.company_phone,
                 'company_address': f.company_address,
@@ -168,6 +198,7 @@ def agent_formations_catalog(request):
     name = (request.data.get('name') or '').strip()
     company_name = (request.data.get('company_name') or '').strip()
     duration_hours_raw = request.data.get('duration_hours')
+    people_required_raw = request.data.get('people_required', 1)
     company_email = (request.data.get('company_email') or '').strip()
     company_phone = (request.data.get('company_phone') or '').strip()
     company_address = (request.data.get('company_address') or '').strip()
@@ -177,16 +208,18 @@ def agent_formations_catalog(request):
 
     try:
         duration_hours = int(duration_hours_raw)
+        people_required = int(people_required_raw)
     except (TypeError, ValueError):
-        return Response({'detail': 'duration_hours must be a valid number'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'duration_hours and people_required must be valid numbers'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if duration_hours <= 0:
-        return Response({'detail': 'duration_hours must be greater than 0'}, status=status.HTTP_400_BAD_REQUEST)
+    if duration_hours <= 0 or people_required <= 0:
+        return Response({'detail': 'duration_hours and people_required must be greater than 0'}, status=status.HTTP_400_BAD_REQUEST)
 
     formation = FormationCatalog.objects.create(
         name=name,
         company_name=company_name,
         duration_hours=duration_hours,
+        people_required=people_required,
         company_email=company_email,
         company_phone=company_phone,
         company_address=company_address,
@@ -199,6 +232,7 @@ def agent_formations_catalog(request):
             'name': formation.name,
             'company_name': formation.company_name,
             'duration_hours': formation.duration_hours,
+            'people_required': formation.people_required,
             'company_email': formation.company_email,
             'company_phone': formation.company_phone,
             'company_address': formation.company_address,
@@ -206,3 +240,126 @@ def agent_formations_catalog(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_formation_request(request, pk):
+    """Approve a formation request with a selected formation."""
+    if not _is_agent_or_grh(request.user):
+        return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        formation_request = FormationRequest.objects.get(id=pk)
+    except FormationRequest.DoesNotExist:
+        return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    formation_id = request.data.get('formation_id')
+    if not formation_id:
+        return Response({'detail': 'formation_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        formation = FormationCatalog.objects.get(id=formation_id)
+    except FormationCatalog.DoesNotExist:
+        return Response({'detail': 'Formation not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    formation_request.status = FormationRequest.Status.WAITING_FOR_PEOPLE
+    formation_request.approved_formation = formation
+    formation_request.save()
+    
+    return Response({'detail': 'Request approved, waiting for people list'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_formation_request(request, pk):
+    """Reject a formation request."""
+    if not _is_agent_or_grh(request.user):
+        return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        formation_request = FormationRequest.objects.get(id=pk)
+    except FormationRequest.DoesNotExist:
+        return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    formation_request.status = FormationRequest.Status.REJECTED
+    formation_request.save()
+    
+    return Response({'detail': 'Request rejected'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_department_employees(request):
+    """Get employees from chef's department."""
+    if request.user.role != RoleChoices.CHEF:
+        return Response({'detail': 'Only chefs can access this'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        chef_employee = Employee.objects.select_related('department').get(email=request.user.email)
+    except Employee.DoesNotExist:
+        return Response({'detail': 'Chef employee record not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    employees = Employee.objects.filter(department=chef_employee.department).exclude(id=chef_employee.id)
+    
+    data = [
+        {
+            'id': e.id,
+            'name': f"{e.first_name} {e.last_name}",
+            'email': e.email,
+        }
+        for e in employees
+    ]
+    
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_formation_participants(request, pk):
+    """Add participants to a formation request."""
+    if request.user.role != RoleChoices.CHEF:
+        return Response({'detail': 'Only chefs can add participants'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        formation_request = FormationRequest.objects.select_related('approved_formation').get(id=pk, requested_by=request.user)
+    except FormationRequest.DoesNotExist:
+        return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if formation_request.status != FormationRequest.Status.WAITING_FOR_PEOPLE:
+        return Response({'detail': 'Request is not in waiting for people status'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    employee_ids = request.data.get('employee_ids', [])
+    if not employee_ids:
+        return Response({'detail': 'employee_ids is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get chef's department
+    try:
+        chef_employee = Employee.objects.select_related('department').get(email=request.user.email)
+    except Employee.DoesNotExist:
+        return Response({'detail': 'Chef employee record not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verify employees are in same department
+    employees = Employee.objects.filter(id__in=employee_ids, department=chef_employee.department)
+    
+    # Add participants
+    for emp in employees:
+        FormationParticipant.objects.get_or_create(
+            formation_request=formation_request,
+            employee=emp
+        )
+    
+    # Check if we have enough participants
+    current_count = formation_request.participants.count()
+    required_count = formation_request.approved_formation.people_required if formation_request.approved_formation else 0
+    
+    if current_count >= required_count:
+        formation_request.status = FormationRequest.Status.APPROVED
+        formation_request.save()
+    
+    return Response({
+        'detail': 'Participants added',
+        'current_count': current_count,
+        'required_count': required_count,
+        'is_complete': current_count >= required_count,
+    })

@@ -15,6 +15,10 @@ from .formation import (
 	formation_detail,
 	agent_formation_requests,
 	agent_formations_catalog,
+	approve_formation_request,
+	reject_formation_request,
+	get_department_employees,
+	add_formation_participants,
 )
 from .documents import (
 	upload_document,
@@ -73,6 +77,8 @@ __all__ = [
 	# formation
 	'formation_list', 'create_formation_request', 'formation_detail',
 	'agent_formation_requests', 'agent_formations_catalog',
+	'approve_formation_request', 'reject_formation_request',
+	'get_department_employees', 'add_formation_participants',
 	# documents
 	'upload_document', 'send_document', 'list_documents_scoped',
 	'documents_feed', 'documents_mine', 'comment_document',

@@ -389,6 +389,7 @@ class FormationRequest(models.Model):
     """Formation/Training request from Chef."""
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'En Attente'
+        WAITING_FOR_PEOPLE = 'WAITING_FOR_PEOPLE', 'Waiting for People List'
         APPROVED = 'APPROVED', 'Approuvé'
         REJECTED = 'REJECTED', 'Rejeté'
 
@@ -396,7 +397,8 @@ class FormationRequest(models.Model):
     nom = models.CharField(max_length=255, help_text='Formation name')
     description = models.TextField(help_text='Formation description')
     reasons = models.TextField(blank=True, help_text='Reasons for requesting this formation')
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
+    approved_formation = models.ForeignKey('FormationCatalog', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -412,6 +414,7 @@ class FormationCatalog(models.Model):
     name = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255)
     duration_hours = models.PositiveIntegerField()
+    people_required = models.PositiveIntegerField(default=1)
     company_email = models.EmailField()
     company_phone = models.CharField(max_length=30)
     company_address = models.CharField(max_length=500)
@@ -424,3 +427,17 @@ class FormationCatalog(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.company_name}"
+
+
+class FormationParticipant(models.Model):
+    """Participants assigned to a formation request."""
+    formation_request = models.ForeignKey(FormationRequest, on_delete=models.CASCADE, related_name='participants')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='formation_participations')
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('formation_request', 'employee')
+        ordering = ['added_at']
+
+    def __str__(self):
+        return f"{self.employee} in {self.formation_request.nom}"
