@@ -8,7 +8,7 @@ from ..models import User, Employee
 
 
 def _employee_for_user(user):
-    return Employee.objects.filter(email=user.email).select_related('department').first()
+    return Employee.objects.filter(email=user.email).select_related('department', 'position').first()
 
 
 @api_view(['GET'])
@@ -34,12 +34,12 @@ def get_profile(request):
     if employee:
         profile_data['employee_info'] = {
             'id': employee.id,
-            'phone_number': None,
-            'address': None,
+            'phone_number': employee.phone_number,
+            'address': employee.address,
             'date_of_birth': None,
             'hire_date': employee.hired_at.isoformat() if employee.hired_at else None,
             'salary': str(employee.salary) if employee.salary is not None else None,
-            'position': None,
+            'position': employee.position.name if employee.position else None,
             'department': {
                 'id': employee.department.id,
                 'name': employee.department.name,
@@ -82,6 +82,10 @@ def update_profile(request):
                     employee.first_name = request.data['first_name']
                 if 'last_name' in request.data:
                     employee.last_name = request.data['last_name']
+                if 'phone_number' in request.data:
+                    employee.phone_number = request.data['phone_number']
+                if 'address' in request.data:
+                    employee.address = request.data['address']
 
                 if 'profile_picture' in request.FILES:
                     if employee.profile_picture:

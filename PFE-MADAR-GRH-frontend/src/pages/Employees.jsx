@@ -61,6 +61,12 @@ export default function Employees() {
     const email = window.prompt('Email', employee.email || '');
     if (email === null) return;
 
+    const phone_number = window.prompt('Phone Number', employee.phone_number || '');
+    if (phone_number === null) return;
+
+    const address = window.prompt('Address', employee.address || '');
+    if (address === null) return;
+
     const position = window.prompt('Poste / Position', employee.position || '');
     if (position === null) return;
 
@@ -83,6 +89,8 @@ export default function Employees() {
         first_name: first_name.trim(),
         last_name: last_name.trim(),
         email: email.trim().toLowerCase(),
+        phone_number: phone_number.trim(),
+        address: address.trim(),
         position: position.trim(),
         salary,
         hired_at,
@@ -344,6 +352,8 @@ export default function Employees() {
               <thead style={styles.tableHeader}>
                 <tr>
                   <th style={styles.tableHeaderCell}>Full Name</th>
+                  <th style={styles.tableHeaderCell}>Phone</th>
+                  <th style={styles.tableHeaderCell}>Address</th>
                   <th style={styles.tableHeaderCell}>Poste</th>
                   <th style={styles.tableHeaderCell}>Email</th>
                   <th style={styles.tableHeaderCell}>Department</th>
@@ -361,6 +371,8 @@ export default function Employees() {
                     <td style={styles.tableCell}>
                       {`${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || `User #${emp.id}`}
                     </td>
+                    <td style={styles.tableCell}>{emp.phone_number || '-'}</td>
+                    <td style={styles.tableCell}>{emp.address || '-'}</td>
                     <td style={styles.tableCell}>{emp.position || '-'}</td>
                     <td style={styles.tableCell}>{emp.email || `User #${emp.id}`}</td>
                     <td style={styles.tableCell}>

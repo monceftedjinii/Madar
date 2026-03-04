@@ -6,6 +6,8 @@ export default function AddEmployee() {
     first_name: '',
     last_name: '',
     email: '',
+    phone_number: '',
+    address: '',
     position: '',
     department: '',
     salary: '',
@@ -76,6 +78,8 @@ export default function AddEmployee() {
           first_name: '',
           last_name: '',
           email: '',
+          phone_number: '',
+          address: '',
           position: '',
           department: '',
           salary: '',
@@ -271,6 +275,32 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Phone Number:</label>
+            <input
+              type="text"
+              name="phone_number"
+              style={styles.input}
+              value={formData.phone_number}
+              onChange={handleChange}
+              placeholder="+213..."
+              disabled={loading}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Address:</label>
+            <input
+              type="text"
+              name="address"
+              style={styles.input}
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Street, City"
+              disabled={loading}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
             <label style={styles.label}>Poste / Position:</label>
             <select
               name="position"
@@ -352,6 +382,8 @@ export default function AddEmployee() {
                 first_name: '',
                 last_name: '',
                 email: '',
+                phone_number: '',
+                address: '',
                 position: '',
                 department: '',
                 salary: '',

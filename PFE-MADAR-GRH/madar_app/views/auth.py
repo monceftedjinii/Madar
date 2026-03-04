@@ -34,5 +34,7 @@ def whoami(request):
 		'last_name': last_name,
 		'department': employee.department.name if employee and employee.department else None,
 		'position': employee.position.name if employee and employee.position else None,
+		'phone_number': employee.phone_number if employee else None,
+		'address': employee.address if employee else None,
 		'profile_picture': user_picture or employee_picture,
 	})

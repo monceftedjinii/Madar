@@ -50,6 +50,8 @@ def employees_list(request):
 			'position': e.position.name if e.position else '',
 			'position_id': e.position.id if e.position else None,
 			'email': e.email,
+			'phone_number': e.phone_number if not for_messaging else None,
+			'address': e.address if not for_messaging else None,
 			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
 			'attendance_pin': e.attendance_pin if not for_messaging else None,
@@ -106,6 +108,8 @@ def create_employee(request):
 	email = request.data.get('email', '').strip().lower()
 	department_id = request.data.get('department')
 	position_value = request.data.get('position', '')
+	phone_number = request.data.get('phone_number', '').strip()
+	address = request.data.get('address', '').strip()
 	salary = request.data.get('salary', '0.00')
 	hired_at_str = request.data.get('hired_at')
 	attendance_pin = request.data.get('attendance_pin', '')
@@ -169,6 +173,8 @@ def create_employee(request):
 			last_name=last_name,
 			email=email,
 			position=position,
+			phone_number=phone_number,
+			address=address,
 			department=dept,
 			salary=salary,
 			hired_at=hired_at,
@@ -191,6 +197,8 @@ def create_employee(request):
 			'position': employee.position.name if employee.position else '',
 			'position_id': employee.position.id if employee.position else None,
 			'email': employee.email,
+			'phone_number': employee.phone_number,
+			'address': employee.address,
 			'department': dept.name,
 		},
 		'user': {
@@ -218,6 +226,8 @@ def update_employee(request, pk):
 	last_name = request.data.get('last_name', employee.last_name).strip()
 	email = request.data.get('email', employee.email).strip().lower()
 	position_value = request.data.get('position', employee.position_id)
+	phone_number = request.data.get('phone_number', employee.phone_number).strip()
+	address = request.data.get('address', employee.address).strip()
 	department_id = request.data.get('department', employee.department_id)
 	salary = request.data.get('salary', employee.salary)
 	hired_at_str = request.data.get('hired_at', employee.hired_at.isoformat())
@@ -270,6 +280,8 @@ def update_employee(request, pk):
 	employee.last_name = last_name
 	employee.email = email
 	employee.position = position
+	employee.phone_number = phone_number
+	employee.address = address
 	employee.department = dept
 	employee.salary = salary
 	employee.hired_at = hired_at
@@ -285,6 +297,8 @@ def update_employee(request, pk):
 			'position': employee.position.name if employee.position else '',
 			'position_id': employee.position.id if employee.position else None,
 			'email': employee.email,
+			'phone_number': employee.phone_number,
+			'address': employee.address,
 			'department': {
 				'id': employee.department.id,
 				'name': employee.department.name,
