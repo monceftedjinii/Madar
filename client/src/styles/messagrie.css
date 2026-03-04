@@ -420,6 +420,125 @@ h3 {
   background: #fff;
 }
 
+.compose-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.compose-modal {
+  width: min(720px, 96vw);
+  border-radius: 18px;
+  border: 1px solid #d2d7df;
+  background: #ffffff;
+  box-shadow: 0 28px 52px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+}
+
+.compose-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 16px;
+}
+
+.compose-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.compose-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d2d7df;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.compose-form {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compose-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 700;
+}
+
+.compose-meta-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compose-form input,
+.compose-form select,
+.compose-form textarea {
+  width: 100%;
+  border: 1px solid #d2d7df;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.compose-form input {
+  min-height: 42px;
+}
+
+.compose-form select {
+  min-height: 42px;
+}
+
+.compose-form textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.compose-actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.compose-cancel,
+.compose-send {
+  border-radius: 12px;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #d2d7df;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.compose-cancel {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.compose-send {
+  background: rgb(0, 104, 40);
+  color: #ffffff;
+  border-color: rgb(0, 104, 40);
+}
+
 /* ===== DARK MODE (page mail) ===== */
 .profile-page.dark .block_one,
 .profile-page.dark .block_two,
@@ -524,6 +643,38 @@ h3 {
   color: #94a3b8;
 }
 
+.profile-page.dark .compose-modal {
+  background: #1a2035;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.profile-page.dark .compose-header {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.profile-page.dark .compose-header h3 {
+  color: #e2e8f0;
+}
+
+.profile-page.dark .compose-close,
+.profile-page.dark .compose-cancel {
+  background: #232d46;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+.profile-page.dark .compose-form label {
+  color: #cbd5e1;
+}
+
+.profile-page.dark .compose-form input,
+.profile-page.dark .compose-form select,
+.profile-page.dark .compose-form textarea {
+  background: #232d46;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
 @media (max-width: 1300px) {
   .block_two {
     width: calc(100% - 240px);
@@ -558,5 +709,18 @@ h3 {
 
   .message-actions {
     flex-wrap: wrap;
+  }
+
+  .compose-actions {
+    justify-content: stretch;
+  }
+
+  .compose-cancel,
+  .compose-send {
+    flex: 1;
+  }
+
+  .compose-meta-row {
+    grid-template-columns: 1fr;
   }
 }

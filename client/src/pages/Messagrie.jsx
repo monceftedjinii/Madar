@@ -59,6 +59,14 @@ export default function Messagrie() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedId, setSelectedId] = useState(2);
   const [replyText, setReplyText] = useState("");
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [composeForm, setComposeForm] = useState({
+    to: "",
+    mailType: "info",
+    service: "RH",
+    subject: "",
+    message: "",
+  });
 
   const filteredEmails = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -81,6 +89,26 @@ export default function Messagrie() {
 
   const selectedEmail =
     filteredEmails.find((mail) => mail.id === selectedId) || filteredEmails[0] || null;
+
+  const openCompose = () => setIsComposeOpen(true);
+  const closeCompose = () => setIsComposeOpen(false);
+
+  const onComposeFieldChange = (e) => {
+    const { name, value } = e.target;
+    setComposeForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const onComposeSubmit = (e) => {
+    e.preventDefault();
+    setIsComposeOpen(false);
+    setComposeForm({
+      to: "",
+      mailType: "info",
+      service: "RH",
+      subject: "",
+      message: "",
+    });
+  };
 
   return (
     <>
@@ -122,7 +150,7 @@ export default function Messagrie() {
                   {dark ? " mode clair" : " mode sombre"}
                 </button>
 
-                <button className="modifier" type="button">
+                <button className="modifier" type="button" onClick={openCompose}>
                   nouveau message
                 </button>
               </div>
@@ -135,7 +163,9 @@ export default function Messagrie() {
                 <p className="morinfo size">Organisation des emails</p>
               </div>
               <div className="botton_mail">
-                <button className="composer">Composer</button>
+                <button className="composer" type="button" onClick={openCompose}>
+                  Composer
+                </button>
                 <button className="all_buttons">Boite</button>
                 <button className="all_buttons">Importants</button>
                 <button className="all_buttons">Envoyes</button>
@@ -275,6 +305,95 @@ export default function Messagrie() {
           </div>
         </div>
       </div>
+      {isComposeOpen && (
+        <div className="compose-overlay" onClick={closeCompose} aria-hidden="true">
+          <div
+            className="compose-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Nouveau message"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="compose-header">
+              <h3>Nouveau message</h3>
+              <button type="button" className="compose-close" onClick={closeCompose}>
+                X
+              </button>
+            </div>
+
+            <form className="compose-form" onSubmit={onComposeSubmit}>
+              <label>
+                A
+                <input
+                  type="email"
+                  name="to"
+                  value={composeForm.to}
+                  onChange={onComposeFieldChange}
+                  placeholder="client@madar.com"
+                  required
+                />
+              </label>
+              <div className="compose-meta-row">
+                <label>
+                  Type de mail
+                  <select
+                    name="mailType"
+                    value={composeForm.mailType}
+                    onChange={onComposeFieldChange}
+                  >
+                    <option value="info">Info</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </label>
+                <label>
+                  Service
+                  <select
+                    name="service"
+                    value={composeForm.service}
+                    onChange={onComposeFieldChange}
+                  >
+                    <option value="RH">RH</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Manager">Manager</option>
+                    <option value="IT">IT</option>
+                    <option value="Commercial">Commercial</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Objet
+                <input
+                  type="text"
+                  name="subject"
+                  value={composeForm.subject}
+                  onChange={onComposeFieldChange}
+                  placeholder="Sujet de votre email"
+                  required
+                />
+              </label>
+              <label>
+                Message
+                <textarea
+                  name="message"
+                  value={composeForm.message}
+                  onChange={onComposeFieldChange}
+                  placeholder="Ecrire votre message..."
+                  required
+                />
+              </label>
+
+              <div className="compose-actions">
+                <button type="button" className="compose-cancel" onClick={closeCompose}>
+                  Annuler
+                </button>
+                <button type="submit" className="compose-send">
+                  Envoyer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
