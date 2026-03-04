@@ -107,6 +107,9 @@ export default function AgentFormations() {
               <span style={styles.statusBadge}>{req.status_label}</span>
             </div>
             <p style={styles.cardText}><strong>From:</strong> {req.requested_by_email}</p>
+            {req.department && (
+              <p style={styles.cardText}><strong>Department:</strong> {req.department}</p>
+            )}
             <p style={styles.cardText}><strong>Description:</strong> {req.description}</p>
             <p style={styles.cardText}><strong>Reasons:</strong> {req.reasons || '-'}</p>
           </div>

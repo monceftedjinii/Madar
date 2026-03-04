@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db.models import Q
-from ..models import FormationRequest, FormationCatalog, RoleChoices
+from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee
 
 
 def _is_agent_or_grh(user):
@@ -106,8 +106,17 @@ def agent_formation_requests(request):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
     requests = FormationRequest.objects.select_related('requested_by').order_by('-created_at')
-    data = [
-        {
+    data = []
+    for r in requests:
+        # Lookup department via Employee email match
+        department_name = None
+        try:
+            employee = Employee.objects.select_related('department').get(email=r.requested_by.email)
+            department_name = employee.department.name
+        except Employee.DoesNotExist:
+            pass
+        
+        data.append({
             'id': r.id,
             'nom': r.nom,
             'description': r.description,
@@ -115,11 +124,10 @@ def agent_formation_requests(request):
             'status': r.status,
             'status_label': r.get_status_display(),
             'requested_by_email': r.requested_by.email,
+            'department': department_name,
             'created_at': r.created_at.isoformat(),
             'updated_at': r.updated_at.isoformat(),
-        }
-        for r in requests
-    ]
+        })
     return Response(data)
 
 
