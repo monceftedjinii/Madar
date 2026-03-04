@@ -84,11 +84,21 @@ export default function Formation() {
   };
 
   const toggleEmployeeSelection = (employeeId) => {
+    const peopleRequired = selectedFormation?.approved_formation?.people_required || 0;
+    const alreadySelected = selectedFormation?.participants?.length || 0;
+    const remainingSpots = peopleRequired - alreadySelected;
+
     setSelectedEmployees((prev) => {
       if (prev.includes(employeeId)) {
         return prev.filter((id) => id !== employeeId);
       } else {
-        return [...prev, employeeId];
+        // Only allow selection if we haven't reached the limit
+        if (prev.length < remainingSpots) {
+          return [...prev, employeeId];
+        } else {
+          setError(`You can only select ${remainingSpots} more participant(s)`);
+          return prev;
+        }
       }
     });
   };
@@ -185,7 +195,7 @@ export default function Formation() {
                     <ul style={{margin: '4px 0', paddingLeft: '20px'}}>
                       {formation.participants.map((p, idx) => (
                         <li key={idx} style={{fontSize: '14px', color: '#374151'}}>
-                          {p.employee_name}
+                          {p.name || `${p.first_name} ${p.last_name}` || p.employee_name || 'Unknown'}
                         </li>
                       ))}
                     </ul>
@@ -301,15 +311,18 @@ export default function Formation() {
             </div>
 
             {selectedFormation?.approved_formation && (
-              <div style={{padding: '0 0 16px 0', borderBottom: '1px solid #e2e8f0', marginBottom: '16px'}}>
-                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
+              <div style={{padding: '0 0 16px 0', borderBottom: '1px solid #e2e8f0', marginBottom: '16px', background: '#f0f9ff', padding: '12px', borderRadius: '6px'}}>
+                <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e', fontWeight: '600'}}>
                   <strong>Formation:</strong> {selectedFormation.approved_formation.name}
                 </p>
-                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
+                <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e'}}>
                   <strong>People Required:</strong> {selectedFormation.approved_formation.people_required}
                 </p>
-                <p style={{margin: '4px 0', fontSize: '14px', color: '#666'}}>
-                  <strong>Already Selected:</strong> {selectedFormation.participants?.length || 0}
+                <p style={{margin: '8px 0', fontSize: '14px', color: '#0c4a6e'}}>
+                  <strong>Already Added:</strong> {selectedFormation.participants?.length || 0}
+                </p>
+                <p style={{margin: '8px 0', fontSize: '15px', fontWeight: '600', color: '#059669'}}>
+                  <strong>Remaining Spots:</strong> {(selectedFormation.approved_formation.people_required) - (selectedFormation.participants?.length || 0)}
                 </p>
               </div>
             )}

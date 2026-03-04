@@ -363,3 +363,62 @@ def add_formation_participants(request, pk):
         'required_count': required_count,
         'is_complete': current_count >= required_count,
     })
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def update_delete_formation_catalog(request, pk):
+    """Update or delete a formation from the catalog."""
+    if not _is_agent_or_grh(request.user):
+        return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        formation = FormationCatalog.objects.get(id=pk)
+    except FormationCatalog.DoesNotExist:
+        return Response({'detail': 'Formation not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'DELETE':
+        formation.delete()
+        return Response({'detail': 'Formation deleted successfully'})
+    
+    # PUT - Update formation
+    name = (request.data.get('name') or '').strip()
+    company_name = (request.data.get('company_name') or '').strip()
+    duration_hours_raw = request.data.get('duration_hours')
+    people_required_raw = request.data.get('people_required')
+    company_email = (request.data.get('company_email') or '').strip()
+    company_phone = (request.data.get('company_phone') or '').strip()
+    company_address = (request.data.get('company_address') or '').strip()
+
+    if not all([name, company_name, company_email, company_phone, company_address]):
+        return Response({'detail': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        duration_hours = int(duration_hours_raw)
+        people_required = int(people_required_raw)
+    except (TypeError, ValueError):
+        return Response({'detail': 'duration_hours and people_required must be valid numbers'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if duration_hours <= 0 or people_required <= 0:
+        return Response({'detail': 'duration_hours and people_required must be greater than 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+    formation.name = name
+    formation.company_name = company_name
+    formation.duration_hours = duration_hours
+    formation.people_required = people_required
+    formation.company_email = company_email
+    formation.company_phone = company_phone
+    formation.company_address = company_address
+    formation.save()
+
+    return Response({
+        'id': formation.id,
+        'name': formation.name,
+        'company_name': formation.company_name,
+        'duration_hours': formation.duration_hours,
+        'people_required': formation.people_required,
+        'company_email': formation.company_email,
+        'company_phone': formation.company_phone,
+        'company_address': formation.company_address,
+        'created_at': formation.created_at.isoformat(),
+    })

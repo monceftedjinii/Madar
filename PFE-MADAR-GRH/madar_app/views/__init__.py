@@ -19,6 +19,7 @@ from .formation import (
 	reject_formation_request,
 	get_department_employees,
 	add_formation_participants,
+	update_delete_formation_catalog,
 )
 from .documents import (
 	upload_document,

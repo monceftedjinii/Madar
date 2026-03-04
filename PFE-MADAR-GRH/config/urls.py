@@ -62,6 +62,7 @@ urlpatterns = [
     path('api/formations/<int:pk>/', madar_views.formation_detail, name='api-formations-detail'),
     path('api/agent/formations/requests/', madar_views.agent_formation_requests, name='api-agent-formations-requests'),
     path('api/agent/formations/catalog/', madar_views.agent_formations_catalog, name='api-agent-formations-catalog'),
+    path('api/agent/formations/catalog/<int:pk>/', madar_views.update_delete_formation_catalog, name='api-agent-formations-catalog-detail'),
     path('api/agent/formations/requests/<int:pk>/approve/', madar_views.approve_formation_request, name='api-agent-approve-request'),
     path('api/agent/formations/requests/<int:pk>/reject/', madar_views.reject_formation_request, name='api-agent-reject-request'),
     path('api/formations/<int:pk>/add-participants/', madar_views.add_formation_participants, name='api-formations-add-participants'),
