@@ -1,5 +1,6 @@
 ﻿import { useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
@@ -16,6 +17,7 @@ export default function Profile() {
     position: "",
     department: "",
     photoName: "",
+    is_online: "",
   });
   const [formData, setFormData] = useState(profileData);
   let access = localStorage.getItem("access_token");
@@ -27,11 +29,12 @@ export default function Profile() {
     setProfileData({
       fullName: me.data.first_name + " " + me.data.last_name,
       email: me.data.email,
-      phone: me.data.phone,
+      phone: me.data.phone_number,
       address: me.data.address,
       position: me.data.position,
       department: me.data.department,
       photoName: me.data.profile_picture,
+      is_online: me.data.is_online,
     });
   };
   useEffect(() => {
@@ -65,7 +68,12 @@ export default function Profile() {
     setProfileData(formData);
     closeEditModal();
   };
+  const navigate = useNavigate();
 
+  const logout = () => {
+    localStorage.removeItem("access_token");
+    navigate("/login");
+  };
   return (
     <>
       <div
@@ -111,7 +119,9 @@ export default function Profile() {
                 <button className="mode" onClick={() => setDark(!dark)}>
                   {dark ? " mode clair" : " mode sombre"}
                 </button>
-                <button className="btn-logout">déconnecter</button>
+                <button className="btn-logout" onClick={logout}>
+                  déconnecter
+                </button>
                 <button
                   className="modifier"
                   type="button"
@@ -126,14 +136,20 @@ export default function Profile() {
             <div className="quelques-infos">
               <div className="gauche">
                 <img
-                  src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                  src={
+                    profileData.photoName
+                      ? profileData.photoName
+                      : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                  }
                   alt="Profile-pic"
                   className="profile-pic"
                 />
                 <div className="infooos">
                   <div className="nom-status">
                     <h3>{profileData.fullName}</h3>
-                    <div className="status">actif</div>
+                    <div className="status">
+                      {profileData.is_online === true ? "actif" : " Inactif"}
+                    </div>
                   </div>
                   <p>
                     Poste : {profileData.position} • Département :{" "}
