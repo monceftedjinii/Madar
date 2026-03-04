@@ -24,6 +24,8 @@ def whoami(request):
 	employee = Employee.objects.filter(email=user.email).select_related('department', 'position').first()
 	first_name = user.first_name or (employee.first_name if employee else '')
 	last_name = user.last_name or (employee.last_name if employee else '')
+	user_picture = request.build_absolute_uri(user.profile_picture.url) if getattr(user, 'profile_picture', None) else None
+	employee_picture = request.build_absolute_uri(employee.profile_picture.url) if employee and employee.profile_picture else None
 	return Response({
 		'id': user.id,
 		'email': user.email,
@@ -32,4 +34,5 @@ def whoami(request):
 		'last_name': last_name,
 		'department': employee.department.name if employee and employee.department else None,
 		'position': employee.position.name if employee and employee.position else None,
+		'profile_picture': user_picture or employee_picture,
 	})
