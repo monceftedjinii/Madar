@@ -47,6 +47,14 @@ function Dashboard({ user, setUser }) {
       { label: 'Notifications', href: '/notifications' },
       { label: 'Profile', href: '/profile' },
     ],
+    RH_AGENT: [
+      { label: 'Formations', href: '/agent/formations' },
+      { label: 'Messages', href: '/messages' },
+      { label: 'Documents', href: '/documents' },
+      { label: 'Reports', href: '/reports' },
+      { label: 'Notifications', href: '/notifications' },
+      { label: 'Profile', href: '/profile' },
+    ],
     RH_SENIOR: [
       { label: 'Discipline Flags', href: '/discipline/flags' },
       { label: 'Messages', href: '/messages' },

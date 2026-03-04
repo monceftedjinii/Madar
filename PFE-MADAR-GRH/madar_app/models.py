@@ -405,3 +405,22 @@ class FormationRequest(models.Model):
 
     def __str__(self):
         return f"{self.nom} - {self.get_status_display()}"
+
+
+class FormationCatalog(models.Model):
+    """Formation definitions managed by RH Agent."""
+    name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
+    duration_hours = models.PositiveIntegerField()
+    company_email = models.EmailField()
+    company_phone = models.CharField(max_length=30)
+    company_address = models.CharField(max_length=500)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='created_formations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} - {self.company_name}"

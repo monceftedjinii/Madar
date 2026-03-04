@@ -9,7 +9,13 @@ from .attendance import attendance_check_in, attendance_check_out, attendance_me
 from .leaves import create_leave, my_leaves, department_pending_leaves, approve_leave, reject_leave
 from .absences import absences_yesterday, create_warning, discipline_flags
 from .notifications import list_notifications, mark_notification_read
-from .formation import formation_list, create_formation_request, formation_detail
+from .formation import (
+	formation_list,
+	create_formation_request,
+	formation_detail,
+	agent_formation_requests,
+	agent_formations_catalog,
+)
 from .documents import (
 	upload_document,
 	send_document,
@@ -66,6 +72,7 @@ __all__ = [
 	'list_notifications', 'mark_notification_read',
 	# formation
 	'formation_list', 'create_formation_request', 'formation_detail',
+	'agent_formation_requests', 'agent_formations_catalog',
 	# documents
 	'upload_document', 'send_document', 'list_documents_scoped',
 	'documents_feed', 'documents_mine', 'comment_document',

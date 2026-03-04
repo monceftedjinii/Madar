@@ -17,6 +17,7 @@ import AddEmployee from './pages/AddEmployee'
 import Messages from './pages/Messages/Messages'
 import Profile from './pages/Profile'
 import Formation from './pages/Formation'
+import AgentFormations from './pages/AgentFormations'
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('access_token')
@@ -170,6 +171,14 @@ function App() {
           element={
             <PrivateRoute>
               <Formation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/agent/formations"
+          element={
+            <PrivateRoute>
+              <AgentFormations />
             </PrivateRoute>
           }
         />
