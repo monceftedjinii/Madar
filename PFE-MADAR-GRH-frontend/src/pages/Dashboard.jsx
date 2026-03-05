@@ -1,14 +1,21 @@
 import { useNavigate } from 'react-router-dom'
+import api from '../api'
 
 function Dashboard({ user, setUser }) {
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
-    setUser(null)
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout/')
+    } catch (err) {
+      console.error('Logout error:', err)
+    } finally {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+      setUser(null)
+      navigate('/login')
+    }
   }
 
   if (!user) {

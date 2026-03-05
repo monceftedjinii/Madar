@@ -65,3 +65,12 @@ def whoami(request):
 		'profile_picture': user_picture or employee_picture,
 		'is_online': is_user_online(user),
 	})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout(request):
+	user = request.user
+	user.last_seen = None
+	user.save(update_fields=['last_seen'])
+	return Response({'message': 'Logged out successfully'})

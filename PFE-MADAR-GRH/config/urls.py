@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/rbac-test/', madar_views.rbac_test, name='api-rbac-test'),
     path('api/auth/token/', madar_views.token_obtain_pair, name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/logout/', madar_views.logout, name='api-logout'),
     path('api/whoami/', madar_views.whoami, name='api-whoami'),
     path('api/profile/', madar_views.get_profile, name='api-profile'),
     path('api/profile/update/', madar_views.update_profile, name='api-profile-update'),
