@@ -10,6 +10,7 @@ class RoleChoices(models.TextChoices):
     RH_AGENT = 'RH_AGENT', 'RH Agent'
     RH_SENIOR = 'RH_SENIOR', 'Senior RH'
     GRH = 'GRH', 'GRH'
+   
 
 
 class UserManager(BaseUserManager):
