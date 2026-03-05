@@ -5,11 +5,17 @@ export default function Form({
   formData,
   onChange,
   onPhotoChange,
+  isSaving = false,
 }) {
   if (!open) return null;
 
   return (
-    <div className="profile-edit-backdrop" onClick={onClose}>
+    <div
+      className="profile-edit-backdrop"
+      onClick={() => {
+        if (!isSaving) onClose();
+      }}
+    >
       <div
         className="profile-edit-modal"
         role="dialog"
@@ -19,7 +25,12 @@ export default function Form({
       >
         <div className="profile-edit-head">
           <h2>Modifier mon profil</h2>
-          <button type="button" className="close-edit-btn" onClick={onClose}>
+          <button
+            type="button"
+            className="close-edit-btn"
+            onClick={onClose}
+            disabled={isSaving}
+          >
             Fermer
           </button>
         </div>
@@ -33,6 +44,7 @@ export default function Form({
                 name="fullName"
                 value={formData.fullName}
                 onChange={onChange}
+                disabled={isSaving}
                 required
               />
             </label>
@@ -47,6 +59,7 @@ export default function Form({
                 name="phone"
                 value={formData.phone}
                 onChange={onChange}
+                disabled={isSaving}
               />
             </label>
             <label>
@@ -56,6 +69,7 @@ export default function Form({
                 name="address"
                 value={formData.address}
                 onChange={onChange}
+                disabled={isSaving}
               />
             </label>
             <label>
@@ -73,6 +87,7 @@ export default function Form({
                 name="department"
                 value={formData.department}
                 onChange={onChange}
+                disabled
               >
                 <option value="Ressources Humaines">Ressources Humaines</option>
                 <option value="Finance">Finance</option>
@@ -86,16 +101,26 @@ export default function Form({
           <div className="profile-file-row">
             <label className="profile-file-input">
               Photo de profil
-              <input type="file" accept="image/*" onChange={onPhotoChange} />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onPhotoChange}
+                disabled={isSaving}
+              />
             </label>
           </div>
 
           <div className="profile-edit-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>
+            <button
+              type="button"
+              className="btn-cancel"
+              onClick={onClose}
+              disabled={isSaving}
+            >
               Annuler
             </button>
-            <button type="submit" className="btn-save">
-              Enregistrer
+            <button type="submit" className="btn-save" disabled={isSaving}>
+              {isSaving ? "Enregistrement..." : "Enregistrer"}
             </button>
           </div>
         </form>

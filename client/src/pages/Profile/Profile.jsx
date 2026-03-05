@@ -20,19 +20,31 @@ export default function Profile() {
     is_online: "",
   });
   const [formData, setFormData] = useState(profileData);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   let access = localStorage.getItem("access_token");
+  const splitFullName = (value = "") => {
+    const clean = value.trim().replace(/\s+/g, " ");
+    if (!clean) {
+      return { firstName: "", lastName: "" };
+    }
+
+    const [firstName, ...rest] = clean.split(" ");
+    return { firstName, lastName: rest.join(" ") };
+  };
   const fetchProfile = async () => {
     var me = await axios.get("/api/whoami/", {
       headers: { Authorization: `Bearer ${access}` },
     });
     console.log(me.data);
     setProfileData({
-      fullName: me.data.first_name + " " + me.data.last_name,
+      fullName: `${me.data.first_name || ""} ${me.data.last_name || ""}`.trim(),
       email: me.data.email,
-      phone: me.data.phone_number,
-      address: me.data.address,
-      position: me.data.position,
-      department: me.data.department,
+      phone: me.data.phone_number || me.data.employee_info?.phone_number || "",
+      address: me.data.address || me.data.employee_info?.address || "",
+      position: me.data.position || me.data.employee_info?.position || "",
+      department:
+        me.data.department || me.data.employee_info?.department?.name || "",
       photoName: me.data.profile_picture,
       is_online: me.data.is_online,
     });
@@ -43,11 +55,13 @@ export default function Profile() {
 
   const openEditModal = () => {
     setFormData(profileData);
+    setSelectedPhoto(null);
     setIsEditOpen(true);
   };
 
   const closeEditModal = () => {
     setIsEditOpen(false);
+    setSelectedPhoto(null);
   };
 
   const handleFormChange = (event) => {
@@ -57,16 +71,45 @@ export default function Profile() {
 
   const handlePhotoChange = (event) => {
     const file = event.target.files?.[0];
+    setSelectedPhoto(file || null);
     setFormData((prev) => ({
       ...prev,
       photoName: file ? file.name : "",
     }));
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = async (event) => {
     event.preventDefault();
-    setProfileData(formData);
-    closeEditModal();
+
+    try {
+      setIsSaving(true);
+      const { firstName, lastName } = splitFullName(formData.fullName);
+      const body = new FormData();
+
+      body.append("first_name", firstName);
+      body.append("last_name", lastName);
+      body.append("phone_number", formData.phone || "");
+      body.append("address", formData.address || "");
+
+      if (selectedPhoto) {
+        body.append("profile_picture", selectedPhoto);
+      }
+
+      await axios.put("/api/profile/update/", body, {
+        headers: {
+          Authorization: `Bearer ${access}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await fetchProfile();
+      closeEditModal();
+    } catch (error) {
+      console.error("Erreur de mise a jour du profil:", error);
+      alert("Echec de la mise a jour du profil.");
+    } finally {
+      setIsSaving(false);
+    }
   };
   const navigate = useNavigate();
 
@@ -262,6 +305,7 @@ export default function Profile() {
           formData={formData}
           onChange={handleFormChange}
           onPhotoChange={handlePhotoChange}
+          isSaving={isSaving}
         />
       </div>
     </>
