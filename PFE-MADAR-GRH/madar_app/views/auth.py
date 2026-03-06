@@ -1,8 +1,10 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
 from django.conf import settings
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from ..permissions import IsGRH
 from ..models import Employee
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -18,6 +20,17 @@ def is_user_online(user):
 
 class ActiveTokenObtainPairSerializer(TokenObtainPairSerializer):
 	def validate(self, attrs):
+		email = attrs.get('email')
+		password = attrs.get('password')
+		User = get_user_model()
+		user = User.objects.filter(email=email).first()
+
+		if user is None:
+			raise serializers.ValidationError({'detail': 'Utilisateur introuvable.'})
+
+		if not user.check_password(password):
+			raise serializers.ValidationError({'detail': 'Mot de passe incorrect.'})
+
 		data = super().validate(attrs)
 		self.user.last_seen = timezone.now()
 		self.user.save(update_fields=['last_seen'])

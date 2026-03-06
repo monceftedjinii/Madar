@@ -7,12 +7,14 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 export default function Login() {
   const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState("");
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
   const handlechange = (e) => {
     const { name, value } = e.target;
+    setErrorMessage("");
     setForm({
       ...form,
       [name]: value,
@@ -25,10 +27,17 @@ export default function Login() {
       let response = await login("/api/auth/token/", form);
       const token = response.access;
       localStorage.setItem("access_token", token);
-      navigate("/profile")
+      setErrorMessage("");
+      navigate("/profile");
       // console.log(status);
     } catch (error) {
       console.error("Login failed", error);
+      const apiMessage = error?.response?.data?.detail;
+      const message =
+        typeof apiMessage === "string"
+          ? apiMessage
+          : "Email ou mot de passe invalide.";
+      setErrorMessage(message);
     }
   };
   return (
@@ -63,7 +72,8 @@ export default function Login() {
             value={form.password}
             onChange={handlechange}
           />
-          <button className="login-button" type="submit" onClick={handleSubmit}>
+          {errorMessage && <p className="login-error-message">{errorMessage}</p>}
+          <button className="login-button" type="submit">
             Login
           </button>
         </form>

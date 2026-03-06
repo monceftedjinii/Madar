@@ -186,6 +186,17 @@ html {
   box-shadow: 0 2px 8px rgba(10, 92, 54, 0.25);
 }
 
+.login-error-message {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1b0b7;
+  background: #fdecef;
+  color: #9f1d2b;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .login-logo {
   width: 120px;
   height: 120px;
