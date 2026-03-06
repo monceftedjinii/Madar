@@ -8,6 +8,7 @@ import { useState } from "react";
 export default function Login() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -23,7 +24,9 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     try {
+      setIsLoading(true);
       let response = await login("/api/auth/token/", form);
       const token = response.access;
       localStorage.setItem("access_token", token);
@@ -38,6 +41,8 @@ export default function Login() {
           ? apiMessage
           : "Email ou mot de passe invalide.";
       setErrorMessage(message);
+    } finally {
+      setIsLoading(false);
     }
   };
   return (
@@ -58,6 +63,7 @@ export default function Login() {
             value={form.email}
             onChange={handlechange}
             name="email"
+            disabled={isLoading}
           />
           <TextField
             required
@@ -71,10 +77,18 @@ export default function Login() {
             name="password"
             value={form.password}
             onChange={handlechange}
+            disabled={isLoading}
           />
           {errorMessage && <p className="login-error-message">{errorMessage}</p>}
-          <button className="login-button" type="submit">
-            Login
+          <button className="login-button" type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <span className="login-button-loading">
+                <span className="login-spinner" aria-hidden="true" />
+                Veuillez patienter
+              </span>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
       </div>
