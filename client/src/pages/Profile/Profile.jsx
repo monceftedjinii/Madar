@@ -265,7 +265,7 @@ export default function Profile() {
               <div className="info-per">
                 <div className="top">
                   <h3 className="title">Informations personnelles</h3>
-                  <p className="desc">Poste, contrat, manager</p>
+                  <p className="desc">Données visibles par l’utilisateur</p>
                 </div>
                 <div>
                   <p className="desc">Nom complet</p>
@@ -287,7 +287,7 @@ export default function Profile() {
               <div className="info-pro">
                 <div className="top">
                   <h3 className="title">Informations professionnelles</h3>
-                  <p className="desc">Données visibles par l’utilisateur</p>
+                  <p className="desc">Poste, contrat, manager </p>
                 </div>
                 <div>
                   <p className="desc">Poste</p>
