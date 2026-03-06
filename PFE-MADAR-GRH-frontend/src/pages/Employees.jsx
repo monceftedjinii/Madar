@@ -70,11 +70,11 @@ export default function Employees() {
     const position = window.prompt('Poste / Position', employee.position || '');
     if (position === null) return;
 
+    const contract_type = window.prompt('Type de Contrat (CDI, CDD, STAGE)', employee.contract_type || 'CDI');
+    if (contract_type === null) return;
+
     const salary = window.prompt('Salary', String(employee.salary || '0.00'));
     if (salary === null) return;
-
-    const hired_at = window.prompt('Hire date (YYYY-MM-DD)', employee.hired_at || new Date().toISOString().split('T')[0]);
-    if (hired_at === null) return;
 
     const attendance_pin = window.prompt('Attendance PIN (optional)', employee.attendance_pin || '');
     if (attendance_pin === null) return;
@@ -92,8 +92,8 @@ export default function Employees() {
         phone_number: phone_number.trim(),
         address: address.trim(),
         position: position.trim(),
+        contract_type: contract_type.trim(),
         salary,
-        hired_at,
         attendance_pin,
         department: Number(departmentInput),
       });
@@ -375,6 +375,8 @@ export default function Employees() {
                   <th style={styles.tableHeaderCell}>Phone</th>
                   <th style={styles.tableHeaderCell}>Address</th>
                   <th style={styles.tableHeaderCell}>Poste</th>
+                  <th style={styles.tableHeaderCell}>Contrat</th>
+                  <th style={styles.tableHeaderCell}>Date d'embauche</th>
                   <th style={styles.tableHeaderCell}>Email</th>
                   <th style={styles.tableHeaderCell}>Department</th>
                   {canManageEmployees && <th style={styles.tableHeaderCell}>Actions</th>}
@@ -404,6 +406,8 @@ export default function Employees() {
                     <td style={styles.tableCell}>{emp.phone_number || '-'}</td>
                     <td style={styles.tableCell}>{emp.address || '-'}</td>
                     <td style={styles.tableCell}>{emp.position || '-'}</td>
+                    <td style={styles.tableCell}>{emp.contract_type || '-'}</td>
+                    <td style={styles.tableCell}>{emp.hired_at ? new Date(emp.hired_at).toLocaleDateString() : '-'}</td>
                     <td style={styles.tableCell}>{emp.email || `User #${emp.id}`}</td>
                     <td style={styles.tableCell}>
                       {emp.department?.name || emp.department_name || '-'}

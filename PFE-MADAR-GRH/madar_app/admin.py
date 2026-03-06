@@ -51,11 +51,11 @@ admin.site.register(Position)
 
 
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'department', 'attendance_pin', 'user_status')
+	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'department', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name', 'phone_number', 'address', 'position__name')
-	list_filter = ('department', 'position')
-	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
-	readonly_fields = ('profile_preview', 'user_login_info',)
+	list_filter = ('department', 'position', 'contract_type')
+	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	readonly_fields = ('profile_preview', 'user_login_info', 'hired_at')
 	actions = ['reset_user_password']
 
 	def profile_preview(self, obj):

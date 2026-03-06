@@ -67,6 +67,7 @@ def employees_list(request):
 			'is_online': _is_user_online(related_user),
 			'phone_number': e.phone_number if not for_messaging else None,
 			'address': e.address if not for_messaging else None,
+			'contract_type': e.contract_type if not for_messaging else None,
 			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
 			'attendance_pin': e.attendance_pin if not for_messaging else None,
@@ -125,8 +126,8 @@ def create_employee(request):
 	position_value = request.data.get('position', '')
 	phone_number = request.data.get('phone_number', '').strip()
 	address = request.data.get('address', '').strip()
+	contract_type = request.data.get('contract_type', 'CDI')
 	salary = request.data.get('salary', '0.00')
-	hired_at_str = request.data.get('hired_at')
 	attendance_pin = request.data.get('attendance_pin', '')
 	
 	# Validation
@@ -151,14 +152,9 @@ def create_employee(request):
 		return Response({'detail': 'User with this email already exists'}, 
 						status=status.HTTP_400_BAD_REQUEST)
 	
-	# Parse hired_at date
-	try:
-		if hired_at_str:
-			hired_at = date_type.fromisoformat(hired_at_str)
-		else:
-			hired_at = date_type.today()
-	except (ValueError, TypeError):
-		return Response({'detail': 'hired_at must be YYYY-MM-DD format'}, 
+	# Validate contract_type
+	if contract_type not in ['CDD', 'CDI', 'STAGE']:
+		return Response({'detail': 'contract_type must be CDD, CDI, or STAGE'}, 
 						status=status.HTTP_400_BAD_REQUEST)
 	
 	# Get department
@@ -190,9 +186,9 @@ def create_employee(request):
 			position=position,
 			phone_number=phone_number,
 			address=address,
+			contract_type=contract_type,
 			department=dept,
 			salary=salary,
-			hired_at=hired_at,
 			attendance_pin=attendance_pin
 		)
 		print(f"[API] Created Employee {email}")
@@ -214,6 +210,8 @@ def create_employee(request):
 			'email': employee.email,
 			'phone_number': employee.phone_number,
 			'address': employee.address,
+			'contract_type': employee.contract_type,
+			'hired_at': employee.hired_at.isoformat(),
 			'department': dept.name,
 		},
 		'user': {
@@ -243,9 +241,9 @@ def update_employee(request, pk):
 	position_value = request.data.get('position', employee.position_id)
 	phone_number = request.data.get('phone_number', employee.phone_number).strip()
 	address = request.data.get('address', employee.address).strip()
+	contract_type = request.data.get('contract_type', employee.contract_type)
 	department_id = request.data.get('department', employee.department_id)
 	salary = request.data.get('salary', employee.salary)
-	hired_at_str = request.data.get('hired_at', employee.hired_at.isoformat())
 	attendance_pin = request.data.get('attendance_pin', employee.attendance_pin)
 
 	if not all([first_name, last_name, email, department_id]):
@@ -260,11 +258,10 @@ def update_employee(request, pk):
 	except (ValueError, TypeError):
 		return Response({'detail': 'salary must be a number'}, status=status.HTTP_400_BAD_REQUEST)
 
-	# Validate date
-	try:
-		hired_at = date_type.fromisoformat(hired_at_str)
-	except (ValueError, TypeError):
-		return Response({'detail': 'hired_at must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
+	# Validate contract_type
+	if contract_type not in ['CDD', 'CDI', 'STAGE']:
+		return Response({'detail': 'contract_type must be CDD, CDI, or STAGE'}, 
+						status=status.HTTP_400_BAD_REQUEST)
 
 	# Validate department
 	try:
@@ -297,9 +294,9 @@ def update_employee(request, pk):
 	employee.position = position
 	employee.phone_number = phone_number
 	employee.address = address
+	employee.contract_type = contract_type
 	employee.department = dept
 	employee.salary = salary
-	employee.hired_at = hired_at
 	employee.attendance_pin = attendance_pin or ''
 	employee.save()
 
@@ -314,6 +311,7 @@ def update_employee(request, pk):
 			'email': employee.email,
 			'phone_number': employee.phone_number,
 			'address': employee.address,
+			'contract_type': employee.contract_type,
 			'department': {
 				'id': employee.department.id,
 				'name': employee.department.name,

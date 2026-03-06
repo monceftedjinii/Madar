@@ -46,6 +46,7 @@ def get_profile(request):
             'id': employee.id,
             'phone_number': employee.phone_number,
             'address': employee.address,
+            'contract_type': employee.contract_type,
             'date_of_birth': None,
             'hire_date': employee.hired_at.isoformat() if employee.hired_at else None,
             'salary': str(employee.salary) if employee.salary is not None else None,

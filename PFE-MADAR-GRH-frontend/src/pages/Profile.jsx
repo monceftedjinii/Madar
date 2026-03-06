@@ -266,6 +266,26 @@ export default function Profile() {
                     style={isEditing ? styles.input : styles.inputDisabled}
                   />
                 </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Type de Contrat</label>
+                  <input
+                    type="text"
+                    value={profile?.employee_info?.contract_type || '-'}
+                    disabled
+                    style={styles.inputDisabled}
+                  />
+                </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Date d'embauche</label>
+                  <input
+                    type="text"
+                    value={profile?.employee_info?.hire_date ? new Date(profile.employee_info.hire_date).toLocaleDateString() : '-'}
+                    disabled
+                    style={styles.inputDisabled}
+                  />
+                </div>
               </>
             )}
 

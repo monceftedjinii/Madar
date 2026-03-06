@@ -9,9 +9,9 @@ export default function AddEmployee() {
     phone_number: '',
     address: '',
     position: '',
+    contract_type: 'CDI',
     department: '',
     salary: '',
-    hired_at: new Date().toISOString().split('T')[0],
     attendance_pin: ''
   });
   
@@ -81,9 +81,9 @@ export default function AddEmployee() {
           phone_number: '',
           address: '',
           position: '',
+          contract_type: 'CDI',
           department: '',
           salary: '',
-          hired_at: new Date().toISOString().split('T')[0],
           attendance_pin: ''
         });
       }
@@ -336,6 +336,22 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Type de Contrat:</label>
+            <select
+              name="contract_type"
+              style={styles.select}
+              value={formData.contract_type}
+              onChange={handleChange}
+              required
+              disabled={loading}
+            >
+              <option value="CDI">CDI</option>
+              <option value="CDD">CDD</option>
+              <option value="STAGE">Stage</option>
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
             <label style={styles.label}>Salary:</label>
             <input
               type="number"
@@ -345,18 +361,6 @@ export default function AddEmployee() {
               onChange={handleChange}
               placeholder="0.00"
               step="0.01"
-              disabled={loading}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Hired At:</label>
-            <input
-              type="date"
-              name="hired_at"
-              style={styles.input}
-              value={formData.hired_at}
-              onChange={handleChange}
               disabled={loading}
             />
           </div>
@@ -385,9 +389,9 @@ export default function AddEmployee() {
                 phone_number: '',
                 address: '',
                 position: '',
+                contract_type: 'CDI',
                 department: '',
                 salary: '',
-                hired_at: new Date().toISOString().split('T')[0],
                 attendance_pin: ''
               })}
               disabled={loading}

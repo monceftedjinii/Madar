@@ -95,13 +95,19 @@ class Position(models.Model):
 
 
 class Employee(models.Model):
+    class ContractType(models.TextChoices):
+        CDD = 'CDD', 'CDD'
+        CDI = 'CDI', 'CDI'
+        STAGE = 'STAGE', 'Stage'
+    
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     phone_number = models.CharField(max_length=30, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')
-    hired_at = models.DateField()
+    contract_type = models.CharField(max_length=10, choices=ContractType.choices, default=ContractType.CDI)
+    hired_at = models.DateField(auto_now_add=True)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     attendance_pin = models.CharField(max_length=4, blank=True)
