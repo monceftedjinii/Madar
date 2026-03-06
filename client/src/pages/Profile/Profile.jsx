@@ -70,7 +70,7 @@ export default function Profile() {
         me.data.employee_info?.contractType ||
         "",
       hireDate:
-        me.data.hire_date ||
+        me.data.hired_at ||
         me.data.employee_info?.hire_date ||
         me.data.employee_info?.start_date ||
         "",
