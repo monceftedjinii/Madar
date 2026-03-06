@@ -87,7 +87,7 @@ export default function Login() {
                 Veuillez patienter
               </span>
             ) : (
-              "Login"
+              "Se connecter"
             )}
           </button>
         </form>
