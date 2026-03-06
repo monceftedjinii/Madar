@@ -16,6 +16,9 @@ export default function Profile() {
     address: "",
     position: "",
     department: "",
+    contract: "",
+    contractType: "",
+    hireDate: "",
     photoName: "",
     is_online: "",
     current_password: "",
@@ -35,6 +38,14 @@ export default function Profile() {
     const [firstName, ...rest] = clean.split(" ");
     return { firstName, lastName: rest.join(" ") };
   };
+
+  const formatHireDate = (value = "") => {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString("fr-FR");
+  };
+
   const fetchProfile = async () => {
     var me = await axios.get("/api/whoami/", {
       headers: { Authorization: `Bearer ${access}` },
@@ -48,6 +59,21 @@ export default function Profile() {
       position: me.data.position || me.data.employee_info?.position || "",
       department:
         me.data.department || me.data.employee_info?.department?.name || "",
+      contract:
+        me.data.contract ||
+        me.data.employee_info?.contract ||
+        me.data.employee_info?.contract_name ||
+        "",
+      contractType:
+        me.data.contract_type ||
+        me.data.employee_info?.contract_type ||
+        me.data.employee_info?.contractType ||
+        "",
+      hireDate:
+        me.data.hire_date ||
+        me.data.employee_info?.hire_date ||
+        me.data.employee_info?.start_date ||
+        "",
       photoName: me.data.profile_picture,
       is_online: me.data.is_online,
     });
@@ -306,12 +332,12 @@ export default function Profile() {
                   <h3>{profileData.department}</h3>
                 </div>
                 <div>
-                  <p className="desc">Téléphone</p>
-                  <h3>{profileData.phone}</h3>
+                  <p className="desc">Type de contrat</p>
+                  <h3>{profileData.contractType || "-"}</h3>
                 </div>
                 <div>
-                  <p className="desc">Adresse</p>
-                  <h3>{profileData.address}</h3>
+                  <p className="desc">Date d’embauche</p>
+                  <h3>{formatHireDate(profileData.hireDate) || "-"}</h3>
                 </div>
               </div>
             </div>
