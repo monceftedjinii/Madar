@@ -18,6 +18,9 @@ export default function Profile() {
     department: "",
     photoName: "",
     is_online: "",
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
   });
   const [formData, setFormData] = useState(profileData);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -54,7 +57,12 @@ export default function Profile() {
   }, []);
 
   const openEditModal = () => {
-    setFormData(profileData);
+    setFormData({
+      ...profileData,
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
     setSelectedPhoto(null);
     setIsEditOpen(true);
   };
@@ -62,6 +70,12 @@ export default function Profile() {
   const closeEditModal = () => {
     setIsEditOpen(false);
     setSelectedPhoto(null);
+    setFormData((prev) => ({
+      ...prev,
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    }));
   };
 
   const handleFormChange = (event) => {
@@ -80,6 +94,23 @@ export default function Profile() {
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
+    const hasPasswordInput =
+      formData.current_password || formData.new_password || formData.confirm_password;
+    if (hasPasswordInput) {
+      if (
+        !formData.current_password ||
+        !formData.new_password ||
+        !formData.confirm_password
+      ) {
+        alert("Veuillez remplir tous les champs de mot de passe.");
+        return;
+      }
+
+      if (formData.new_password !== formData.confirm_password) {
+        alert("Le nouveau mot de passe et sa confirmation ne correspondent pas.");
+        return;
+      }
+    }
 
     try {
       setIsSaving(true);
@@ -102,11 +133,31 @@ export default function Profile() {
         },
       });
 
+      if (hasPasswordInput) {
+        await axios.post(
+          "/api/profile/change-password/",
+          {
+            current_password: formData.current_password,
+            new_password: formData.new_password,
+            confirm_password: formData.confirm_password,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${access}`,
+            },
+          }
+        );
+      }
+
       await fetchProfile();
       closeEditModal();
     } catch (error) {
       console.error("Erreur de mise a jour du profil:", error);
-      alert("Echec de la mise a jour du profil.");
+      alert(
+        error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          "Echec de la mise a jour du profil."
+      );
     } finally {
       setIsSaving(false);
     }

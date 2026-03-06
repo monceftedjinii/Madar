@@ -83,18 +83,47 @@ export default function Form({
             </label>
             <label>
               Departement
-              <select
+              <input
+                type="text"
                 name="department"
-                value={formData.department}
+                value={formData.department || ""}
+                readOnly
+              />
+            </label>
+            <label>
+              Mot de passe actuel
+              <input
+                type="password"
+                name="current_password"
+                value={formData.current_password || ""}
                 onChange={onChange}
-                disabled
-              >
-                <option value="Ressources Humaines">Ressources Humaines</option>
-                <option value="Finance">Finance</option>
-                <option value="Informatique">Informatique</option>
-                <option value="Production">Production</option>
-                <option value="Commercial">Commercial</option>
-              </select>
+                disabled={isSaving}
+                autoComplete="current-password"
+              />
+            </label>
+            <label>
+              Nouveau mot de passe
+              <input
+                type="password"
+                name="new_password"
+                value={formData.new_password || ""}
+                onChange={onChange}
+                disabled={isSaving}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </label>
+            <label>
+              Confirmer le nouveau mot de passe
+              <input
+                type="password"
+                name="confirm_password"
+                value={formData.confirm_password || ""}
+                onChange={onChange}
+                disabled={isSaving}
+                autoComplete="new-password"
+                minLength={8}
+              />
             </label>
           </div>
 
