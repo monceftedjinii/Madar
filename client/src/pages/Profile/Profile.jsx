@@ -95,7 +95,9 @@ export default function Profile() {
   const handleFormSubmit = async (event) => {
     event.preventDefault();
     const hasPasswordInput =
-      formData.current_password || formData.new_password || formData.confirm_password;
+      formData.current_password ||
+      formData.new_password ||
+      formData.confirm_password;
     if (hasPasswordInput) {
       if (
         !formData.current_password ||
@@ -107,7 +109,9 @@ export default function Profile() {
       }
 
       if (formData.new_password !== formData.confirm_password) {
-        alert("Le nouveau mot de passe et sa confirmation ne correspondent pas.");
+        alert(
+          "Le nouveau mot de passe et sa confirmation ne correspondent pas.",
+        );
         return;
       }
     }
@@ -145,7 +149,7 @@ export default function Profile() {
             headers: {
               Authorization: `Bearer ${access}`,
             },
-          }
+          },
         );
       }
 
@@ -156,7 +160,7 @@ export default function Profile() {
       alert(
         error?.response?.data?.detail ||
           error?.response?.data?.error ||
-          "Echec de la mise a jour du profil."
+          "Echec de la mise a jour du profil.",
       );
     } finally {
       setIsSaving(false);
@@ -261,7 +265,7 @@ export default function Profile() {
               <div className="info-per">
                 <div className="top">
                   <h3 className="title">Informations personnelles</h3>
-                  <p className="desc">Données visibles par l’utilisateur</p>
+                  <p className="desc">Poste, contrat, manager</p>
                 </div>
                 <div>
                   <p className="desc">Nom complet</p>
