@@ -241,6 +241,14 @@ export default function Profile() {
                   }
                   alt="Profile-pic"
                   className="profile-pic"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    minWidth: 50,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
                 />
                 <div className="infooos">
                   <div className="nom-status">

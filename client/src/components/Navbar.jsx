@@ -3,6 +3,9 @@ import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 export default function Navbar(props) {
   const { fullName, post, image } = props;
+  const avatarSrc = image
+    ? image
+    : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   return (
     <div className="container_navbar">
       <div className="grh-navbar">
@@ -25,17 +28,21 @@ export default function Navbar(props) {
       </div>
 
       <div className="profile-navbar">
-        <div className="profile-img">
-          <img
-            src={
-              image
-                ? image
-                : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-            }
-            alt="Profile"
-            className="profile-picture"
-          />
-        </div>
+        <div
+          className="profile-img"
+          role="img"
+          aria-label="Profile"
+          style={{
+            width: 48,
+            height: 48,
+            minWidth: 48,
+            borderRadius: "50%",
+            backgroundImage: `url(${avatarSrc})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
         <div className="profile-name">
           <h4>{fullName}</h4>
           <p className="text-nav">{post} </p>
