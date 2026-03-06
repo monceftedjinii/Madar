@@ -75,6 +75,8 @@ def whoami(request):
 		'position': employee.position.name if employee and employee.position else None,
 		'phone_number': employee.phone_number if employee else None,
 		'address': employee.address if employee else None,
+		'contract_type': employee.contract_type if employee else None,
+		'hired_at': employee.hired_at.isoformat() if employee and employee.hired_at else None,
 		'profile_picture': user_picture or employee_picture,
 		'is_online': is_user_online(user),
 	})
