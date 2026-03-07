@@ -320,11 +320,47 @@ h3 {
   padding: 0 12px;
   cursor: pointer;
   font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.message-actions .action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.message-actions .action-reply {
+  background: #eaf4ff;
+  border-color: #bcdcff;
+  color: #1e3a8a;
+}
+
+.message-actions .action-forward {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.message-actions .action-edit {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.message-actions .action-delete {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .important-btn {
   background: #fff8da;
   border-color: #efdc95;
+  color: #8a5200;
+}
+
+.important-btn.is-active {
+  background: #ffe8a3;
+  border-color: #e0b449;
+  color: #5b3b00;
 }
 
 .message-card {
@@ -634,6 +670,36 @@ h3 {
   background: #232d46;
   border-color: rgba(255, 255, 255, 0.14);
   color: #e2e8f0;
+}
+
+.profile-page.dark .message-actions .action-reply {
+  background: #1f355a;
+  border-color: #2f5a93;
+  color: #bfdbfe;
+}
+
+.profile-page.dark .message-actions .action-forward {
+  background: #1f3b2d;
+  border-color: #2d6d48;
+  color: #bbf7d0;
+}
+
+.profile-page.dark .message-actions .action-edit {
+  background: #2d2750;
+  border-color: #4d3f8f;
+  color: #ddd6fe;
+}
+
+.profile-page.dark .message-actions .action-delete {
+  background: #4a2328;
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+.profile-page.dark .important-btn.is-active {
+  background: #5a461f;
+  border-color: #b68a2e;
+  color: #fef3c7;
 }
 
 .profile-page.dark .mail-item.active {

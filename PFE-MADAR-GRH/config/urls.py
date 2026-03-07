@@ -87,6 +87,7 @@ urlpatterns = [
     # Employee: Inbox & Message Management
     path('api/messages/inbox/', madar_views.inbox, name='api-messages-inbox'),
     path('api/messages/sent/', madar_views.sent, name='api-messages-sent'),
+    path('api/messages/trash/', madar_views.trash, name='api-messages-trash'),
     path('api/messages/<int:pk>/', madar_views.get_message, name='api-messages-get'),
     path('api/messages/<int:pk>/read-status/', madar_views.mark_message_read_unread, name='api-messages-read-status'),
     path('api/messages/<int:pk>/delete/', madar_views.delete_message, name='api-messages-delete'),

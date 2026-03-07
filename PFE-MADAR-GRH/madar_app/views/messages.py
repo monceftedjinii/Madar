@@ -84,6 +84,7 @@ def serialize_message(msg, requesting_user=None):
     
     # Add report status if user has reported this message
     if requesting_user:
+        data['is_important_for_me'] = False
         report = MessageReport.objects.filter(message=msg, reporter=requesting_user).first()
         if report:
             data['reported_by_me'] = True
@@ -174,6 +175,29 @@ def sent(request):
     total = messages.count()
     messages = messages[offset:offset + page_size]
     
+    return Response({
+        'total': total,
+        'page_size': page_size,
+        'page': int(page),
+        'messages': [serialize_message(m, request.user) for m in messages]
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def trash(request):
+    """Get user's trash (messages deleted by current user)."""
+    page = request.query_params.get('page', 1)
+    page_size = 20
+    offset = (int(page) - 1) * page_size
+
+    messages = Message.objects.filter(
+        Q(sender=request.user, is_deleted_by_sender=True) |
+        Q(recipient=request.user, is_deleted_by_recipient=True)
+    ).select_related('sender', 'recipient')
+
+    total = messages.count()
+    messages = messages[offset:offset + page_size]
+
     return Response({
         'total': total,
         'page_size': page_size,
@@ -293,7 +317,13 @@ def send_message(request):
     
     # Check if sender is trying to message themselves
     if recipient == request.user:
-        return Response({'detail': 'Cannot send message to yourself'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'detail': 'Cannot send message to yourself',
+            'sender_id': request.user.id,
+            'recipient_id': recipient.id,
+            'sender_email': request.user.email,
+            'recipient_email': recipient.email,
+        }, status=status.HTTP_400_BAD_REQUEST)
     
     # Get messaging settings
     settings = get_messaging_settings()

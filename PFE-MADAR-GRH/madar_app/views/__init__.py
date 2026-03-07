@@ -36,6 +36,7 @@ from .reports import reports_summary, export_attendance_report, export_leaves_re
 from .messages import (
 	inbox,
 	sent,
+	trash,
 	get_message,
 	mark_message_read_unread,
 	delete_message,
@@ -87,7 +88,7 @@ __all__ = [
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# messages
-	'inbox', 'sent', 'get_message', 'mark_message_read_unread', 'delete_message',
+	'inbox', 'sent', 'trash', 'get_message', 'mark_message_read_unread', 'delete_message',
 	'search_messages', 'send_message', 'reply_message', 'forward_message',
 	'drafts_list', 'save_draft', 'delete_draft', 'report_message',
 	'block_user', 'unblock_user', 'blocked_users_list',

@@ -78,6 +78,7 @@ const toUiMail = (mail, boxType) => {
       isDraft: true,
       recipientId: mail.recipient?.id || "",
       hasRepliedByMe: false,
+      isImportantForMe: false,
     };
   }
 
@@ -94,13 +95,14 @@ const toUiMail = (mail, boxType) => {
     time: formatTime(mail.created_at),
     day: formatDay(mail.created_at),
     unread: !mail.is_read && boxType === "inbox",
-    important: getTag(mail.subject, mail.body) === "Urgent",
+    important: Boolean(mail.is_important_for_me),
     tag: getTag(mail.subject, mail.body),
     is_read: Boolean(mail.is_read),
     created_at: mail.created_at,
     isDraft: false,
     recipientId: mail.recipient?.id || "",
     hasRepliedByMe: Boolean(mail.has_replied_by_me),
+    isImportantForMe: Boolean(mail.is_important_for_me),
   };
 };
 
@@ -135,7 +137,10 @@ export default function Messagrie() {
   const loadRecipients = useCallback(async () => {
     try {
       const response = await axios.get("/api/employees/?for_messaging=true", authHeaders);
-      setRecipients(response.data || []);
+      const validRecipients = (response.data || []).filter(
+        (recipient) => recipient.user_id !== undefined && recipient.user_id !== null,
+      );
+      setRecipients(validRecipients);
     } catch (error) {
       console.error("Erreur chargement destinataires:", error);
     }
@@ -150,6 +155,10 @@ export default function Messagrie() {
         const response = await axios.get("/api/messages/sent/?page=1", authHeaders);
         const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "sent"));
         setEmails(data);
+      } else if (targetBox === "trash") {
+        const response = await axios.get("/api/messages/trash/?page=1", authHeaders);
+        const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "trash"));
+        setEmails(data);
       } else if (targetBox === "drafts") {
         const response = await axios.get("/api/messages/drafts/", authHeaders);
         const data = (response.data?.drafts || []).map((mail) => toUiMail(mail, "drafts"));
@@ -162,8 +171,13 @@ export default function Messagrie() {
     } catch (error) {
       console.error("Erreur chargement messagerie:", error);
       setEmails([]);
+      const statusCode = error?.response?.status;
+      const backendDetail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        (typeof error?.response?.data === "string" ? error.response.data : "");
       setPageError(
-        error?.response?.data?.detail || "Impossible de charger les messages depuis le serveur.",
+        backendDetail || `Impossible de charger les messages depuis le serveur (HTTP ${statusCode || "?"}).`,
       );
     } finally {
       setLoading(false);
@@ -340,6 +354,29 @@ export default function Messagrie() {
     }
   };
 
+  const handleToggleImportant = async () => {
+    if (!selectedEmail || boxType === "drafts") return;
+    const nextValue = !selectedEmail.isImportantForMe;
+
+    try {
+      setEmails((prev) =>
+        prev.map((item) =>
+          item.id === selectedEmail.id
+            ? {
+                ...item,
+                isImportantForMe: nextValue,
+                important: nextValue,
+                tag: nextValue ? "Urgent" : getTag(item.subject, item.body),
+              }
+            : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Erreur important:", error);
+      alert(error?.response?.data?.detail || "Impossible de modifier l'etat Important.");
+    }
+  };
+
   const handleDeleteSelected = async () => {
     if (!selectedEmail) return;
     const confirmMsg =
@@ -379,7 +416,7 @@ export default function Messagrie() {
   };
 
   const handleTrashClick = () => {
-    setFeedbackMessage("Corbeille API non disponible pour le moment.");
+    switchBox("trash");
   };
 
   useEffect(() => {
@@ -476,7 +513,11 @@ export default function Messagrie() {
                 >
                   Brouillons
                 </button>
-                <button className="all_buttons" type="button" onClick={handleTrashClick}>
+                <button
+                  className={`all_buttons ${boxType === "trash" ? "active-folder" : ""}`}
+                  type="button"
+                  onClick={handleTrashClick}
+                >
                   Corbeille
                 </button>
               </div>
@@ -559,25 +600,45 @@ export default function Messagrie() {
                       </p>
                     </div>
                     <div className="message-actions">
-                      {boxType !== "drafts" && (
+                      {boxType === "inbox" && (
                         <>
-                          <button type="button" onClick={() => setReplyText("")}>
+                          <button
+                            type="button"
+                            className="action-btn action-reply"
+                            onClick={() => setReplyText("")}
+                          >
                             Repondre
                           </button>
-                          <button type="button" onClick={openCompose}>
+                          <button
+                            type="button"
+                            className="action-btn action-forward"
+                            onClick={openCompose}
+                          >
                             Transferer
                           </button>
-                          <button type="button" className="important-btn">
-                            Important
+                          <button
+                            type="button"
+                            className={`action-btn important-btn ${
+                              selectedEmail.isImportantForMe ? "is-active" : ""
+                            }`}
+                            onClick={handleToggleImportant}
+                            disabled={saving}
+                          >
+                            {selectedEmail.isImportantForMe ? "Important (ON)" : "Important"}
                           </button>
                         </>
                       )}
                       {boxType === "drafts" && (
-                        <button type="button" onClick={handleEditDraft}>
+                        <button type="button" className="action-btn action-edit" onClick={handleEditDraft}>
                           Modifier
                         </button>
                       )}
-                      <button type="button" onClick={handleDeleteSelected} disabled={saving}>
+                      <button
+                        type="button"
+                        className="action-btn action-delete"
+                        onClick={handleDeleteSelected}
+                        disabled={saving}
+                      >
                         {boxType === "drafts" ? "Supprimer brouillon" : "Supprimer"}
                       </button>
                     </div>
@@ -596,7 +657,7 @@ export default function Messagrie() {
                     <pre className="message-body">{selectedEmail.body}</pre>
                   </div>
 
-                  {boxType !== "drafts" && (
+                  {boxType === "inbox" && (
                     <div className="reply-box">
                       <h4>Repondre</h4>
                       <p>
@@ -672,10 +733,7 @@ export default function Messagrie() {
                 >
                   <option value="">-- Selectionner --</option>
                   {recipients.map((recipient) => (
-                    <option
-                      key={recipient.user_id || recipient.id}
-                      value={recipient.user_id || recipient.id}
-                    >
+                    <option key={recipient.user_id} value={recipient.user_id}>
                       {recipient.full_name || `${recipient.first_name} ${recipient.last_name}`} (
                       {recipient.email})
                     </option>
