@@ -1,10 +1,44 @@
-import React from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 export default function Navbar(props) {
   const { fullName, post, image } = props;
-  const avatarSrc = image
-    ? image
+  const [fetchedProfile, setFetchedProfile] = useState({
+    fullName: "",
+    post: "",
+    image: "",
+  });
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("access_token");
+    if (!accessToken) return;
+
+    const fetchNavbarProfile = async () => {
+      try {
+        const me = await axios.get("/api/whoami/", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        setFetchedProfile({
+          fullName: `${me.data?.first_name || ""} ${me.data?.last_name || ""}`.trim(),
+          post: me.data?.position || me.data?.employee_info?.position || "",
+          image: me.data?.profile_picture || "",
+        });
+      } catch (error) {
+        console.error("Erreur chargement profil navbar:", error);
+      }
+    };
+
+    fetchNavbarProfile();
+  }, []);
+
+  const resolvedName = fullName || fetchedProfile.fullName || "Utilisateur";
+  const resolvedPost = post || fetchedProfile.post || "-";
+  const resolvedImage = image || fetchedProfile.image;
+
+  const avatarSrc = resolvedImage
+    ? resolvedImage
     : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   return (
     <div className="container_navbar">
@@ -44,8 +78,8 @@ export default function Navbar(props) {
           }}
         />
         <div className="profile-name">
-          <h4>{fullName}</h4>
-          <p className="text-nav">{post} </p>
+          <h4>{resolvedName}</h4>
+          <p className="text-nav">{resolvedPost} </p>
         </div>
       </div>
     </div>
