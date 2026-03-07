@@ -80,6 +80,12 @@ h3 {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+.all_buttons.active-folder {
+  background: #e9f8ef;
+  border-color: #5ba881;
+  color: #09602a;
+}
+
 .block_two {
   width: 400px;
   min-height: 800px;
@@ -156,6 +162,17 @@ h3 {
 .rc:hover:not(.c) {
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.mail-feedback {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid #8dd4aa;
+  background: #ecfdf3;
+  color: #166534;
+  font-weight: 700;
+  font-size: 12px;
 }
 
 .mail-list {
@@ -519,6 +536,7 @@ h3 {
 }
 
 .compose-cancel,
+.compose-draft,
 .compose-send {
   border-radius: 12px;
   height: 42px;
@@ -533,10 +551,23 @@ h3 {
   color: #0f172a;
 }
 
+.compose-draft {
+  background: #eef2ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
 .compose-send {
   background: rgb(0, 104, 40);
   color: #ffffff;
   border-color: rgb(0, 104, 40);
+}
+
+.message-actions button:disabled,
+.compose-send:disabled,
+.compose-draft:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ===== DARK MODE (page mail) ===== */
@@ -556,6 +587,12 @@ h3 {
   background-color: #232d46;
   border-color: rgba(255, 255, 255, 0.12);
   color: #e2e8f0;
+}
+
+.profile-page.dark .all_buttons.active-folder {
+  background: #203b2c;
+  border-color: #5ba881;
+  color: #d1fae5;
 }
 
 .profile-page.dark .input {
@@ -643,6 +680,12 @@ h3 {
   color: #94a3b8;
 }
 
+.profile-page.dark .mail-feedback {
+  background: #203b2c;
+  border-color: #5ba881;
+  color: #bbf7d0;
+}
+
 .profile-page.dark .compose-modal {
   background: #1a2035;
   border-color: rgba(255, 255, 255, 0.14);
@@ -657,7 +700,8 @@ h3 {
 }
 
 .profile-page.dark .compose-close,
-.profile-page.dark .compose-cancel {
+.profile-page.dark .compose-cancel,
+.profile-page.dark .compose-draft {
   background: #232d46;
   border-color: rgba(255, 255, 255, 0.14);
   color: #e2e8f0;

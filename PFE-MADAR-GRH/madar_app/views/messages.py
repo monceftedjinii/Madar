@@ -88,6 +88,12 @@ def serialize_message(msg, requesting_user=None):
         if report:
             data['reported_by_me'] = True
             data['report_id'] = report.id
+        # Business rule: user can reply only once per parent message
+        data['has_replied_by_me'] = Message.objects.filter(
+            parent_message=msg,
+            sender=requesting_user,
+            is_reply=True
+        ).exists()
     
     return data
 
@@ -384,6 +390,18 @@ def reply_message(request, pk):
     body = request.data.get('body', '').strip()
     if not body:
         return Response({'detail': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Allow only one reply per user for the same parent message
+    already_replied = Message.objects.filter(
+        parent_message=parent_msg,
+        sender=request.user,
+        is_reply=True
+    ).exists()
+    if already_replied:
+        return Response(
+            {'detail': 'You have already replied to this message'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     # Create reply message
     reply_msg = Message.objects.create(

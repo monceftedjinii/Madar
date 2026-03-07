@@ -1,77 +1,189 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import SearchIcon from "@mui/icons-material/Search";
 import Navbar from "../components/Navbar";
 import "../styles/profile.css";
 import "../styles/messagrie.css";
 
-const EMAILS = [
-  {
-    id: 1,
-    initials: "RH",
-    sender: "Service RH",
-    from: "rh@madar.com",
-    department: "RH",
-    subject: "Demande de conge",
-    preview: "Votre demande est en validation. Merci de patienter.",
-    body: "Bonjour,\n\nVotre demande de conge est en validation.\nMerci de patienter jusqu'a la reponse finale.\n\nCordialement,\nService RH",
-    time: "10:24",
-    day: "Aujourd'hui",
-    unread: false,
-    important: false,
-    tag: "RH",
-  },
-  {
-    id: 2,
-    initials: "FN",
-    sender: "Finance",
-    from: "finance@madar.com",
-    department: "Finance",
-    subject: "Liste employes actifs",
-    preview: "Merci d'envoyer la liste des employes actifs avant 14:00.",
-    body: "Bonjour,\n\nMerci d'envoyer la liste des employes actifs avant 14:00.\n\nCordialement,\nFinance",
-    time: "Hier",
-    day: "Hier",
-    unread: true,
-    important: true,
-    tag: "Urgent",
-  },
-  {
-    id: 3,
-    initials: "MK",
-    sender: "Manager",
-    from: "manager@madar.com",
-    department: "Manager",
-    subject: "Reunion equipe",
-    preview: "Point hebdomadaire demain a 09:00, salle B.",
-    body: "Bonjour,\n\nPoint hebdomadaire demain a 09:00 en salle B.\nMerci d'etre a l'heure.\n\nCordialement,\nManager",
-    time: "Lun",
-    day: "Lundi",
-    unread: false,
-    important: false,
-    tag: "Info",
-  },
-];
+const INITIAL_COMPOSE_FORM = {
+  draftId: null,
+  recipientId: "",
+  subject: "",
+  message: "",
+};
+
+const getInitials = (value = "") => {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+};
+
+const getTag = (subject = "", body = "") => {
+  const text = `${subject} ${body}`.toLowerCase();
+  if (text.includes("urgent") || text.includes("important")) return "Urgent";
+  if (text.includes("rh")) return "RH";
+  return "Info";
+};
+
+const formatTime = (createdAt) => {
+  if (!createdAt) return "-";
+  const date = new Date(createdAt);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Hier";
+  }
+  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+};
+
+const formatDay = (createdAt) => {
+  if (!createdAt) return "";
+  return new Date(createdAt).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const toUiMail = (mail, boxType) => {
+  if (boxType === "drafts") {
+    const recipientName = mail.recipient?.name || mail.recipient?.email || "Sans destinataire";
+    return {
+      id: mail.id,
+      initials: getInitials(recipientName),
+      sender: "Brouillon",
+      from: "Vous",
+      to: recipientName,
+      department: "Brouillon",
+      subject: mail.subject || "(Sans objet)",
+      preview: (mail.body || "").slice(0, 90),
+      body: mail.body || "",
+      time: formatTime(mail.updated_at || mail.created_at),
+      day: formatDay(mail.updated_at || mail.created_at),
+      unread: false,
+      important: false,
+      tag: "Info",
+      is_read: true,
+      created_at: mail.updated_at || mail.created_at,
+      isDraft: true,
+      recipientId: mail.recipient?.id || "",
+      hasRepliedByMe: false,
+    };
+  }
+
+  return {
+    id: mail.id,
+    initials: getInitials(mail.sender?.name || mail.sender?.email || ""),
+    sender: mail.sender?.name || mail.sender?.email || "Inconnu",
+    from: mail.sender?.email || "",
+    to: mail.recipient?.email || "",
+    department: mail.sender?.name || "Service",
+    subject: mail.subject || "(Sans objet)",
+    preview: (mail.body || "").slice(0, 90),
+    body: mail.body || "",
+    time: formatTime(mail.created_at),
+    day: formatDay(mail.created_at),
+    unread: !mail.is_read && boxType === "inbox",
+    important: getTag(mail.subject, mail.body) === "Urgent",
+    tag: getTag(mail.subject, mail.body),
+    is_read: Boolean(mail.is_read),
+    created_at: mail.created_at,
+    isDraft: false,
+    recipientId: mail.recipient?.id || "",
+    hasRepliedByMe: Boolean(mail.has_replied_by_me),
+  };
+};
 
 export default function Messagrie() {
   const [dark, setDark] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState(2);
+  const [boxType, setBoxType] = useState("inbox");
+  const [selectedId, setSelectedId] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [composeForm, setComposeForm] = useState({
-    to: "",
-    mailType: "info",
-    service: "RH",
-    subject: "",
-    message: "",
-  });
+  const [composeForm, setComposeForm] = useState(INITIAL_COMPOSE_FORM);
+  const [recipients, setRecipients] = useState([]);
+  const [emails, setEmails] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const [composeError, setComposeError] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const access = localStorage.getItem("access_token");
+
+  const authHeaders = useMemo(
+    () => ({
+      headers: {
+        Authorization: `Bearer ${access}`,
+      },
+    }),
+    [access],
+  );
+
+  const loadRecipients = useCallback(async () => {
+    try {
+      const response = await axios.get("/api/employees/?for_messaging=true", authHeaders);
+      setRecipients(response.data || []);
+    } catch (error) {
+      console.error("Erreur chargement destinataires:", error);
+    }
+  }, [authHeaders]);
+
+  const loadBox = useCallback(async (targetBox = boxType) => {
+    try {
+      setLoading(true);
+      setPageError("");
+
+      if (targetBox === "sent") {
+        const response = await axios.get("/api/messages/sent/?page=1", authHeaders);
+        const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "sent"));
+        setEmails(data);
+      } else if (targetBox === "drafts") {
+        const response = await axios.get("/api/messages/drafts/", authHeaders);
+        const data = (response.data?.drafts || []).map((mail) => toUiMail(mail, "drafts"));
+        setEmails(data);
+      } else {
+        const response = await axios.get("/api/messages/inbox/?page=1", authHeaders);
+        const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "inbox"));
+        setEmails(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement messagerie:", error);
+      setEmails([]);
+      setPageError(
+        error?.response?.data?.detail || "Impossible de charger les messages depuis le serveur.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [authHeaders, boxType]);
+
+  useEffect(() => {
+    loadRecipients();
+  }, [loadRecipients]);
+
+  useEffect(() => {
+    loadBox(boxType);
+    setSelectedId(null);
+    setReplyText("");
+  }, [boxType, loadBox]);
 
   const filteredEmails = useMemo(() => {
     const term = search.trim().toLowerCase();
 
-    return EMAILS.filter((mail) => {
+    return emails.filter((mail) => {
       const byFilter =
         activeFilter === "all" ||
         (activeFilter === "unread" && mail.unread) ||
@@ -85,30 +197,196 @@ export default function Messagrie() {
 
       return byFilter && bySearch;
     });
-  }, [search, activeFilter]);
+  }, [emails, search, activeFilter]);
+
+  useEffect(() => {
+    if (!selectedId && filteredEmails[0]) {
+      setSelectedId(filteredEmails[0].id);
+      return;
+    }
+    if (selectedId && !filteredEmails.some((mail) => mail.id === selectedId)) {
+      setSelectedId(filteredEmails[0]?.id || null);
+    }
+  }, [filteredEmails, selectedId]);
 
   const selectedEmail =
     filteredEmails.find((mail) => mail.id === selectedId) || filteredEmails[0] || null;
 
-  const openCompose = () => setIsComposeOpen(true);
-  const closeCompose = () => setIsComposeOpen(false);
+  const openCompose = () => {
+    setComposeError("");
+    setComposeForm(INITIAL_COMPOSE_FORM);
+    setIsComposeOpen(true);
+  };
+
+  const closeCompose = () => {
+    setIsComposeOpen(false);
+    setComposeError("");
+  };
+
+  const switchBox = (nextBox) => {
+    setActiveFilter("all");
+    setSearch("");
+    setBoxType(nextBox);
+  };
 
   const onComposeFieldChange = (e) => {
     const { name, value } = e.target;
     setComposeForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const onComposeSubmit = (e) => {
+  const onComposeSubmit = async (e) => {
     e.preventDefault();
-    setIsComposeOpen(false);
-    setComposeForm({
-      to: "",
-      mailType: "info",
-      service: "RH",
-      subject: "",
-      message: "",
-    });
+    setComposeError("");
+
+    if (!composeForm.recipientId) {
+      setComposeError("Selectionnez un destinataire.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const formData = new FormData();
+      formData.append("recipient_id", composeForm.recipientId);
+      formData.append("subject", composeForm.subject.trim());
+      formData.append("body", composeForm.message.trim());
+
+      await axios.post("/api/messages/send/", formData, authHeaders);
+      closeCompose();
+      setComposeForm(INITIAL_COMPOSE_FORM);
+      if (boxType !== "sent") {
+        setBoxType("sent");
+      } else {
+        loadBox("sent");
+      }
+    } catch (error) {
+      console.error("Erreur envoi message:", error);
+      setComposeError(error?.response?.data?.detail || "Echec de l'envoi du message.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const onSaveDraft = async () => {
+    setComposeError("");
+    const hasContent = composeForm.subject.trim() || composeForm.message.trim();
+    if (!hasContent) {
+      setComposeError("Ajoutez un objet ou un message pour enregistrer le brouillon.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await axios.post(
+        "/api/messages/save-draft/",
+        {
+          id: composeForm.draftId || undefined,
+          recipient_id: composeForm.recipientId || null,
+          subject: composeForm.subject.trim(),
+          body: composeForm.message.trim(),
+        },
+        authHeaders,
+      );
+      closeCompose();
+      setComposeForm(INITIAL_COMPOSE_FORM);
+      setFeedbackMessage("Brouillon enregistre.");
+      if (boxType !== "drafts") {
+        switchBox("drafts");
+      } else {
+        loadBox("drafts");
+      }
+    } catch (error) {
+      console.error("Erreur enregistrement brouillon:", error);
+      setComposeError(error?.response?.data?.detail || "Impossible d'enregistrer le brouillon.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectMessage = async (mailId) => {
+    setSelectedId(mailId);
+
+    if (boxType !== "inbox") return;
+    const current = emails.find((item) => item.id === mailId);
+    if (!current || current.is_read) return;
+
+    try {
+      const response = await axios.get(`/api/messages/${mailId}/`, authHeaders);
+      const refreshed = toUiMail(response.data, "inbox");
+      setEmails((prev) => prev.map((item) => (item.id === mailId ? refreshed : item)));
+    } catch (error) {
+      console.error("Erreur ouverture message:", error);
+    }
+  };
+
+  const handleReply = async () => {
+    if (!selectedEmail || !replyText.trim()) return;
+
+    try {
+      setSaving(true);
+      const formData = new FormData();
+      formData.append("body", replyText.trim());
+      await axios.post(`/api/messages/${selectedEmail.id}/reply/`, formData, authHeaders);
+      setReplyText("");
+      if (boxType !== "sent") {
+        setBoxType("sent");
+      } else {
+        loadBox("sent");
+      }
+    } catch (error) {
+      console.error("Erreur reponse message:", error);
+      alert(error?.response?.data?.detail || "Impossible d'envoyer la reponse.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!selectedEmail) return;
+    const confirmMsg =
+      boxType === "drafts"
+        ? "Supprimer ce brouillon ?"
+        : "Supprimer ce message (il sera retire de cette boite) ?";
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setSaving(true);
+      if (boxType === "drafts") {
+        await axios.delete(`/api/messages/drafts/${selectedEmail.id}/delete/`, authHeaders);
+      } else {
+        await axios.delete(`/api/messages/${selectedEmail.id}/delete/`, authHeaders);
+      }
+      setFeedbackMessage(boxType === "drafts" ? "Brouillon supprime." : "Message supprime.");
+      setSelectedId(null);
+      loadBox(boxType);
+    } catch (error) {
+      console.error("Erreur suppression:", error);
+      alert(error?.response?.data?.detail || "Suppression impossible.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditDraft = () => {
+    if (!selectedEmail || boxType !== "drafts") return;
+    setComposeForm({
+      draftId: selectedEmail.id,
+      recipientId: selectedEmail.recipientId ? String(selectedEmail.recipientId) : "",
+      subject: selectedEmail.subject || "",
+      message: selectedEmail.body || "",
+    });
+    setComposeError("");
+    setIsComposeOpen(true);
+  };
+
+  const handleTrashClick = () => {
+    setFeedbackMessage("Corbeille API non disponible pour le moment.");
+  };
+
+  useEffect(() => {
+    if (!feedbackMessage) return undefined;
+    const timer = setTimeout(() => setFeedbackMessage(""), 2200);
+    return () => clearTimeout(timer);
+  }, [feedbackMessage]);
 
   return (
     <>
@@ -166,12 +444,41 @@ export default function Messagrie() {
                 <button className="composer" type="button" onClick={openCompose}>
                   Composer
                 </button>
-                <button className="all_buttons">Boite</button>
-                <button className="all_buttons">Importants</button>
-                <button className="all_buttons">Envoyes</button>
-                <button className="all_buttons">Recus</button>
-                <button className="all_buttons">Brouillons</button>
-                <button className="all_buttons">Corbeille</button>
+                <button
+                  className={`all_buttons ${boxType === "inbox" ? "active-folder" : ""}`}
+                  onClick={() => switchBox("inbox")}
+                >
+                  Boite
+                </button>
+                <button
+                  className={`all_buttons ${
+                    activeFilter === "important" ? "active-folder" : ""
+                  }`}
+                  onClick={() => setActiveFilter("important")}
+                >
+                  Importants
+                </button>
+                <button
+                  className={`all_buttons ${boxType === "sent" ? "active-folder" : ""}`}
+                  onClick={() => switchBox("sent")}
+                >
+                  Envoyes
+                </button>
+                <button
+                  className={`all_buttons ${boxType === "inbox" ? "active-folder" : ""}`}
+                  onClick={() => switchBox("inbox")}
+                >
+                  Recus
+                </button>
+                <button
+                  className={`all_buttons ${boxType === "drafts" ? "active-folder" : ""}`}
+                  onClick={() => switchBox("drafts")}
+                >
+                  Brouillons
+                </button>
+                <button className="all_buttons" type="button" onClick={handleTrashClick}>
+                  Corbeille
+                </button>
               </div>
             </div>
             <div className="block_two">
@@ -204,34 +511,38 @@ export default function Messagrie() {
                     Importants
                   </button>
                 </div>
+                {feedbackMessage && <div className="mail-feedback">{feedbackMessage}</div>}
               </div>
               <hr className="mail-divider" />
 
               <div className="mail-list">
-                {filteredEmails.map((mail) => (
-                  <button
-                    key={mail.id}
-                    className={`mail-item ${selectedEmail?.id === mail.id ? "active" : ""}`}
-                    onClick={() => setSelectedId(mail.id)}
-                  >
-                    <div className="mail-item-head">
-                      <div className="mail-avatar">{mail.initials}</div>
-                      <div className="mail-head-meta">
-                        <div className="mail-subject-line">
-                          <h4>
-                            {mail.sender} • {mail.subject}
-                          </h4>
-                          <span>{mail.time}</span>
+                {loading && <div className="mail-empty">Chargement...</div>}
+                {!loading &&
+                  filteredEmails.map((mail) => (
+                    <button
+                      key={mail.id}
+                      className={`mail-item ${selectedEmail?.id === mail.id ? "active" : ""}`}
+                      onClick={() => handleSelectMessage(mail.id)}
+                    >
+                      <div className="mail-item-head">
+                        <div className="mail-avatar">{mail.initials}</div>
+                        <div className="mail-head-meta">
+                          <div className="mail-subject-line">
+                            <h4>
+                              {mail.sender} - {mail.subject}
+                            </h4>
+                            <span>{mail.time}</span>
+                          </div>
+                          <p>{mail.preview}</p>
                         </div>
-                        <p>{mail.preview}</p>
                       </div>
-                    </div>
-                    <span className={`mail-tag ${mail.tag.toLowerCase()}`}>{mail.tag}</span>
-                  </button>
-                ))}
-                {filteredEmails.length === 0 && (
+                      <span className={`mail-tag ${mail.tag.toLowerCase()}`}>{mail.tag}</span>
+                    </button>
+                  ))}
+                {!loading && filteredEmails.length === 0 && !pageError && (
                   <div className="mail-empty">Aucun email trouve pour ce filtre.</div>
                 )}
+                {!loading && pageError && <div className="mail-empty">{pageError}</div>}
               </div>
             </div>
             <div className="block_three">
@@ -240,17 +551,34 @@ export default function Messagrie() {
                   <div className="message-header">
                     <div>
                       <h3>
-                        {selectedEmail.department} • {selectedEmail.subject}
+                        {selectedEmail.department} - {selectedEmail.subject}
                       </h3>
                       <p>
-                        De: {selectedEmail.department} • A: RH • {selectedEmail.day}
+                        De: {selectedEmail.from || selectedEmail.sender} - A:{" "}
+                        {selectedEmail.to || "Vous"} - {selectedEmail.day}
                       </p>
                     </div>
                     <div className="message-actions">
-                      <button type="button">Repondre</button>
-                      <button type="button">Transferer</button>
-                      <button type="button" className="important-btn">
-                        Important
+                      {boxType !== "drafts" && (
+                        <>
+                          <button type="button" onClick={() => setReplyText("")}>
+                            Repondre
+                          </button>
+                          <button type="button" onClick={openCompose}>
+                            Transferer
+                          </button>
+                          <button type="button" className="important-btn">
+                            Important
+                          </button>
+                        </>
+                      )}
+                      {boxType === "drafts" && (
+                        <button type="button" onClick={handleEditDraft}>
+                          Modifier
+                        </button>
+                      )}
+                      <button type="button" onClick={handleDeleteSelected} disabled={saving}>
+                        {boxType === "drafts" ? "Supprimer brouillon" : "Supprimer"}
                       </button>
                     </div>
                   </div>
@@ -261,40 +589,52 @@ export default function Messagrie() {
                       <div>
                         <h4>{selectedEmail.sender}</h4>
                         <p>
-                          {selectedEmail.from} • {selectedEmail.day}
+                          {selectedEmail.from || selectedEmail.sender} - {selectedEmail.day}
                         </p>
                       </div>
                     </div>
                     <pre className="message-body">{selectedEmail.body}</pre>
                   </div>
 
-                  <div className="reply-box">
-                    <h4>Repondre</h4>
-                    <p>Votre reponse sera envoyee a l'expediteur.</p>
-                    <div className="reply-field-row">
-                      <label htmlFor="reply-to">Pour</label>
-                      <input
-                        id="reply-to"
-                        type="text"
-                        value={selectedEmail.from}
-                        readOnly
+                  {boxType !== "drafts" && (
+                    <div className="reply-box">
+                      <h4>Repondre</h4>
+                      <p>
+                        {selectedEmail.hasRepliedByMe
+                          ? "Vous avez deja repondu a ce message."
+                          : "Votre reponse sera envoyee a l'expediteur."}
+                      </p>
+                      <div className="reply-field-row">
+                        <label htmlFor="reply-to">Pour</label>
+                        <input id="reply-to" type="text" value={selectedEmail.from} readOnly />
+                      </div>
+                      <textarea
+                        className="reply-textarea"
+                        placeholder="Ecrire votre reponse..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        disabled={selectedEmail.hasRepliedByMe}
                       />
+                      <div className="reply-actions">
+                        <button type="button" className="attach" disabled>
+                          Joindre
+                        </button>
+                        <button
+                          type="button"
+                          className="send"
+                          onClick={handleReply}
+                          disabled={
+                            saving ||
+                            !replyText.trim() ||
+                            boxType === "sent" ||
+                            selectedEmail.hasRepliedByMe
+                          }
+                        >
+                          {saving ? "Envoi..." : "Envoyer"}
+                        </button>
+                      </div>
                     </div>
-                    <textarea
-                      className="reply-textarea"
-                      placeholder="Ecrire votre reponse au client..."
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                    />
-                    <div className="reply-actions">
-                      <button type="button" className="attach">
-                        Joindre
-                      </button>
-                      <button type="button" className="send">
-                        Envoyer
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </>
               ) : (
                 <div className="mail-empty-state">
@@ -324,42 +664,24 @@ export default function Messagrie() {
             <form className="compose-form" onSubmit={onComposeSubmit}>
               <label>
                 A
-                <input
-                  type="email"
-                  name="to"
-                  value={composeForm.to}
+                <select
+                  name="recipientId"
+                  value={composeForm.recipientId}
                   onChange={onComposeFieldChange}
-                  placeholder="client@madar.com"
                   required
-                />
+                >
+                  <option value="">-- Selectionner --</option>
+                  {recipients.map((recipient) => (
+                    <option
+                      key={recipient.user_id || recipient.id}
+                      value={recipient.user_id || recipient.id}
+                    >
+                      {recipient.full_name || `${recipient.first_name} ${recipient.last_name}`} (
+                      {recipient.email})
+                    </option>
+                  ))}
+                </select>
               </label>
-              <div className="compose-meta-row">
-                <label>
-                  Type de mail
-                  <select
-                    name="mailType"
-                    value={composeForm.mailType}
-                    onChange={onComposeFieldChange}
-                  >
-                    <option value="info">Info</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </label>
-                <label>
-                  Service
-                  <select
-                    name="service"
-                    value={composeForm.service}
-                    onChange={onComposeFieldChange}
-                  >
-                    <option value="RH">RH</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Manager">Manager</option>
-                    <option value="IT">IT</option>
-                    <option value="Commercial">Commercial</option>
-                  </select>
-                </label>
-              </div>
               <label>
                 Objet
                 <input
@@ -381,13 +703,22 @@ export default function Messagrie() {
                   required
                 />
               </label>
+              {composeError && <p className="mail-empty">{composeError}</p>}
 
               <div className="compose-actions">
                 <button type="button" className="compose-cancel" onClick={closeCompose}>
                   Annuler
                 </button>
-                <button type="submit" className="compose-send">
-                  Envoyer
+                <button
+                  type="button"
+                  className="compose-draft"
+                  disabled={saving}
+                  onClick={onSaveDraft}
+                >
+                  {saving ? "..." : "Enregistrer brouillon"}
+                </button>
+                <button type="submit" className="compose-send" disabled={saving}>
+                  {saving ? "Envoi..." : "Envoyer"}
                 </button>
               </div>
             </form>
