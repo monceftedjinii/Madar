@@ -308,8 +308,11 @@ h3 {
 
 .message-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: flex-start;
+  justify-content: flex-end;
+  max-width: 280px;
 }
 
 .message-actions button {
@@ -317,10 +320,12 @@ h3 {
   background: #fff;
   border-radius: 12px;
   height: 38px;
-  padding: 0 12px;
+  padding: 0 10px;
   cursor: pointer;
   font-weight: 700;
   transition: all 0.2s ease;
+  flex: 0 0 calc(50% - 4px);
+  min-width: 128px;
 }
 
 .message-actions .action-btn:hover:not(:disabled) {
@@ -328,12 +333,14 @@ h3 {
 }
 
 .message-actions .action-reply {
+  order: 1;
   background: #eaf4ff;
   border-color: #bcdcff;
   color: #1e3a8a;
 }
 
 .message-actions .action-forward {
+  order: 2;
   background: #f0fdf4;
   border-color: #bbf7d0;
   color: #166534;
@@ -346,12 +353,14 @@ h3 {
 }
 
 .message-actions .action-delete {
+  order: 4;
   background: #fef2f2;
   border-color: #fecaca;
   color: #b91c1c;
 }
 
 .important-btn {
+  order: 3;
   background: #fff8da;
   border-color: #efdc95;
   color: #8a5200;
