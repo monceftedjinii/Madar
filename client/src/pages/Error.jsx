@@ -1,9 +1,11 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/error.css";
 import logo from "../Assets/Logo_madar_holding.png";
 
 export default function Error() {
+  const navigate = useNavigate();
+
   return (
     <main className="error-page">
       <div className="error-card">
@@ -18,6 +20,13 @@ export default function Error() {
           <Link className="error-button primary" to="/home">
             Retour a l&apos;accueil
           </Link>
+          <button
+            className="error-button ghost"
+            type="button"
+            onClick={() => navigate(-1)}
+          >
+            Retour a la page precedente
+          </button>
           <Link className="error-button ghost" to="/login">
             Aller a la connexion
           </Link>
