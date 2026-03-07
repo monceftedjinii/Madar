@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import SearchIcon from "@mui/icons-material/Search";
 import Navbar from "../components/Navbar";
+import useDarkModePreference from "../hooks/useDarkModePreference";
 import "../styles/profile.css";
 import "../styles/messagrie.css";
 
@@ -107,7 +108,7 @@ const toUiMail = (mail, boxType) => {
 };
 
 export default function Messagrie() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");

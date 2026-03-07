@@ -5,8 +5,9 @@ import { useState } from "react";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
 import Form from "../../components/Form";
+import useDarkModePreference from "../../hooks/useDarkModePreference";
 export default function Profile() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [profileData, setProfileData] = useState({
