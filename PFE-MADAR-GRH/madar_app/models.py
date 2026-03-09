@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 
 class RoleChoices(models.TextChoices):
@@ -737,6 +738,76 @@ class SoldeConge(models.Model):
         
         # Save updates joursRestants and derniereMaj (auto_now)
         self.save()
+
+    def debiter(self, jours):
+        """
+        Remove leave days when a leave request is approved.
+        - Increase joursPris
+        - Decrease joursRestants
+        - Ensure balance never becomes negative
+        - Save instance (updates derniereMaj via auto_now)
+        """
+        jours = Decimal(str(jours))
+        if jours < 0:
+            raise ValidationError({'joursPris': 'Le nombre de jours à débiter doit être >= 0.'})
+
+        nouveau_solde = self.joursRestants - jours
+        if nouveau_solde < 0:
+            raise ValidationError({'joursRestants': 'Solde insuffisant pour débiter ce nombre de jours.'})
+
+        self.joursPris = self.joursPris + jours
+        self.joursRestants = nouveau_solde
+        self.save()
+
+    def crediter(self, jours):
+        """
+        Add leave days (monthly acquisition or leave cancellation).
+        - Increase joursAcquis
+        - Increase joursRestants
+        - Save instance (updates derniereMaj via auto_now)
+        """
+        jours = Decimal(str(jours))
+        if jours < 0:
+            raise ValidationError({'joursAcquis': 'Le nombre de jours à créditer doit être >= 0.'})
+
+        self.joursAcquis = self.joursAcquis + jours
+        self.joursRestants = self.joursRestants + jours
+        self.save()
+
+    def reporter(self, annee_suivante):
+        """
+        Transfer remaining days to the next year.
+        - Create/get next year balance for same employee and leave type
+        - Move current joursRestants to next year joursReportes
+        - Set current joursRestants to 0
+        - Save both records
+        """
+        solde_suivant, _ = SoldeConge.objects.get_or_create(
+            employee=self.employee,
+            leaveType=self.leaveType,
+            annee=annee_suivante,
+            defaults={
+                'joursAcquis': self.leaveType.nbrJoursDroit,
+                'joursPris': 0,
+                'joursReportes': 0,
+                'joursRestants': self.leaveType.nbrJoursDroit,
+            }
+        )
+
+        montant_reporte = self.joursRestants
+        solde_suivant.joursReportes = solde_suivant.joursReportes + montant_reporte
+        solde_suivant.joursRestants = solde_suivant.joursRestants + montant_reporte
+
+        self.joursRestants = Decimal('0')
+
+        solde_suivant.save()
+        self.save()
+
+        return solde_suivant
+
+    def getSoldeReel(self):
+        """Return real balance at current moment: acquis + reportes - pris."""
+        return self.joursAcquis + self.joursReportes - self.joursPris
 
     @classmethod
     def get_or_create_balance(cls, employee, leave_type, annee):
