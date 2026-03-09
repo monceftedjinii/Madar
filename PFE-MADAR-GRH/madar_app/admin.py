@@ -2,12 +2,12 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from .models import User, Department, Employee, Position
+from .models import User, Employee, Position, Job, Service, Affectation
 from .models import Task
 from .models import Attendance
-from .models import LeaveRequest
+from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
 from .models import AbsenceWarning, DisciplineFlag, Notification
-from .models import DocumentType, Document, DocumentHistory
+from .models import DocumentType, Document, DocumentHistory, DocumentVersion, DocumentValidation, DocumentAccess
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
 import secrets
 
@@ -46,15 +46,103 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(User, UserAdmin)
-admin.site.register(Department)
 admin.site.register(Position)
 
 
+@admin.register(Job)
+class JobAdmin(admin.ModelAdmin):
+	list_display = ('intitule', 'niveauHierarchique', 'estManagerial', 'nbrPostes', 'salaire_range', 'posteParentId')
+	list_filter = ('niveauHierarchique', 'estManagerial')
+	search_fields = ('intitule', 'posteParentId__intitule')
+	ordering = ('niveauHierarchique', 'intitule')
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('intitule', 'niveauHierarchique', 'estManagerial', 'nbrPostes')
+		}),
+		('Salaire', {
+			'fields': ('salaireMini', 'salaireMaxi')
+		}),
+		('Hiérarchie', {
+			'fields': ('posteParentId',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+	def salaire_range(self, obj):
+		"""Display salary range in list view"""
+		return f"${obj.salaireMini:,.0f} - ${obj.salaireMaxi:,.0f}"
+	salaire_range.short_description = 'Salaire'
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+	list_display = ('code', 'nomService', 'statut', 'budget', 'serviceParentId', 'service_hierarchy')
+	list_filter = ('statut',)
+	search_fields = ('code', 'nomService')
+	ordering = ('code',)
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('code', 'nomService', 'statut')
+		}),
+		('Données financières', {
+			'fields': ('budget',)
+		}),
+		('Hiérarchie', {
+			'fields': ('serviceParentId',)
+		}),
+	)
+	
+	def service_hierarchy(self, obj):
+		"""Display the full hierarchy path"""
+		hierarchy = []
+		current = obj
+		while current:
+			hierarchy.insert(0, current.code)
+			current = current.serviceParentId
+		return ' → '.join(hierarchy)
+	service_hierarchy.short_description = 'Hiérarchie'
+
+
+@admin.register(Affectation)
+class AffectationAdmin(admin.ModelAdmin):
+	list_display = ('employee', 'job', 'dateDebut', 'dateFin', 'typeAffectation', 'estPrimaire', 'status_badge', 'motif')
+	list_filter = ('typeAffectation', 'estPrimaire', 'dateDebut')
+	search_fields = ('employee__first_name', 'employee__last_name', 'job__intitule', 'motif')
+	ordering = ('employee', '-estPrimaire', '-dateDebut')
+	fieldsets = (
+		('Assignation', {
+			'fields': ('employee', 'job')
+		}),
+		('Période', {
+			'fields': ('dateDebut', 'dateFin')
+		}),
+		('Détails', {
+			'fields': ('typeAffectation', 'motif', 'estPrimaire')
+		}),
+		('Audit', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+	def status_badge(self, obj):
+		"""Display current/inactive status with color"""
+		if obj.get_current_assignment():
+			return format_html(
+				'<span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px;">Active</span>'
+			)
+		return format_html(
+			'<span style="background-color: #6c757d; color: white; padding: 3px 8px; border-radius: 3px;">Inactive</span>'
+		)
+	status_badge.short_description = 'Statut'
+
+
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'department', 'attendance_pin', 'user_status')
+	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'service', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name', 'phone_number', 'address', 'position__name')
-	list_filter = ('department', 'position', 'contract_type')
-	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	list_filter = ('service', 'position', 'contract_type')
+	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'service', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
 	readonly_fields = ('profile_preview', 'user_login_info', 'hired_at')
 	actions = ['reset_user_password']
 
@@ -120,6 +208,70 @@ class EmployeeAdmin(admin.ModelAdmin):
 	reset_user_password.short_description = 'Reset user password(s)'
 
 
+@admin.register(LeaveType)
+class LeaveTypeAdmin(admin.ModelAdmin):
+	list_display = ('code', 'libelle', 'nbrJoursDroit', 'estPayant', 'reconductible', 'delaiPreavis', 'justificatifRequis', 'sexeAutorise')
+	list_filter = ('estPayant', 'reconductible', 'justificatifRequis', 'sexeAutorise')
+	search_fields = ('code', 'libelle')
+	ordering = ('code',)
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('code', 'libelle', 'sexeAutorise')
+		}),
+		('Droits et règles', {
+			'fields': ('nbrJoursDroit', 'estPayant', 'reconductible')
+		}),
+		('Contraintes', {
+			'fields': ('delaiPreavis', 'justificatifRequis')
+		}),
+		('Audit', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(SoldeConge)
+class SoldeCongeAdmin(admin.ModelAdmin):
+	list_display = ('employee', 'leaveType', 'annee', 'joursAcquis', 'joursPris', 'joursReportes', 'joursRestants', 'derniereMaj')
+	list_filter = ('annee', 'leaveType')
+	search_fields = ('employee__first_name', 'employee__last_name', 'leaveType__libelle')
+	ordering = ('employee', 'leaveType', '-annee')
+	fieldsets = (
+		('Références', {
+			'fields': ('employee', 'leaveType', 'annee')
+		}),
+		('Balance', {
+			'fields': ('joursAcquis', 'joursPris', 'joursReportes', 'joursRestants')
+		}),
+		('Audit', {
+			'fields': ('derniereMaj', 'created_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('derniereMaj', 'created_at')
+	actions = ['recalculate_balances']
+
+	def recalculate_balances(self, request, queryset):
+		"""Admin action to recalculate selected leave balances"""
+		count = 0
+		for solde in queryset:
+			solde.calculer()
+			count += 1
+		self.message_user(request, f"{count} solde(s) de congé recalculé(s) avec succès.")
+	recalculate_balances.short_description = "Recalculer les soldes sélectionnés"
+
+
+@admin.register(ValidationWorkflow)
+class ValidationWorkflowAdmin(admin.ModelAdmin):
+	list_display = ('leave_request', 'validation_order', 'validator_role', 'validator', 'decision', 'is_active', 'decided_at')
+	list_filter = ('decision', 'is_active', 'validator_role')
+	search_fields = ('leave_request__employee__first_name', 'leave_request__employee__last_name', 'validator__email')
+	ordering = ('leave_request', 'validation_order')
+	readonly_fields = ('created_at', 'updated_at', 'decided_at')
+
+
 admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Task)
 admin.site.register(Attendance)
@@ -130,6 +282,60 @@ admin.site.register(Notification)
 admin.site.register(DocumentType)
 admin.site.register(Document)
 admin.site.register(DocumentHistory)
+
+
+class DocumentVersionAdmin(admin.ModelAdmin):
+	list_display = ('document', 'numVersion', 'author', 'size', 'checksum', 'is_current', 'created_at')
+	list_filter = ('is_current', 'created_at')
+	search_fields = ('document__title', 'author__first_name', 'author__last_name', 'comment')
+	readonly_fields = ('checksum', 'created_at',)
+	ordering = ('-created_at',)
+
+
+admin.site.register(DocumentVersion, DocumentVersionAdmin)
+
+
+class DocumentValidationAdmin(admin.ModelAdmin):
+	list_display = ('document', 'step_order', 'validator', 'status', 'is_active', 'validation_date', 'created_at')
+	list_filter = ('status', 'is_active', 'validation_date', 'created_at')
+	search_fields = ('document__title', 'validator__first_name', 'validator__last_name', 'comment')
+	readonly_fields = ('created_at', 'updated_at', 'validation_date')
+	ordering = ('document', 'step_order')
+	fieldsets = (
+		('Workflow Info', {
+			'fields': ('document', 'step_order', 'validator', 'is_active')
+		}),
+		('Validation Decision', {
+			'fields': ('status', 'validation_date', 'comment', 'signature')
+		}),
+		('Timestamps', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+
+
+admin.site.register(DocumentValidation, DocumentValidationAdmin)
+
+
+class DocumentAccessAdmin(admin.ModelAdmin):
+	list_display = ('document', 'user', 'action', 'result', 'ip_address', 'access_datetime')
+	list_filter = ('action', 'result', 'access_datetime')
+	search_fields = ('document__title', 'user__email', 'user__first_name', 'user__last_name', 'ip_address', 'details')
+	readonly_fields = ('access_datetime',)
+	ordering = ('-access_datetime',)
+	date_hierarchy = 'access_datetime'
+	
+	def has_add_permission(self, request):
+		# Access logs should only be created programmatically
+		return False
+	
+	def has_change_permission(self, request, obj=None):
+		# Access logs should not be modified once created
+		return False
+
+
+admin.site.register(DocumentAccess, DocumentAccessAdmin)
 
 
 # ============================================================
@@ -194,13 +400,13 @@ admin.site.register(MessageReport, MessageReportAdmin)
 
 
 class AnnouncementAdmin(admin.ModelAdmin):
-	list_display = ('title', 'creator', 'scope', 'target_department', 'created_at')
+	list_display = ('title', 'creator', 'scope', 'target_service', 'created_at')
 	search_fields = ('title', 'message', 'creator__email')
 	list_filter = ('scope', 'created_at')
 	readonly_fields = ('created_at',)
 	fieldsets = (
 		('Announcement', {'fields': ('title', 'message', 'creator')}),
-		('Distribution', {'fields': ('scope', 'target_department')}),
+		('Distribution', {'fields': ('scope', 'target_service')}),
 		('Timestamps', {'fields': ('created_at',)}),
 	)
 

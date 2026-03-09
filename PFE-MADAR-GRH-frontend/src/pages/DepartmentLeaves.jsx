@@ -44,7 +44,7 @@ export default function DepartmentLeaves() {
       console.log('leaves', response.data);
       setLeaves(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load leaves');
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to load leaves');
     } finally {
       setLoading(false);
     }
@@ -54,16 +54,16 @@ export default function DepartmentLeaves() {
     try {
       setActionInProgress(leaveId);
       const comment = commentInputs[leaveId] || '';
-      await api.post(`/api/leaves/${leaveId}/approve/`, { comment });
+      const response = await api.post(`/api/leaves/${leaveId}/approve/`, { comment });
 
-      // Update local state
-      setLeaves(leaves.map(leave =>
-        leave.id === leaveId ? { ...leave, status: 'ACCEPTED' } : leave
-      ));
+      await fetchLeaves();
       setCommentInputs(prev => ({ ...prev, [leaveId]: '' }));
       setExpandedLeave(null);
+      if (response?.data?.detail) {
+        setError(response.data.detail);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to approve leave');
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to approve leave');
     } finally {
       setActionInProgress(null);
     }
@@ -73,16 +73,16 @@ export default function DepartmentLeaves() {
     try {
       setActionInProgress(leaveId);
       const comment = commentInputs[leaveId] || '';
-      await api.post(`/api/leaves/${leaveId}/reject/`, { comment });
+      const response = await api.post(`/api/leaves/${leaveId}/reject/`, { comment });
 
-      // Update local state
-      setLeaves(leaves.map(leave =>
-        leave.id === leaveId ? { ...leave, status: 'REFUSED' } : leave
-      ));
+      await fetchLeaves();
       setCommentInputs(prev => ({ ...prev, [leaveId]: '' }));
       setExpandedLeave(null);
+      if (response?.data?.detail) {
+        setError(response.data.detail);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reject leave');
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to reject leave');
     } finally {
       setActionInProgress(null);
     }
@@ -169,6 +169,26 @@ export default function DepartmentLeaves() {
     const start = new Date(leave.start_date);
     const end = new Date(leave.end_date);
     return Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const renderWorkflowComments = (leave) => {
+    if (!Array.isArray(leave?.workflow)) return null;
+    const commentedSteps = leave.workflow.filter(step => step.comment && step.comment.trim());
+    if (commentedSteps.length === 0) return null;
+
+    return (
+      <div>
+        <strong>Workflow Comments:</strong>
+        <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+          {commentedSteps.map((step) => (
+            <li key={step.id} style={{ marginBottom: '4px' }}>
+              <strong>Step {step.validation_order} ({step.validator_role})</strong>
+              {step.validator ? ` by ${step.validator}` : ''}: {step.comment}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   const filteredLeaves = leaves.filter((leave) => {
@@ -685,14 +705,18 @@ export default function DepartmentLeaves() {
                   </div>
                 </div>
                 <div style={styles.leaveBody}>
-                  <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
+                  <div><strong>Type:</strong> {leave.type_label || leave.type}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
                   <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   <div><strong>Reason:</strong> {leave.reason}</div>
+                  {leave.current_step && (
+                    <div><strong>Current Step:</strong> #{leave.current_step.validation_order} ({leave.current_step.validator_role})</div>
+                  )}
+                  {renderWorkflowComments(leave)}
                   {leave.attachment && <div><strong>Attachment:</strong> <a href={leave.attachment} target="_blank" rel="noopener noreferrer">View file</a></div>}
                 </div>
 
-                {expandedLeave === leave.id ? (
+                {leave.can_decide && expandedLeave === leave.id ? (
                   <div style={styles.actionSection}>
                     <textarea
                       style={styles.commentInput}
@@ -726,7 +750,7 @@ export default function DepartmentLeaves() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : leave.can_decide ? (
                   <div style={styles.actionSection}>
                     <button
                       style={styles.approveButton}
@@ -734,6 +758,10 @@ export default function DepartmentLeaves() {
                     >
                       Review & Decide
                     </button>
+                  </div>
+                ) : (
+                  <div style={styles.actionSection}>
+                    <span style={{ fontSize: '12px', color: '#666' }}>Waiting for current assigned validator step</span>
                   </div>
                 )}
               </div>
@@ -764,10 +792,11 @@ export default function DepartmentLeaves() {
                   </div>
                 </div>
                 <div style={styles.leaveBody}>
-                  <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
+                  <div><strong>Type:</strong> {leave.type_label || leave.type}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
                   <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   {leave.chef_comment && <div><strong>Your Comment:</strong> {leave.chef_comment}</div>}
+                  {renderWorkflowComments(leave)}
                 </div>
               </div>
             ))}
@@ -797,10 +826,11 @@ export default function DepartmentLeaves() {
                   </div>
                 </div>
                 <div style={styles.leaveBody}>
-                  <div><strong>Type:</strong> {leave.type === 'ANNUAL' ? '📅 Annual' : leave.type === 'SICK' ? '🏥 Sick' : '📝 Other'}</div>
+                  <div><strong>Type:</strong> {leave.type_label || leave.type}</div>
                   <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
                   <div><strong>Days:</strong> {getLeaveDays(leave)}</div>
                   {leave.chef_comment && <div><strong>Reason:</strong> {leave.chef_comment}</div>}
+                  {renderWorkflowComments(leave)}
                 </div>
               </div>
             ))}

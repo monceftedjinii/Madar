@@ -37,7 +37,7 @@ urlpatterns = [
     path('api/employees/<int:pk>/update/', madar_views.update_employee, name='api-employees-update'),
     path('api/employees/<int:pk>/delete/', madar_views.delete_employee, name='api-employees-delete'),
     path('api/employees/<int:pk>/reset-password/', madar_views.reset_employee_password, name='api-employees-reset-password'),
-    path('api/departments/', madar_views.departments_list, name='api-departments'),
+    path('api/services/', madar_views.services_list, name='api-services'),
     path('api/positions/', madar_views.positions_list, name='api-positions'),
     path('api/tasks/', madar_views.create_task, name='api-tasks-create'),
     path('api/tasks/me/', madar_views.my_tasks, name='api-tasks-me'),
@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/attendance/check-out/', madar_views.attendance_check_out, name='api-att-check-out'),
     path('api/attendance/me/', madar_views.attendance_me, name='api-att-me'),
     path('api/leaves/', madar_views.create_leave, name='api-leaves-create'),
+    path('api/leave-types/', madar_views.leave_types_list, name='api-leave-types-list'),
     path('api/leaves/me/', madar_views.my_leaves, name='api-leaves-me'),
     path('api/leaves/department/', madar_views.department_pending_leaves, name='api-leaves-department'),
     path('api/leaves/<int:pk>/approve/', madar_views.approve_leave, name='api-leaves-approve'),
@@ -67,13 +68,17 @@ urlpatterns = [
     path('api/formations/<int:pk>/add-participants/', madar_views.add_formation_participants, name='api-formations-add-participants'),
     path('api/formations/department-employees/', madar_views.get_department_employees, name='api-formations-department-employees'),
     path('api/documents/', madar_views.upload_document, name='api-documents-upload'),
+    path('api/documents/<int:pk>/', madar_views.document_detail, name='api-documents-detail'),
     path('api/documents/me/', madar_views.list_documents_scoped, name='api-documents-list'),
     path('api/documents/feed/', madar_views.documents_feed, name='api-documents-feed'),
     path('api/documents/mine/', madar_views.documents_mine, name='api-documents-mine'),
     path('api/documents/<int:pk>/send/', madar_views.send_document, name='api-documents-send'),
+    path('api/documents/<int:pk>/modify/', madar_views.modify_document, name='api-documents-modify'),
+    path('api/documents/<int:pk>/download/', madar_views.download_document, name='api-documents-download'),
     path('api/documents/<int:pk>/comment/', madar_views.comment_document, name='api-documents-comment'),
     path('api/documents/<int:pk>/comments/', madar_views.document_comments, name='api-documents-comments'),
     path('api/documents/<int:pk>/validate/', madar_views.validate_document, name='api-documents-validate'),
+    path('api/documents/<int:pk>/validate/reject/', madar_views.reject_document_validation, name='api-documents-validate-reject'),
     path('api/documents/<int:pk>/archive/', madar_views.archive_document, name='api-documents-archive'),
     path('api/reports/summary/', madar_views.reports_summary, name='api-reports-summary'),
     path('api/reports/attendance/export/', madar_views.export_attendance_report, name='api-reports-attendance-export'),
@@ -120,6 +125,31 @@ urlpatterns = [
     # Admin: Messaging Settings
     path('api/admin/messaging-settings/', madar_views.messaging_settings, name='api-messaging-settings'),
     path('api/admin/messaging-settings/update/', madar_views.update_messaging_settings, name='api-messaging-settings-update'),
+    
+    # ──────────────────────────────────────────────────────────────────────
+    # Dashboard & Statistics API Endpoints
+    # ──────────────────────────────────────────────────────────────────────
+    
+    # Dashboard endpoints
+    path('api/dashboard/', madar_views.dashboard.get_dashboard, name='api-dashboard'),
+    path('api/dashboard/refresh/', madar_views.dashboard.refresh_dashboard, name='api-dashboard-refresh'),
+    path('api/dashboard/customize/', madar_views.dashboard.customize_dashboard, name='api-dashboard-customize'),
+    path('api/dashboard/widgets/', madar_views.dashboard.get_dashboard_widgets, name='api-dashboard-widgets'),
+    
+    # KPI calculation endpoints
+    path('api/kpis/<str:kpi_type>/', madar_views.kpis.calculate_kpi, name='api-kpi-calculate'),
+    path('api/kpis/', madar_views.kpis.get_all_kpis, name='api-kpis-all'),
+    path('api/kpis/threshold/check/', madar_views.kpis.check_kpi_threshold, name='api-kpi-threshold'),
+    
+    # Chart/Graph generation endpoints
+    path('api/charts/<str:kpi_type>/', madar_views.charts.generate_kpi_chart, name='api-chart-kpi'),
+    path('api/charts/', madar_views.charts.generate_multiple_charts, name='api-charts-multiple'),
+    path('api/charts/custom/', madar_views.charts.generate_custom_chart, name='api-chart-custom'),
+    path('api/charts/types/', madar_views.charts.get_chart_types, name='api-chart-types'),
+    
+    # Report generation and export endpoints
+    path('api/reports/generate/', madar_views.reports.generate_dashboard_report, name='api-report-generate'),
+    path('api/reports/export/', madar_views.reports.export_dashboard_report, name='api-report-export'),
 ]
 # Serve media files in development
 if settings.DEBUG:

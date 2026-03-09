@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.conf import settings
 from django.utils import timezone
-from ..models import Department, Employee, Position, User, RoleChoices
+from ..models import Service, Employee, Position, User, RoleChoices
 from ..permissions import IsGRH
 from ..scopes import employee_queryset_for
 import secrets
@@ -71,10 +71,10 @@ def employees_list(request):
 			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
 			'attendance_pin': e.attendance_pin if not for_messaging else None,
-			'department': {
-				'id': e.department.id,
-				'name': e.department.name,
-			} if e.department else None,
+			'service': {
+				'code': e.service.code,
+				'nomService': e.service.nomService,
+			} if e.service else None,
 		}
 		
 		# For messaging, find the User ID for this employee
@@ -97,10 +97,10 @@ def employees_list(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def departments_list(request):
+def services_list(request):
 	data = [
-		{'id': d.id, 'name': d.name}
-		for d in Department.objects.order_by('name')
+		{'code': s.code, 'nomService': s.nomService, 'statut': s.statut}
+		for s in Service.objects.order_by('code')
 	]
 	return Response(data)
 
@@ -122,7 +122,7 @@ def create_employee(request):
 	first_name = request.data.get('first_name', '').strip()
 	last_name = request.data.get('last_name', '').strip()
 	email = request.data.get('email', '').strip().lower()
-	department_id = request.data.get('department')
+	service_code = request.data.get('service')
 	position_value = request.data.get('position', '')
 	phone_number = request.data.get('phone_number', '').strip()
 	address = request.data.get('address', '').strip()
@@ -131,9 +131,9 @@ def create_employee(request):
 	attendance_pin = request.data.get('attendance_pin', '')
 	
 	# Validation
-	if not all([first_name, last_name, email, department_id]):
+	if not all([first_name, last_name, email, service_code]):
 		return Response(
-			{'detail': 'first_name, last_name, email, department required'}, 
+			{'detail': 'first_name, last_name, email, service required'}, 
 			status=status.HTTP_400_BAD_REQUEST
 		)
 	
@@ -157,11 +157,11 @@ def create_employee(request):
 		return Response({'detail': 'contract_type must be CDD, CDI, or STAGE'}, 
 						status=status.HTTP_400_BAD_REQUEST)
 	
-	# Get department
+	# Get service
 	try:
-		dept = Department.objects.get(id=department_id)
-	except Department.DoesNotExist:
-		return Response({'detail': 'Department not found'}, 
+		service = Service.objects.get(code=service_code)
+	except Service.DoesNotExist:
+		return Response({'detail': 'Service not found'}, 
 						status=status.HTTP_400_BAD_REQUEST)
 
 	position = _resolve_position(position_value)
@@ -187,7 +187,7 @@ def create_employee(request):
 			phone_number=phone_number,
 			address=address,
 			contract_type=contract_type,
-			department=dept,
+			service=service,
 			salary=salary,
 			attendance_pin=attendance_pin
 		)
@@ -212,7 +212,7 @@ def create_employee(request):
 			'address': employee.address,
 			'contract_type': employee.contract_type,
 			'hired_at': employee.hired_at.isoformat(),
-			'department': dept.name,
+			'service': service.nomService,
 		},
 		'user': {
 			'id': user.id,
@@ -242,13 +242,13 @@ def update_employee(request, pk):
 	phone_number = request.data.get('phone_number', employee.phone_number).strip()
 	address = request.data.get('address', employee.address).strip()
 	contract_type = request.data.get('contract_type', employee.contract_type)
-	department_id = request.data.get('department', employee.department_id)
+	service_code = request.data.get('service', employee.service_id)
 	salary = request.data.get('salary', employee.salary)
 	attendance_pin = request.data.get('attendance_pin', employee.attendance_pin)
 
-	if not all([first_name, last_name, email, department_id]):
+	if not all([first_name, last_name, email, service_code]):
 		return Response(
-			{'detail': 'first_name, last_name, email, department required'},
+			{'detail': 'first_name, last_name, email, service required'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
@@ -263,11 +263,11 @@ def update_employee(request, pk):
 		return Response({'detail': 'contract_type must be CDD, CDI, or STAGE'}, 
 						status=status.HTTP_400_BAD_REQUEST)
 
-	# Validate department
+	# Validate service
 	try:
-		dept = Department.objects.get(id=department_id)
-	except Department.DoesNotExist:
-		return Response({'detail': 'Department not found'}, status=status.HTTP_400_BAD_REQUEST)
+		service = Service.objects.get(code=service_code)
+	except Service.DoesNotExist:
+		return Response({'detail': 'Service not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 	position = _resolve_position(position_value)
 	if position_value not in [None, ''] and not position:
@@ -295,7 +295,7 @@ def update_employee(request, pk):
 	employee.phone_number = phone_number
 	employee.address = address
 	employee.contract_type = contract_type
-	employee.department = dept
+	employee.service = service
 	employee.salary = salary
 	employee.attendance_pin = attendance_pin or ''
 	employee.save()
@@ -312,9 +312,9 @@ def update_employee(request, pk):
 			'phone_number': employee.phone_number,
 			'address': employee.address,
 			'contract_type': employee.contract_type,
-			'department': {
-				'id': employee.department.id,
-				'name': employee.department.name,
+			'service': {
+				'code': employee.service.code,
+				'nomService': employee.service.nomService,
 			},
 			'salary': str(employee.salary),
 			'hired_at': employee.hired_at.isoformat(),

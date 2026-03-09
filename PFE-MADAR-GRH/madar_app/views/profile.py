@@ -10,7 +10,7 @@ from ..models import User, Employee
 
 
 def _employee_for_user(user):
-    return Employee.objects.filter(email=user.email).select_related('department', 'position').first()
+    return Employee.objects.filter(email=user.email).select_related('service', 'position').first()
 
 
 def _is_user_online(user):
@@ -52,11 +52,11 @@ def get_profile(request):
             'salary': str(employee.salary) if employee.salary is not None else None,
             'position': employee.position.name if employee.position else None,
             'is_online': _is_user_online(user),
-            'department': {
-                'id': employee.department.id,
-                'name': employee.department.name,
+            'service': {
+                'code': employee.service.code,
+                'nomService': employee.service.nomService,
                 'description': None
-            } if employee.department else None
+            } if employee.service else None
         }
     
     return Response(profile_data)

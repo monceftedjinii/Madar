@@ -4,12 +4,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
+from django.http import FileResponse
+import os
 from ..models import (
-	Employee, User, RoleChoices, Department,
-	Document, DocumentType, DocumentHistory
+	Employee, User, RoleChoices, Service,
+	Document, DocumentType, DocumentHistory,
+	DocumentVersion, DocumentValidation, DocumentAccess
 )
 from ..permissions import CanUploadDocument, CanValidateDocument
-from .helpers import notify, _display_name, _notify_department_users
+from .helpers import notify, _display_name, _notify_service_users
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -28,13 +31,18 @@ def _create_doc_history(document, action, by_user, note='', parent=None, is_priv
 	)
 
 
-def _resolve_department(value):
-	"""Resolve a department by id (digit string) or name."""
+def _resolve_service(value):
+	"""Resolve a service by code (string) or nomService."""
 	if not value:
 		return None
-	if str(value).isdigit():
-		return Department.objects.filter(id=int(value)).first()
-	return Department.objects.filter(name=value).first()
+	if isinstance(value, str):
+		# Try by code first
+		service = Service.objects.filter(code=value).first()
+		if service:
+			return service
+		# Fall back to name match
+		return Service.objects.filter(nomService=value).first()
+	return None
 
 
 def _serialize_document(doc, request):
@@ -43,19 +51,23 @@ def _serialize_document(doc, request):
 	if doc.created_by:
 		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
 		created_by_name = name or doc.created_by.email
+	current_version = doc.current_version
 	return {
 		'id': doc.id,
 		'title': doc.title,
 		'doc_type': doc.doc_type.name,
 		'doc_type_category': doc.doc_type.category,
+		'confidentiality_level': doc.confidentiality_level,
 		'status': doc.status,
-		'source_department': doc.source_department.name if doc.source_department else None,
-		'target_department': doc.target_department.name if doc.target_department else None,
+		'source_service': doc.source_service.nomService if doc.source_service else None,
+		'target_service': doc.target_service.nomService if doc.target_service else None,
 		'created_by': doc.created_by.email if doc.created_by else None,
 		'created_by_name': created_by_name,
 		'created_at': doc.created_at.isoformat() if doc.created_at else None,
 		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
-		'file_url': request.build_absolute_uri(doc.file.url) if doc.file else None,
+		'file_url': request.build_absolute_uri(current_version.file_path.url) if current_version and current_version.file_path else (request.build_absolute_uri(doc.file.url) if doc.file else None),
+		'current_version': current_version.numVersion if current_version else None,
+		'current_checksum': current_version.checksum if current_version else None,
 	}
 
 
@@ -67,8 +79,8 @@ def _can_access_comments(user, document):
 		try:
 			chef_emp = Employee.objects.get(email=user.email)
 			return (
-				chef_emp.department_id == document.source_department_id or
-				(document.target_department_id and chef_emp.department_id == document.target_department_id)
+				chef_emp.service_id == document.source_service_id or
+				(document.target_service_id and chef_emp.service_id == document.target_service_id)
 			)
 		except Employee.DoesNotExist:
 			return False
@@ -78,12 +90,54 @@ def _can_access_comments(user, document):
 		try:
 			emp = Employee.objects.get(email=user.email)
 			return (
-				emp.department_id == document.source_department_id or
-				(document.target_department_id and emp.department_id == document.target_department_id)
+				emp.service_id == document.source_service_id or
+				(document.target_service_id and emp.service_id == document.target_service_id)
 			)
 		except Employee.DoesNotExist:
 			return False
 	return False
+
+
+def _get_client_ip(request):
+	"""Extract client IP address from request."""
+	x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+	if x_forwarded_for:
+		return x_forwarded_for.split(',')[0].strip()
+	return request.META.get('REMOTE_ADDR')
+
+
+def _employee_from_user(user):
+	"""Resolve employee profile from user email."""
+	if not user or not user.email:
+		return None
+	return Employee.objects.filter(email=user.email).first()
+
+
+def _initialize_validation_workflow(document):
+	"""Create a default two-step workflow (RH_SIMPLE -> RH_SENIOR/GRH) if none exists."""
+	if document.validations.exists():
+		return
+
+	validators = []
+	rh_user = User.objects.filter(role=RoleChoices.RH_SIMPLE).order_by('id').first()
+	if rh_user:
+		rh_emp = _employee_from_user(rh_user)
+		if rh_emp:
+			validators.append(rh_emp)
+
+	drh_user = User.objects.filter(role=RoleChoices.RH_SENIOR).order_by('id').first()
+	if not drh_user:
+		drh_user = User.objects.filter(role=RoleChoices.GRH).order_by('id').first()
+	if drh_user:
+		drh_emp = _employee_from_user(drh_user)
+		if drh_emp and (not validators or drh_emp.id != validators[-1].id):
+			validators.append(drh_emp)
+
+	if validators:
+		DocumentValidation.initialize_workflow(
+			document,
+			[(validator, idx + 1) for idx, validator in enumerate(validators)]
+		)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -102,6 +156,10 @@ def upload_document(request):
 	doc_type_id = request.data.get('doc_type')
 	doc_type_name = request.data.get('type')
 	category = (request.data.get('category') or DocumentType.Category.INTERNAL).upper()
+	confidentiality_level = (request.data.get('confidentiality_level') or Document.ConfidentialityLevel.INTERNAL).upper()
+	valid_confidentiality = {choice[0] for choice in Document.ConfidentialityLevel.choices}
+	if confidentiality_level not in valid_confidentiality:
+		return Response({'detail': 'invalid confidentiality_level'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if doc_type_id:
 		try:
@@ -119,24 +177,24 @@ def upload_document(request):
 			doc_type.category = category
 			doc_type.save()
 
-	source_dept = _resolve_department(request.data.get('source_department'))
-	if not source_dept:
+	source_service = _resolve_service(request.data.get('source_service'))
+	if not source_service:
 		try:
 			user_emp = Employee.objects.get(email=request.user.email)
-			source_dept = user_emp.department
+			source_service = user_emp.service
 		except Employee.DoesNotExist:
-			return Response({'detail': 'source_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'detail': 'source_service is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	target_dept = _resolve_department(request.data.get('target_department'))
-	if request.user.role == RoleChoices.CHEF and not target_dept:
-		return Response({'detail': 'target_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+	target_service = _resolve_service(request.data.get('target_service'))
+	if request.user.role == RoleChoices.CHEF and not target_service:
+		return Response({'detail': 'target_service is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	# Employees and chefs can only upload for their own department
+	# Employees and chefs can only upload for their own service
 	if request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF]:
 		try:
 			emp = Employee.objects.get(email=request.user.email)
-			if source_dept and emp.department_id != source_dept.id:
-				return Response({'detail': 'can only upload for own department'}, status=status.HTTP_403_FORBIDDEN)
+			if source_service and emp.service_id != source_service.code:
+				return Response({'detail': 'can only upload for own service'}, status=status.HTTP_403_FORBIDDEN)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -147,10 +205,17 @@ def upload_document(request):
 		title=title,
 		doc_type=doc_type,
 		file=file_obj,
-		source_department=source_dept,
-		target_department=target_dept,
+		source_service=source_service,
+		target_service=target_service,
 		created_by=request.user,
+		confidentiality_level=confidentiality_level,
 		status=Document.Status.DRAFT
+	)
+	author_employee = _employee_from_user(request.user)
+	doc.create_new_version(
+		file_obj=file_obj,
+		author=author_employee,
+		comment='Initial version'
 	)
 	_create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
@@ -168,34 +233,35 @@ def send_document(request, pk):
 
 	if doc.status != Document.Status.DRAFT:
 		return Response({'detail': 'can only send DRAFT documents'}, status=status.HTTP_400_BAD_REQUEST)
-	if not doc.target_department_id:
-		return Response({'detail': 'target_department is required to send'}, status=status.HTTP_400_BAD_REQUEST)
+	if not doc.target_service_id:
+		return Response({'detail': 'target_service is required to send'}, status=status.HTTP_400_BAD_REQUEST)
 
 	is_creator = doc.created_by_id == request.user.id
-	is_chef_of_dept = False
+	is_chef_of_service = False
 	if request.user.role == RoleChoices.CHEF:
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
-			is_chef_of_dept = chef_emp.department_id == doc.source_department_id
+			is_chef_of_service = chef_emp.service_id == doc.source_service_id
 		except Employee.DoesNotExist:
 			pass
 
-	if not (is_creator or is_chef_of_dept):
+	if not (is_creator or is_chef_of_service):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.status = Document.Status.SENT
 	doc.sent_at = timezone.now()
 	doc.save()
+	_initialize_validation_workflow(doc)
 	_create_doc_history(doc, DocumentHistory.Action.SENT, request.user)
 
-	if doc.target_department_id:
-		for emp in Employee.objects.filter(department_id=doc.target_department_id):
+	if doc.target_service_id:
+		for emp in Employee.objects.filter(service_id=doc.target_service_id):
 			try:
 				user = User.objects.get(email=emp.email)
 				notify(
 					user,
 					title='New document received',
-					message=f"{doc.title} was sent to your department.",
+					message=f"{doc.title} was sent to your service.",
 					link=f"/documents?docId={doc.id}"
 				)
 			except User.DoesNotExist:
@@ -206,8 +272,42 @@ def send_document(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def document_detail(request, pk):
+	"""Read a document metadata with permission check and access traceability."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.READ)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.READ,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.READ,
+		ip_address=ip_address,
+		result=True,
+		details='Document metadata viewed',
+	)
+
+	return Response(_serialize_document(doc, request))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def list_documents_scoped(request):
-	"""List documents scoped to the user's role and department."""
+	"""List documents scoped to the user's role and service."""
 	role = request.user.role
 
 	if role == RoleChoices.GRH:
@@ -223,8 +323,8 @@ def list_documents_scoped(request):
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
 			qs = Document.objects.filter(
-				Q(source_department_id=chef_emp.department_id) |
-				Q(target_department_id=chef_emp.department_id)
+				Q(source_service_id=chef_emp.service_id) |
+				Q(target_service_id=chef_emp.service_id)
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.none()
@@ -233,8 +333,8 @@ def list_documents_scoped(request):
 			emp = Employee.objects.get(email=request.user.email)
 			qs = Document.objects.filter(
 				Q(created_by=request.user) |
-				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
-				Q(source_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
+				Q(target_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
+				Q(source_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.filter(created_by=request.user)
@@ -248,7 +348,7 @@ def list_documents_scoped(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def documents_feed(request):
-	"""Employee feed: documents sent to the employee's department."""
+	"""Employee feed: documents sent to the employee's service."""
 	if request.user.role != RoleChoices.EMPLOYEE:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -258,7 +358,7 @@ def documents_feed(request):
 		return Response([], status=status.HTTP_200_OK)
 
 	qs = Document.objects.filter(
-		target_department_id=emp.department_id,
+		target_service_id=emp.service_id,
 		status=Document.Status.SENT
 	).order_by('-sent_at', '-created_at')
 
@@ -269,7 +369,7 @@ def documents_feed(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def documents_mine(request):
-	"""Chef history: documents posted from the chef's department."""
+	"""Chef history: documents posted from the chef's service."""
 	if request.user.role != RoleChoices.CHEF:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -279,7 +379,7 @@ def documents_mine(request):
 		return Response([], status=status.HTTP_200_OK)
 
 	qs = Document.objects.filter(
-		source_department_id=chef_emp.department_id
+		source_service_id=chef_emp.service_id
 	).order_by('-created_at')
 
 	data = [_serialize_document(d, request) for d in qs]
@@ -348,10 +448,10 @@ def comment_document(request, pk):
 			msg = f"{actor_name} left a {'private ' if is_private else ''}comment on {doc.title}."
 			notify(owner, label, msg, link=comment_link)
 
-	# Notify department users for public top-level comments
+	# Notify service users for public top-level comments
 	if not parent and not is_private:
-		dept_id = doc.target_department_id or doc.source_department_id
-		_notify_department_users(dept_id, request.user, 'New comment', f"{actor_name} commented on {doc.title}.", link=comment_link)
+		service_code = doc.target_service_id or doc.source_service_id
+		_notify_service_users(service_code, request.user, 'New comment', f"{actor_name} commented on {doc.title}.", link=comment_link)
 
 	return Response({'detail': 'comment added'})
 
@@ -413,23 +513,169 @@ def document_comments(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def validate_document(request, pk):
-	"""Validate a document (RH_SENIOR/GRH only, status → VALIDATED)."""
+	"""Approve the active validation step for a document workflow."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	if doc.status == Document.Status.VALIDATED:
-		return Response({'detail': 'already validated'}, status=status.HTTP_400_BAD_REQUEST)
-	if doc.status == Document.Status.ARCHIVED:
-		return Response({'detail': 'cannot validate archived documents'}, status=status.HTTP_400_BAD_REQUEST)
+	if doc.status in [Document.Status.ARCHIVED, Document.Status.VALIDATED, Document.Status.REJECTED]:
+		return Response({'detail': f'cannot validate document with status {doc.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
-	doc.status = Document.Status.VALIDATED
-	doc.validated_by = request.user
-	doc.validated_at = timezone.now()
-	doc.save()
-	_create_doc_history(doc, DocumentHistory.Action.VALIDATED, request.user)
-	return Response({'id': doc.id, 'status': doc.status})
+	if not doc.validations.exists():
+		_initialize_validation_workflow(doc)
+
+	active_step = doc.current_validation_step
+	if not active_step:
+		if doc.status != Document.Status.VALIDATED:
+			doc.status = Document.Status.VALIDATED
+			doc.validated_by = request.user
+			doc.validated_at = timezone.now()
+			doc.save(update_fields=['status', 'validated_by', 'validated_at'])
+		return Response({'id': doc.id, 'status': doc.status, 'detail': 'workflow already completed'})
+
+	if not active_step.validator or active_step.validator.email != request.user.email:
+		return Response({'detail': 'it is not your validation step'}, status=status.HTTP_403_FORBIDDEN)
+
+	signature = request.data.get('signature')
+	if not signature:
+		return Response({'detail': 'signature is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	next_step = active_step.validate(signature)
+	if not next_step:
+		doc.validated_by = request.user
+		doc.validated_at = timezone.now()
+		doc.save(update_fields=['validated_by', 'validated_at'])
+		_create_doc_history(doc, DocumentHistory.Action.VALIDATED, request.user, note='Final workflow approval')
+
+	return Response({
+		'id': doc.id,
+		'status': doc.status,
+		'active_step': next_step.step_order if next_step else None,
+		'detail': 'validation step approved',
+	})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, CanValidateDocument])
+def reject_document_validation(request, pk):
+	"""Reject the active validation step and stop the workflow."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	active_step = doc.current_validation_step
+	if not active_step:
+		return Response({'detail': 'no active validation step'}, status=status.HTTP_400_BAD_REQUEST)
+	if not active_step.validator or active_step.validator.email != request.user.email:
+		return Response({'detail': 'it is not your validation step'}, status=status.HTTP_403_FORBIDDEN)
+
+	reason = request.data.get('reason') or request.data.get('comment')
+	if not reason:
+		return Response({'detail': 'reason is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	active_step.reject(reason)
+	_create_doc_history(doc, DocumentHistory.Action.RETURNED, request.user, note=reason)
+	return Response({'id': doc.id, 'status': doc.status, 'detail': 'validation rejected'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def modify_document(request, pk):
+	"""Create a new document version after permission check and access logging."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.MODIFY)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.MODIFY,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	file_obj = request.FILES.get('file')
+	if not file_obj:
+		return Response({'detail': 'file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	comment = request.data.get('comment', '').strip()
+	author_employee = _employee_from_user(request.user)
+	version = doc.create_new_version(file_obj=file_obj, author=author_employee, comment=comment or 'Document modified')
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.MODIFY,
+		ip_address=ip_address,
+		result=True,
+		details=f'Created version {version.numVersion}',
+	)
+
+	return Response({
+		'detail': 'document version created',
+		'document': _serialize_document(doc, request),
+		'version': version.numVersion,
+		'checksum': version.checksum,
+	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_document(request, pk):
+	"""Download current document version with permission and integrity checks."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.DOWNLOAD)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.DOWNLOAD,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	current_version = doc.current_version
+	if not current_version or not current_version.file_path:
+		return Response({'detail': 'no current version available'}, status=status.HTTP_404_NOT_FOUND)
+
+	if not current_version.verify_integrity():
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.DOWNLOAD,
+			ip_address=ip_address,
+			result=False,
+			details=f'Integrity check failed for version {current_version.numVersion}',
+		)
+		return Response({'detail': 'integrity verification failed'}, status=status.HTTP_409_CONFLICT)
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.DOWNLOAD,
+		ip_address=ip_address,
+		result=True,
+		details=f'Downloaded version {current_version.numVersion}',
+	)
+
+	file_name = os.path.basename(current_version.file_path.name)
+	response = FileResponse(current_version.file_path.open('rb'), as_attachment=True, filename=file_name)
+	return response
 
 
 @api_view(['POST'])

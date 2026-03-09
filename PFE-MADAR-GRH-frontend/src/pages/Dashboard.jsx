@@ -47,6 +47,7 @@ function Dashboard({ user, setUser }) {
     ],
     RH_SIMPLE: [
       { label: 'Absences (Yesterday)', href: '/absences/yesterday' },
+      { label: 'Leaves (Approvals)', href: '/leaves/department' },
       { label: 'Leaves', href: '/leaves' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
@@ -55,6 +56,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Profile', href: '/profile' },
     ],
     RH_AGENT: [
+      { label: 'Leaves (Approvals)', href: '/leaves/department' },
       { label: 'Formations', href: '/agent/formations' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
@@ -64,6 +66,7 @@ function Dashboard({ user, setUser }) {
     ],
     RH_SENIOR: [
       { label: 'Discipline Flags', href: '/discipline/flags' },
+      { label: 'Leaves (Approvals)', href: '/leaves/department' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Reports', href: '/reports' },
@@ -71,6 +74,8 @@ function Dashboard({ user, setUser }) {
       { label: 'Profile', href: '/profile' },
     ],
     GRH: [
+      { label: '📊 Analytics Dashboard', href: '/analytics' },
+      { label: 'Leaves (Approvals)', href: '/leaves/department' },
       { label: 'Reports', href: '/reports' },
       { label: 'Documents', href: '/documents' },
       { label: 'Employees', href: '/employees' },

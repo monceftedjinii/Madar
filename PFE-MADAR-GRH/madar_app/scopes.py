@@ -5,7 +5,7 @@ def employee_queryset_for(user):
     """Return an Employee queryset scoped for the given user.
 
     - GRH, RH_SENIOR, RH_SIMPLE: all employees
-    - CHEF: employees in the same department as the chef (chef must have an Employee record)
+    - CHEF: employees in the same service as the chef (chef must have an Employee record)
     - EMPLOYEE: only his own Employee record (matched by email)
     """
     if user is None or not getattr(user, 'is_authenticated', False):
@@ -20,7 +20,7 @@ def employee_queryset_for(user):
             chef_emp = Employee.objects.get(email=user.email)
         except Employee.DoesNotExist:
             return Employee.objects.none()
-        return Employee.objects.filter(department=chef_emp.department)
+        return Employee.objects.filter(service=chef_emp.service)
 
     if role == RoleChoices.EMPLOYEE:
         return Employee.objects.filter(email=user.email)

@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from ..models import (
     Message, MessageAttachment, Draft, BlockedUser, MessageReport, 
-    Announcement, MessagingSettings, User, Department, Employee
+    Announcement, MessagingSettings, User, Service, Employee
 )
 from ..permissions import IsGRH, IsRHSimple, IsRHSenior
 from .helpers import notify
@@ -125,10 +125,10 @@ def serialize_announcement(ann):
         'title': ann.title,
         'message': ann.message,
         'scope': ann.scope,
-        'target_department': {
-            'id': ann.target_department.id,
-            'name': ann.target_department.name
-        } if ann.target_department else None,
+        'target_service': {
+            'code': ann.target_service.code,
+            'nomService': ann.target_service.nomService
+        } if ann.target_service else None,
         'created_at': ann.created_at.isoformat(),
     }
 
@@ -730,20 +730,20 @@ def admin_resolve_report(request, pk):
 @permission_classes([IsAuthenticated])
 def announcements_list(request):
     """Get all announcements (user sees only relevant ones)."""
-    announcements = Announcement.objects.select_related('creator', 'target_department').order_by('-created_at')
+    announcements = Announcement.objects.select_related('creator', 'target_service').order_by('-created_at')
     
     # Filter by user's scope
-    user_dept = None
+    user_service = None
     try:
         emp = Employee.objects.get(email=request.user.email)
-        user_dept = emp.department
+        user_service = emp.service
     except Employee.DoesNotExist:
         pass
     
-    # Users see global announcements + their department announcements
-    if user_dept:
+    # Users see global announcements + their service announcements
+    if user_service:
         announcements = announcements.filter(
-            Q(scope='GLOBAL') | Q(scope='DEPARTMENT', target_department=user_dept)
+            Q(scope='GLOBAL') | Q(scope='SERVICE', target_service=user_service)
         )
     else:
         announcements = announcements.filter(scope='GLOBAL')
@@ -762,28 +762,28 @@ def create_announcement(request):
     title = request.data.get('title', '').strip()
     message = request.data.get('message', '').strip()
     scope = request.data.get('scope', 'GLOBAL')
-    target_department_id = request.data.get('target_department_id')
+    target_service_code = request.data.get('target_service_code')
     
     if not title:
         return Response({'detail': 'title is required'}, status=status.HTTP_400_BAD_REQUEST)
     if not message:
         return Response({'detail': 'message is required'}, status=status.HTTP_400_BAD_REQUEST)
     
-    target_dept = None
-    if scope == 'DEPARTMENT':
-        if not target_department_id:
-            return Response({'detail': 'target_department_id required for DEPARTMENT scope'}, status=status.HTTP_400_BAD_REQUEST)
+    target_service = None
+    if scope == 'SERVICE':
+        if not target_service_code:
+            return Response({'detail': 'target_service_code required for SERVICE scope'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            target_dept = Department.objects.get(id=target_department_id)
-        except Department.DoesNotExist:
-            return Response({'detail': 'Department not found'}, status=status.HTTP_400_BAD_REQUEST)
+            target_service = Service.objects.get(code=target_service_code)
+        except Service.DoesNotExist:
+            return Response({'detail': 'Service not found'}, status=status.HTTP_400_BAD_REQUEST)
     
     ann = Announcement.objects.create(
         creator=request.user,
         title=title,
         message=message,
         scope=scope,
-        target_department=target_dept,
+        target_service=target_service,
     )
     
     logger.info(f'create_announcement: announcement {ann.id} created by {request.user.email}')

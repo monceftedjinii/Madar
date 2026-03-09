@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import Notifications from './pages/Notifications'
 import MyTasks from './pages/MyTasks'
 import AssignTask from './pages/AssignTask'
@@ -51,6 +52,14 @@ function App() {
           element={
             <PrivateRoute>
               <Dashboard user={user} setUser={setUser} />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <PrivateRoute>
+              <AnalyticsDashboard />
             </PrivateRoute>
           }
         />

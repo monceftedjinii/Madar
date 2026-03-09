@@ -1,3 +1,6 @@
+# Test suite for MADAR GRH application
+# Updated to use Service model (Department model migrated in 0030_migrate_to_service)
+
 from django.test import TestCase
 
 from django.test import TestCase
@@ -68,23 +71,23 @@ class JWTTests(APITestCase):
 class EmployeeScopeTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		# departments
-		from .models import Department, Employee
-		self.d1 = Department.objects.create(name='Dept A')
-		self.d2 = Department.objects.create(name='Dept B')
+		# services
+		from .models import Service, Employee
+		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
+		self.d2 = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
 
-		# employees in dept A
-		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
-		self.a2 = Employee.objects.create(first_name='A', last_name='Two', email='a2@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
+		# employees in service A
+		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
+		self.a2 = Employee.objects.create(first_name='A', last_name='Two', email='a2@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
 
-		# employee in dept B
-		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
+		# employee in service B
+		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', service=self.d2, salary='1000')
 
-		# chef user (in dept A)
+		# chef user (in service A)
 		self.chef_email = 'chef@example.com'
 		self.chef_pass = 'chefpass'
 		User.objects.create_user(email=self.chef_email, password=self.chef_pass, role=RoleChoices.CHEF)
-		Employee.objects.create(first_name='Chef', last_name='Guy', email=self.chef_email, hired_at='2020-01-01', department=self.d1, salary='2000')
+		Employee.objects.create(first_name='Chef', last_name='Guy', email=self.chef_email, hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# grh user
 		self.grh_email = 'grh2@example.com'
@@ -136,18 +139,18 @@ class EmployeeScopeTests(APITestCase):
 class TaskTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee, Task
-		# departments
-		self.d1 = Department.objects.create(name='Dept A')
-		self.d2 = Department.objects.create(name='Dept B')
+		from .models import Service, Employee, Task
+		# services
+		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
+		self.d2 = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
 
 		# employees
-		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
-		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
+		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
+		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', service=self.d2, salary='1000')
 
-		# chef in dept A
+		# chef in service A
 		self.chef = User.objects.create_user(email='chef2@example.com', password='chefpass', role=RoleChoices.CHEF, first_name='Chef', last_name='Guy')
-		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
+		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# employee user for a1
 		self.emp = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
@@ -414,13 +417,13 @@ class TaskTests(APITestCase):
 class AttendanceTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee
-		self.d = Department.objects.create(name='Dept A')
+		from .models import Service, Employee
+		self.d = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
 		# employee user and employee record
 		self.email = 'att@example.com'
 		self.password = 'attpass'
 		self.user = User.objects.create_user(email=self.email, password=self.password, role=RoleChoices.EMPLOYEE)
-		self.emp = Employee.objects.create(first_name='Att', last_name='User', email=self.email, hired_at='2020-01-01', department=self.d, salary='1000', attendance_pin='1234')
+		self.emp = Employee.objects.create(first_name='Att', last_name='User', email=self.email, hired_at='2020-01-01', service=self.d, salary='1000', attendance_pin='1234')
 
 	def get_token(self):
 		resp = self.client.post('/api/auth/token/', {'email': self.email, 'password': self.password}, format='json')
@@ -488,7 +491,7 @@ class AttendanceTests(APITestCase):
 	def test_list_returns_only_self(self):
 		# create another employee and attendance
 		from .models import Employee, Attendance
-		other = Employee.objects.create(first_name='Other', last_name='User', email='other@example.com', hired_at='2020-01-01', department=self.d, salary='1000')
+		other = Employee.objects.create(first_name='Other', last_name='User', email='other@example.com', hired_at='2020-01-01', service=self.d, salary='1000')
 		Attendance.objects.create(employee=other, date='2026-02-01', check_in_time='08:00:00')
 
 		token = self.get_token()
@@ -505,17 +508,17 @@ class AttendanceTests(APITestCase):
 class LeaveRequestTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee, LeaveRequest
-		# departments
-		self.d1 = Department.objects.create(name='Dept A')
-		self.d2 = Department.objects.create(name='Dept B')
+		from .models import Service, Employee, LeaveRequest
+		# services
+		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
+		self.d2 = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
 		# employees
-		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', department=self.d1, salary='1000')
-		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', department=self.d2, salary='1000')
+		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
+		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', service=self.d2, salary='1000')
 
-		# chef in dept A
+		# chef in service A
 		self.chef = User.objects.create_user(email='chef3@example.com', password='chefpass', role=RoleChoices.CHEF)
-		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef3@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
+		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef3@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# users for employees
 		self.emp_user = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
@@ -639,13 +642,13 @@ class LeaveRequestTests(APITestCase):
 class AbsenceDisciplineTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag
-		self.d = Department.objects.create(name='Dept A')
+		from .models import Service, Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag
+		self.d = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
 		# employee and user
 		self.emp_email = 'absent@example.com'
 		self.emp_pass = 'emppass'
 		User.objects.create_user(email=self.emp_email, password=self.emp_pass, role=RoleChoices.EMPLOYEE)
-		self.emp = Employee.objects.create(first_name='Absent', last_name='User', email=self.emp_email, hired_at='2020-01-01', department=self.d, salary='1000')
+		self.emp = Employee.objects.create(first_name='Absent', last_name='User', email=self.emp_email, hired_at='2020-01-01', service=self.d, salary='1000')
 		# RH_SIMPLE and RH_SENIOR users
 		self.rh_simple = User.objects.create_user(email='rhsimple@example.com', password='rhsimple', role=RoleChoices.RH_SIMPLE)
 		self.rh_senior = User.objects.create_user(email='rhsenior@example.com', password='rhsenior', role=RoleChoices.RH_SENIOR)
@@ -736,17 +739,17 @@ class AbsenceDisciplineTests(APITestCase):
 class NotificationTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee, LeaveRequest
-		# departments
-		self.d1 = Department.objects.create(name='Dept A')
+		from .models import Service, Employee, LeaveRequest
+		# services
+		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
 		# employee
 		self.emp_email = 'notif@example.com'
 		self.emp_pass = 'emppass'
 		User.objects.create_user(email=self.emp_email, password=self.emp_pass, role=RoleChoices.EMPLOYEE)
-		self.emp = Employee.objects.create(first_name='Notif', last_name='User', email=self.emp_email, hired_at='2020-01-01', department=self.d1, salary='1000')
+		self.emp = Employee.objects.create(first_name='Notif', last_name='User', email=self.emp_email, hired_at='2020-01-01', service=self.d1, salary='1000')
 		# chef
 		self.chef = User.objects.create_user(email='chef4@example.com', password='chefpass', role=RoleChoices.CHEF)
-		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef4@example.com', hired_at='2020-01-01', department=self.d1, salary='2000')
+		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef4@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -874,11 +877,11 @@ class DocumentTests(APITestCase):
 
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, DocumentType, Employee
+		from .models import Service, DocumentType, Employee
 		
-		# Create departments
-		self.dept1 = Department.objects.create(name='Department 1')
-		self.dept2 = Department.objects.create(name='Department 2')
+		# Create services
+		self.dept1 = Service.objects.create(code='DEPT_1', nomService='Department 1', statut='ACTIF', budget=0)
+		self.dept2 = Service.objects.create(code='DEPT_2', nomService='Department 2', statut='ACTIF', budget=0)
 		
 		# Create employees
 		self.emp_user = User.objects.create_user(
@@ -891,7 +894,7 @@ class DocumentTests(APITestCase):
 			last_name='Emp',
 			email='emp@example.com',
 			hired_at='2020-01-01',
-			department=self.dept1,
+			service=self.dept1,
 			salary=30000
 		)
 
@@ -905,7 +908,7 @@ class DocumentTests(APITestCase):
 			last_name='Chef',
 			email='chef@example.com',
 			hired_at='2019-01-01',
-			department=self.dept1,
+			service=self.dept1,
 			salary=40000
 		)
 
@@ -951,7 +954,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -970,7 +973,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept2.id,
+			'source_service': self.dept2.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -990,7 +993,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'My Document',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 		
@@ -1022,7 +1025,7 @@ class DocumentTests(APITestCase):
 			last_name='Smith',
 			email='emp2@example.com',
 			hired_at='2021-01-01',
-			department=self.dept2,
+			service=self.dept2,
 			salary=35000
 		)
 		user2 = get_user_model().objects.create_user(
@@ -1042,7 +1045,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Dept2 Document',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept2.id,
+			'source_service': self.dept2.code,
 			'file': file_obj
 		}, format='multipart')
 		
@@ -1070,7 +1073,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Dept1 Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 		
@@ -1096,7 +1099,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Finance Doc',
 			'doc_type': self.doc_type_finance.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1116,7 +1119,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1141,7 +1144,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1171,7 +1174,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1195,7 +1198,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1230,7 +1233,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1264,7 +1267,7 @@ class DocumentTests(APITestCase):
 		resp = self.client.post('/api/documents/', {
 			'title': 'Test Doc',
 			'doc_type': self.doc_type_rh.id,
-			'source_department': self.dept1.id,
+			'source_service': self.dept1.code,
 			'file': file_obj
 		}, format='multipart')
 
@@ -1286,11 +1289,11 @@ class ReportsTests(APITestCase):
 
 	def setUp(self):
 		User = get_user_model()
-		from .models import Department, Employee, DocumentType, Attendance, LeaveRequest, AbsenceWarning
+		from .models import Service, Employee, DocumentType, Attendance, LeaveRequest, AbsenceWarning
 		
-		# Create departments
-		self.dept1 = Department.objects.create(name='Dept 1')
-		self.dept2 = Department.objects.create(name='Dept 2')
+		# Create services
+		self.dept1 = Service.objects.create(code='DEPT_1', nomService='Dept 1', statut='ACTIF', budget=0)
+		self.dept2 = Service.objects.create(code='DEPT_2', nomService='Dept 2', statut='ACTIF', budget=0)
 		
 		# Create employee users
 		self.emp_user = User.objects.create_user(
@@ -1303,7 +1306,7 @@ class ReportsTests(APITestCase):
 			last_name='Emp',
 			email='emp@example.com',
 			hired_at='2020-01-01',
-			department=self.dept1,
+			service=self.dept1,
 			salary=30000
 		)
 		
@@ -1318,7 +1321,7 @@ class ReportsTests(APITestCase):
 			last_name='Chef',
 			email='chef@example.com',
 			hired_at='2019-01-01',
-			department=self.dept1,
+			service=self.dept1,
 			salary=40000
 		)
 		
@@ -1378,7 +1381,7 @@ class ReportsTests(APITestCase):
 			last_name='Emp2',
 			email='emp2@example.com',
 			hired_at='2021-01-01',
-			department=self.dept2,
+			service=self.dept2,
 			salary=35000
 		)
 		Attendance.objects.create(
@@ -1414,7 +1417,7 @@ class ReportsTests(APITestCase):
 			last_name='Emp2',
 			email='emp2@example.com',
 			hired_at='2021-01-01',
-			department=self.dept2,
+			service=self.dept2,
 			salary=35000
 		)
 		Attendance.objects.create(

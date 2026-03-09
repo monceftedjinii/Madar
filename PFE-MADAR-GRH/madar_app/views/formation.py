@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db.models import Q
-from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Department
+from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Service
 
 
 def _is_agent_or_grh(user):
@@ -122,11 +122,11 @@ def agent_formation_requests(request):
     requests = FormationRequest.objects.select_related('requested_by', 'approved_formation').prefetch_related('participants__employee').order_by('-created_at')
     data = []
     for r in requests:
-        # Lookup department via Employee email match
-        department_name = None
+        # Lookup service via Employee email match
+        service_name = None
         try:
-            employee = Employee.objects.select_related('department').get(email=r.requested_by.email)
-            department_name = employee.department.name
+            employee = Employee.objects.select_related('service').get(email=r.requested_by.email)
+            service_name = employee.service.nomService
         except Employee.DoesNotExist:
             pass
         
@@ -138,7 +138,7 @@ def agent_formation_requests(request):
             'status': r.status,
             'status_label': r.get_status_display(),
             'requested_by_email': r.requested_by.email,
-            'department': department_name,
+            'service': service_name,
             'created_at': r.created_at.isoformat(),
             'updated_at': r.updated_at.isoformat(),
         }
@@ -291,16 +291,16 @@ def reject_formation_request(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_department_employees(request):
-    """Get employees from chef's department."""
+    """Get employees from chef's service."""
     if request.user.role != RoleChoices.CHEF:
         return Response({'detail': 'Only chefs can access this'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        chef_employee = Employee.objects.select_related('department').get(email=request.user.email)
+        chef_employee = Employee.objects.select_related('service').get(email=request.user.email)
     except Employee.DoesNotExist:
         return Response({'detail': 'Chef employee record not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    employees = Employee.objects.filter(department=chef_employee.department).exclude(id=chef_employee.id)
+    employees = Employee.objects.filter(service=chef_employee.service).exclude(id=chef_employee.id)
     
     data = [
         {
@@ -333,14 +333,14 @@ def add_formation_participants(request, pk):
     if not employee_ids:
         return Response({'detail': 'employee_ids is required'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Get chef's department
+    # Get chef's service
     try:
-        chef_employee = Employee.objects.select_related('department').get(email=request.user.email)
+        chef_employee = Employee.objects.select_related('service').get(email=request.user.email)
     except Employee.DoesNotExist:
         return Response({'detail': 'Chef employee record not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Verify employees are in same department
-    employees = Employee.objects.filter(id__in=employee_ids, department=chef_employee.department)
+    # Verify employees are in same service
+    employees = Employee.objects.filter(id__in=employee_ids, service=chef_employee.service)
     
     # Add participants
     for emp in employees:
