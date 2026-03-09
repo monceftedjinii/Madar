@@ -52,6 +52,59 @@ class KPIResult:
 
 
 @dataclass
+class Graph:
+    chart_type: str
+    data_json: dict
+
+    @classmethod
+    def generate_from_kpi(cls, kpi_result, chart_type='bar'):
+        """Convert KPIResult into frontend-ready chart JSON."""
+        if not isinstance(kpi_result, KPIResult):
+            raise ValueError('kpi_result must be an instance of KPIResult')
+
+        normalized_chart = (chart_type or '').lower().strip()
+        if normalized_chart not in {'bar', 'line', 'pie'}:
+            raise ValueError('chart_type must be one of: bar, line, pie')
+
+        details = kpi_result.details or {}
+
+        if kpi_result.type == KPIType.EMPLOYEE_COUNT:
+            by_service = details.get('by_service') or {}
+            labels = list(by_service.keys())
+            values = list(by_service.values())
+        elif kpi_result.type == KPIType.PERFORMANCE_SCORE:
+            by_service = details.get('by_service') or {}
+            labels = list(by_service.keys())
+            values = list(by_service.values())
+        else:
+            labels = [kpi_result.type.value]
+            values = [kpi_result.value]
+
+        data_json = {
+            'labels': labels,
+            'values': values,
+            'meta': {
+                'kpi_type': kpi_result.type.value,
+                'trend': kpi_result.trend.value,
+                'calculation_date': kpi_result.calculation_date.isoformat(),
+            }
+        }
+
+        return cls(chart_type=normalized_chart, data_json=data_json)
+
+    @classmethod
+    def from_kpi(cls, kpi_result, chart_type='bar'):
+        """Alias constructor for readability in service flow."""
+        return cls.generate_from_kpi(kpi_result=kpi_result, chart_type=chart_type)
+
+    def to_dict(self):
+        return {
+            'chart_type': self.chart_type,
+            'data_json': self.data_json,
+        }
+
+
+@dataclass
 class Indicator:
     label: str
     target: float
