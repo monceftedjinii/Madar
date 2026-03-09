@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import Enum
 from typing import Optional, Union
+import base64
+import json
 from django.apps import apps
 from django.core.cache import cache
 from django.db import models
@@ -104,6 +106,12 @@ class Graph:
         }
 
 
+class RefreshStrategy(Enum):
+    ON_DEMAND = 'on_demand'
+    CACHE = 'cache'
+    SCHEDULED = 'scheduled'
+
+
 @dataclass
 class Indicator:
     label: str
@@ -195,6 +203,180 @@ class Indicator:
             'threshold': round(float(threshold), 2),
             'unit': self.unit,
             'message': f'{self.label} exceeded threshold' if triggered else f'{self.label} is within threshold',
+        }
+
+
+@dataclass
+class Dashboard:
+    configuration: dict = field(default_factory=lambda: {
+        'widgets': [
+            {'type': 'kpi', 'position': 'top-left', 'name': 'EMPLOYEE_COUNT'},
+            {'type': 'kpi', 'position': 'top-right', 'name': 'TURNOVER'},
+            {'type': 'chart', 'position': 'bottom-left', 'name': 'EMPLOYEE_BY_SERVICE', 'chart_type': 'bar'},
+            {'type': 'chart', 'position': 'bottom-right', 'name': 'PERFORMANCE_BY_SERVICE', 'chart_type': 'line'},
+        ]
+    })
+    is_public: bool = False
+    auto_refresh: bool = True
+    period: str = 'monthly'
+    report_filter: ReportFilter = field(default_factory=ReportFilter)
+    widgets_data: list = field(default_factory=list)
+    shared_with: list = field(default_factory=list)
+    last_refreshed_at: Optional[str] = None
+
+    CACHE_TTL_SECONDS = 60 * 5
+
+    def _cache_key(self):
+        serialized_filter = {
+            'start_date': str(self.report_filter.start_date) if self.report_filter.start_date else None,
+            'end_date': str(self.report_filter.end_date) if self.report_filter.end_date else None,
+            'service_id': self.report_filter.service_id,
+            'contract_type': self.report_filter.contract_type,
+            'employee_status': self.report_filter.employee_status,
+        }
+        config_hash_input = json.dumps(self.configuration, sort_keys=True)
+        return f"dashboard:{self.period}:{self.is_public}:{serialized_filter}:{hash(config_hash_input)}"
+
+    def _period_filter(self):
+        today = timezone.now().date()
+        period_value = (self.period or 'monthly').lower().strip()
+
+        if period_value == 'daily':
+            start = today
+        elif period_value == 'weekly':
+            start = today - timedelta(days=6)
+        elif period_value == 'yearly':
+            start = today.replace(month=1, day=1)
+        else:
+            start = today.replace(day=1)
+
+        return ReportFilter(
+            start_date=start,
+            end_date=today,
+            service_id=self.report_filter.service_id,
+            contract_type=self.report_filter.contract_type,
+            employee_status=self.report_filter.employee_status,
+        )
+
+    def _build_default_widgets(self, filter_for_period):
+        employee_count = StatisticsService.calculEffectif(filter_for_period)
+        turnover = StatisticsService.calculTurnover(filter_for_period)
+        absenteeism = StatisticsService.calculAbsenteisme(filter_for_period)
+        performance = StatisticsService.calculEvaluations(filter_for_period)
+
+        graph_employees = Graph.from_kpi(employee_count, chart_type='bar')
+        graph_performance = Graph.from_kpi(performance, chart_type='line')
+
+        return [
+            {'widget': 'kpi', 'name': 'EMPLOYEE_COUNT', 'payload': employee_count.to_dict()},
+            {'widget': 'kpi', 'name': 'TURNOVER', 'payload': turnover.to_dict()},
+            {'widget': 'kpi', 'name': 'ABSENTEEISM', 'payload': absenteeism.to_dict()},
+            {'widget': 'kpi', 'name': 'PERFORMANCE_SCORE', 'payload': performance.to_dict()},
+            {'widget': 'chart', 'name': 'EMPLOYEE_BY_SERVICE', 'payload': graph_employees.to_dict()},
+            {'widget': 'chart', 'name': 'PERFORMANCE_BY_SERVICE', 'payload': graph_performance.to_dict()},
+        ]
+
+    def get_widgets(self):
+        if not self.widgets_data:
+            self.refresh(strategy=RefreshStrategy.CACHE.value)
+        return self.widgets_data
+
+    def refresh(self, strategy='on_demand', force=False):
+        strategy_value = (strategy or RefreshStrategy.ON_DEMAND.value).lower().strip()
+        cache_key = self._cache_key()
+
+        if strategy_value == RefreshStrategy.CACHE.value and not force:
+            cached = cache.get(cache_key)
+            if cached:
+                self.widgets_data = cached.get('widgets_data', [])
+                self.last_refreshed_at = cached.get('last_refreshed_at')
+                return {
+                    'refreshed': False,
+                    'strategy': strategy_value,
+                    'source': 'cache',
+                    'widgets_count': len(self.widgets_data),
+                    'last_refreshed_at': self.last_refreshed_at,
+                }
+
+        if strategy_value == RefreshStrategy.SCHEDULED.value and not force:
+            scheduled_key = f"{cache_key}:scheduled:{timezone.now().date().isoformat()}"
+            if cache.get(scheduled_key):
+                cached = cache.get(cache_key)
+                if cached:
+                    self.widgets_data = cached.get('widgets_data', [])
+                    self.last_refreshed_at = cached.get('last_refreshed_at')
+                    return {
+                        'refreshed': False,
+                        'strategy': strategy_value,
+                        'source': 'already_scheduled_today',
+                        'widgets_count': len(self.widgets_data),
+                        'last_refreshed_at': self.last_refreshed_at,
+                    }
+
+        filter_for_period = self._period_filter()
+        self.widgets_data = self._build_default_widgets(filter_for_period)
+        self.last_refreshed_at = timezone.now().isoformat()
+
+        payload = {
+            'widgets_data': self.widgets_data,
+            'last_refreshed_at': self.last_refreshed_at,
+        }
+        cache.set(cache_key, payload, self.CACHE_TTL_SECONDS)
+
+        if strategy_value == RefreshStrategy.SCHEDULED.value:
+            scheduled_key = f"{cache_key}:scheduled:{timezone.now().date().isoformat()}"
+            cache.set(scheduled_key, True, 60 * 60 * 24)
+
+        return {
+            'refreshed': True,
+            'strategy': strategy_value,
+            'source': 'recalculated',
+            'widgets_count': len(self.widgets_data),
+            'last_refreshed_at': self.last_refreshed_at,
+        }
+
+    def export(self, format_type='pdf'):
+        normalized = (format_type or '').lower().strip()
+        if normalized not in {'pdf', 'image'}:
+            raise ValueError('format_type must be pdf or image')
+
+        if not self.widgets_data:
+            self.refresh(strategy=RefreshStrategy.CACHE.value)
+
+        serialized = json.dumps({
+            'configuration': self.configuration,
+            'widgets': self.widgets_data,
+            'exported_at': timezone.now().isoformat(),
+            'period': self.period,
+        }, ensure_ascii=False)
+        binary_data = serialized.encode('utf-8')
+
+        return {
+            'format': normalized,
+            'mime_type': 'application/pdf' if normalized == 'pdf' else 'image/png',
+            'content_base64': base64.b64encode(binary_data).decode('ascii'),
+            'filename': f"dashboard_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.{ 'pdf' if normalized == 'pdf' else 'png' }",
+        }
+
+    def share(self, users):
+        if not users:
+            return {'shared_with': self.shared_with, 'count': len(self.shared_with)}
+
+        for user in users:
+            user_identifier = getattr(user, 'id', None) or getattr(user, 'email', None) or str(user)
+            if user_identifier not in self.shared_with:
+                self.shared_with.append(user_identifier)
+
+        return {'shared_with': self.shared_with, 'count': len(self.shared_with)}
+
+    def customize(self, config):
+        if not isinstance(config, dict):
+            raise ValueError('config must be a dict')
+
+        self.configuration = config
+        return {
+            'updated': True,
+            'configuration': self.configuration,
         }
 
 
