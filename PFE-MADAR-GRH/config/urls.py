@@ -125,6 +125,31 @@ urlpatterns = [
     # Admin: Messaging Settings
     path('api/admin/messaging-settings/', madar_views.messaging_settings, name='api-messaging-settings'),
     path('api/admin/messaging-settings/update/', madar_views.update_messaging_settings, name='api-messaging-settings-update'),
+    
+    # ──────────────────────────────────────────────────────────────────────
+    # Dashboard & Statistics API Endpoints
+    # ──────────────────────────────────────────────────────────────────────
+    
+    # Dashboard endpoints
+    path('api/dashboard/', madar_views.dashboard.get_dashboard, name='api-dashboard'),
+    path('api/dashboard/refresh/', madar_views.dashboard.refresh_dashboard, name='api-dashboard-refresh'),
+    path('api/dashboard/customize/', madar_views.dashboard.customize_dashboard, name='api-dashboard-customize'),
+    path('api/dashboard/widgets/', madar_views.dashboard.get_dashboard_widgets, name='api-dashboard-widgets'),
+    
+    # KPI calculation endpoints
+    path('api/kpis/<str:kpi_type>/', madar_views.kpis.calculate_kpi, name='api-kpi-calculate'),
+    path('api/kpis/', madar_views.kpis.get_all_kpis, name='api-kpis-all'),
+    path('api/kpis/threshold/check/', madar_views.kpis.check_kpi_threshold, name='api-kpi-threshold'),
+    
+    # Chart/Graph generation endpoints
+    path('api/charts/<str:kpi_type>/', madar_views.charts.generate_kpi_chart, name='api-chart-kpi'),
+    path('api/charts/', madar_views.charts.generate_multiple_charts, name='api-charts-multiple'),
+    path('api/charts/custom/', madar_views.charts.generate_custom_chart, name='api-chart-custom'),
+    path('api/charts/types/', madar_views.charts.get_chart_types, name='api-chart-types'),
+    
+    # Report generation and export endpoints
+    path('api/reports/generate/', madar_views.reports.generate_dashboard_report, name='api-report-generate'),
+    path('api/reports/export/', madar_views.reports.export_dashboard_report, name='api-report-export'),
 ]
 # Serve media files in development
 if settings.DEBUG:

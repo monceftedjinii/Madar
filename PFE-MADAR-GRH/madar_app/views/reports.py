@@ -522,3 +522,162 @@ def export_tasks_report(request):
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 		)
 	return _make_export_response(_build_pdf_report(title, headers, rows), filename, 'application/pdf')
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Dashboard & KPI Export Endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_dashboard_report(request):
+	"""
+	Generate a comprehensive HR report with all KPIs and charts.
+	
+	Request Body:
+		{
+			'title': 'Q1 2026 HR Report',
+			'start_date': '2026-01-01',
+			'end_date': '2026-03-09',
+			'include_widgets': ['employee_count', 'turnover', 'absenteeism', 'evaluations'],
+			'service_id': null,
+			'contract_type': null,
+			'include_details': true
+		}
+	"""
+	try:
+		from madar_app.services import StatisticsService, ReportFilter
+		
+		title = request.data.get('title', 'HR Report')
+		start_date = request.data.get('start_date')
+		end_date = request.data.get('end_date')
+		include_widgets = request.data.get('include_widgets', ['employee_count', 'turnover', 'absenteeism', 'evaluations'])
+		service_id = request.data.get('service_id')
+		contract_type = request.data.get('contract_type')
+		include_details = request.data.get('include_details', True)
+		
+		# Set defaults
+		end_date_obj = datetime.fromisoformat(end_date).date() if end_date else timezone.now().date()
+		start_date_obj = datetime.fromisoformat(start_date).date() if start_date else (end_date_obj - timedelta(days=90))
+		
+		# Create report filter
+		report_filter = ReportFilter(
+			start_date=start_date_obj,
+			end_date=end_date_obj,
+			service_id=service_id,
+			contract_type=contract_type,
+			employee_status='ACTIVE'
+		)
+		
+		# Generate KPIs
+		stats_service = StatisticsService()
+		kpis_data = []
+		
+		for kpi_type in include_widgets:
+			try:
+				kpi_result = stats_service.calculerKPI(kpi_type, report_filter)
+				
+				if kpi_result:
+					kpi_dict = {
+						'type': kpi_result.type.value,
+						'value': float(kpi_result.value),
+						'unit': _get_kpi_unit_helper(kpi_type),
+						'trend': kpi_result.trend.value if kpi_result.trend else None,
+						'calculation_date': kpi_result.calculation_date.isoformat()
+					}
+					
+					if include_details and kpi_result.details:
+						kpi_dict['details'] = kpi_result.details
+					
+					kpis_data.append(kpi_dict)
+			except Exception as e:
+				kpis_data.append({
+					'type': kpi_type,
+					'error': str(e)
+				})
+		
+		response_data = {
+			'id': f"report-{int(timezone.now().timestamp())}",
+			'title': title,
+			'generated_at': timezone.now().isoformat(),
+			'period': {
+				'start_date': start_date_obj.isoformat(),
+				'end_date': end_date_obj.isoformat()
+			},
+			'filter': {
+				'service_id': service_id,
+				'contract_type': contract_type,
+				'employee_status': 'ACTIVE'
+			},
+			'kpis': kpis_data,
+			'summary': {
+				'total_kpis': len(kpis_data),
+				'period_days': (end_date_obj - start_date_obj).days,
+				'generated_by': request.user.email,
+				'generated_at': timezone.now().isoformat()
+			}
+		}
+		
+		return Response(response_data)
+	
+	except ValueError as e:
+		return Response({'error': f'Invalid parameter: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+	except Exception as e:
+		return Response({'error': f'Failed to generate report: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def export_dashboard_report(request):
+	"""
+	Export the dashboard/KPI report as PDF, Excel, or CSV.
+	
+	Query Parameters:
+		- format: 'pdf' | 'excel' | 'csv'
+	"""
+	try:
+		from madar_app.services import ExportService
+		
+		export_format = request.query_params.get('format', 'pdf').lower()
+		report_data = request.data.get('report')
+		
+		if not report_data:
+			return Response({'error': 'Report data is required'}, status=status.HTTP_400_BAD_REQUEST)
+		
+		if export_format not in ['pdf', 'excel', 'csv']:
+			return Response({'error': f'Invalid format: {export_format}'}, status=status.HTTP_400_BAD_REQUEST)
+		
+		export_service = ExportService()
+		export_file = None
+		
+		if export_format == 'pdf':
+			export_file = export_service.export_pdf([report_data])
+			content_type = 'application/pdf'
+		elif export_format == 'excel':
+			export_file = export_service.export_excel([report_data])
+			content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		else:  # csv
+			export_file = export_service.export_csv([report_data])
+			content_type = 'text/csv'
+		
+		if not export_file:
+			return Response({'error': f'Failed to export to {export_format}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+		
+		response = HttpResponse(export_file.content, content_type=content_type)
+		response['Content-Disposition'] = f'attachment; filename="{export_file.filename}"'
+		
+		return response
+	
+	except Exception as e:
+		return Response({'error': f'Failed to export: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _get_kpi_unit_helper(kpi_type):
+	"""Helper: get the unit of measurement for a KPI type."""
+	units = {
+		'employee_count': 'people',
+		'turnover': '%',
+		'absenteeism': '%',
+		'evaluations': 'score'
+	}
+	return units.get(kpi_type, 'value')

@@ -62,6 +62,7 @@ from .messages import (
 	messaging_settings,
 	update_messaging_settings,
 )
+from . import dashboard, kpis, charts
 
 __all__ = [
 	# auth
@@ -99,4 +100,6 @@ __all__ = [
 	'admin_reports_list', 'admin_resolve_report',
 	'announcements_list', 'create_announcement',
 	'messaging_settings', 'update_messaging_settings',
+	# dashboard & statistics
+	'dashboard', 'kpis', 'charts',
 ]
