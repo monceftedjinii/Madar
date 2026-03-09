@@ -93,9 +93,17 @@
   box-shadow: 0 8px 18px rgba(10, 30, 20, 0.35);
   transition: transform 0.2s ease, background 0.2s ease;
 }
+.nav-link {
+  text-decoration: none;
+  color: #f4f8f6;
+}
 .pvv:hover {
   background: rgba(20, 92, 63, 0.95);
   transform: translateY(-2px);
+}
+.active-nav {
+  background: rgba(10, 120, 80, 0.95);
+  box-shadow: 0 10px 22px rgba(4, 28, 20, 0.45);
 }
 .pv:hover {
   background: rgba(20, 92, 63, 0.95);
@@ -174,4 +182,21 @@
 .profile-name h4 {
   font-size: 15px;
   letter-spacing: 0.3px;
+}
+
+.account-role,
+.account-email {
+  max-width: 175px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-role {
+  font-size: 13px;
+}
+
+.account-email {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
 }

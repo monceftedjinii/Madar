@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { NavLink } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
+
 export default function Navbar(props) {
-  const { fullName, post, image } = props;
+  const { fullName, post, image, email } = props;
   const [fetchedProfile, setFetchedProfile] = useState({
     fullName: "",
     post: "",
     image: "",
+    email: "",
   });
 
   useEffect(() => {
@@ -24,6 +27,7 @@ export default function Navbar(props) {
           fullName: `${me.data?.first_name || ""} ${me.data?.last_name || ""}`.trim(),
           post: me.data?.position || me.data?.employee_info?.position || "",
           image: me.data?.profile_picture || "",
+          email: me.data?.email || "",
         });
       } catch (error) {
         console.error("Erreur chargement profil navbar:", error);
@@ -34,12 +38,22 @@ export default function Navbar(props) {
   }, []);
 
   const resolvedName = fullName || fetchedProfile.fullName || "Utilisateur";
-  const resolvedPost = post || fetchedProfile.post || "-";
+  const resolvedPost = post || fetchedProfile.post || "Poste non renseigne";
   const resolvedImage = image || fetchedProfile.image;
+  const resolvedEmail = email || fetchedProfile.email;
 
   const avatarSrc = resolvedImage
     ? resolvedImage
     : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+  const navItems = [
+    { to: "/home", label: "Dashboard" },
+    { to: "/profile", label: "Mon Profil" },
+    { to: "/conge", label: "Conges" },
+    { to: "/attendance", label: "Presence" },
+    { to: "/messagerie", label: "Messagerie" },
+  ];
+
   return (
     <div className="container_navbar">
       <div className="grh-navbar">
@@ -51,14 +65,17 @@ export default function Navbar(props) {
           <p className="text-nav">Portail RH</p>
         </div>
       </div>
+
       <div className="nav-menu">
-        <div className="pv pvv">Dashboard</div>
-        <div className="pvv">Notifs</div>
-        <div className="pvv">Congés</div>
-        <div className="pvv">Vos Taches</div>
-        <div className="pvv">Présence</div>
-        <div className="pvv">Votre assistant IA</div>
-        <div className="pvv">Messagerie</div>
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `pvv nav-link ${isActive ? "active-nav" : ""}`}
+          >
+            {item.label}
+          </NavLink>
+        ))}
       </div>
 
       <div className="profile-navbar">
@@ -79,7 +96,8 @@ export default function Navbar(props) {
         />
         <div className="profile-name">
           <h4>{resolvedName}</h4>
-          <p className="text-nav">{resolvedPost} </p>
+          <p className="text-nav account-role">{resolvedPost}</p>
+          {resolvedEmail && <p className="text-nav account-email">{resolvedEmail}</p>}
         </div>
       </div>
     </div>

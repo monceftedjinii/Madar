@@ -211,6 +211,7 @@ export default function Profile() {
             fullName={profileData.fullName}
             post={profileData.position}
             image={profileData.photoName}
+            email={profileData.email}
           />
         </div>
         {isNavOpen && (
