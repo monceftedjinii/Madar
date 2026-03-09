@@ -85,13 +85,18 @@ def get_dashboard(request):
             'refresh_strategy': 'on-demand'  # Can be changed in settings
         }
         
-        # Create dashboard instance
-        dashboard = Dashboard(**dashboard_config)
-        
-        # Determine refresh strategy
+        # Determine auto refresh
         auto_refresh = request.query_params.get('auto_refresh', 'false').lower() == 'true'
+        
+        # Create dashboard instance with correct parameters
+        dashboard = Dashboard(
+            report_filter=report_filter,
+            auto_refresh=auto_refresh,
+            is_public=False
+        )
+        
+        # Refresh if auto_refresh is enabled
         if auto_refresh:
-            dashboard.refresh_strategy = 'scheduled'
             dashboard.refresh()
         
         # Get dashboard widgets
@@ -101,26 +106,37 @@ def get_dashboard(request):
         stats_service = StatisticsService()
         chart_widgets = []
         
-        for kpi_type in dashboard_config['visible_widgets']:
+        for kpi_type in ['employee_count', 'turnover', 'absenteeism', 'evaluations']:
             try:
                 # Calculate KPI
                 kpi_result = stats_service.calculerKPI(kpi_type, report_filter)
                 
-                # Convert to graph
-                graph = Graph.from_kpi(kpi_result)
-                
-                chart_widgets.append({
-                    'type': kpi_type,
-                    'title': _translate_kpi_title(kpi_type),
-                    'kpi': {
-                        'type': kpi_result.type.value,
-                        'value': float(kpi_result.value),
-                        'trend': kpi_result.trend.value if kpi_result.trend else None,
-                        'calculation_date': kpi_result.calculation_date.isoformat(),
-                        'details': kpi_result.details
-                    },
-                    'chart': graph.to_dict() if graph else None
-                })
+                if kpi_result:
+                    # Convert to graph
+                    graph = Graph.from_kpi(kpi_result)
+                    
+                    # Build chart widget with proper format
+                    graph_dict = graph.to_dict() if graph else {}
+                    
+                    chart_widgets.append({
+                        'type': kpi_type,
+                        'title': _translate_kpi_title(kpi_type),
+                        'kpi': {
+                            'type': kpi_result.type.value,
+                            'value': float(kpi_result.value),
+                            'unit': _get_kpi_unit(kpi_type),
+                            'trend': kpi_result.trend.value if kpi_result.trend else None,
+                            'calculation_date': kpi_result.calculation_date.isoformat(),
+                            'details': kpi_result.details
+                        },
+                        'chart': {
+                            'type': graph_dict.get('chart_type', 'bar'),
+                            'title': _translate_kpi_title(kpi_type),
+                            'labels': graph_dict.get('data_json', {}).get('labels', []),
+                            'values': graph_dict.get('data_json', {}).get('values', []),
+                            'meta': graph_dict.get('data_json', {}).get('meta', {})
+                        } if graph_dict else None
+                    })
             except Exception as e:
                 # Log error but continue rendering other widgets
                 chart_widgets.append({
@@ -140,7 +156,7 @@ def get_dashboard(request):
                 'contract_type': contract_type
             },
             'last_updated': timezone.now().isoformat(),
-            'refresh_strategy': dashboard.refresh_strategy,
+            'refresh_strategy': 'on-demand',
             'refresh_interval': 300000  # 5 minutes in milliseconds
         }
         
@@ -196,10 +212,10 @@ def refresh_dashboard(request):
         
         # Create and refresh dashboard
         dashboard = Dashboard(
-            visible_widgets=['employee_count', 'turnover', 'absenteeism', 'evaluations'],
-            refresh_strategy=refresh_strategy
+            report_filter=report_filter,
+            auto_refresh=True
         )
-        dashboard.refresh()
+        refresh_result = dashboard.refresh(strategy=refresh_strategy)
         
         # Get updated widgets
         widgets = dashboard.get_widgets()
@@ -209,7 +225,8 @@ def refresh_dashboard(request):
             'message': 'Dashboard refreshed successfully',
             'widgets': widgets,
             'last_updated': timezone.now().isoformat(),
-            'refresh_strategy': refresh_strategy
+            'refresh_strategy': refresh_strategy,
+            'refresh_detail': refresh_result
         })
     
     except Exception as e:
@@ -328,3 +345,14 @@ def _translate_kpi_title(kpi_type):
         'evaluations': 'Average Evaluation Score'
     }
     return translations.get(kpi_type, kpi_type)
+
+
+def _get_kpi_unit(kpi_type):
+    """Helper: get unit of measurement for KPI type."""
+    units = {
+        'employee_count': 'employees',
+        'turnover': '%',
+        'absenteeism': '%',
+        'evaluations': '/5.0'
+    }
+    return units.get(kpi_type, '')
