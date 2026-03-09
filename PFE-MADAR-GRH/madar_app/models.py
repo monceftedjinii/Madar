@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.core.validators import MinValueValidator
@@ -1015,6 +1015,52 @@ class Document(models.Model):
     def __str__(self):
         return f"{self.title} ({self.status})"
 
+    @property
+    def current_version(self):
+        """Get the current version of this document."""
+        return self.versions.filter(is_current=True).first()
+
+    def get_version_history(self):
+        """Get all versions of this document ordered by version number (newest first)."""
+        return self.versions.all()
+
+    @property
+    def current_validation_step(self):
+        """Get the currently active validation step."""
+        return self.validations.filter(is_active=True).first()
+
+    def get_validation_workflow(self):
+        """Get all validation steps ordered by step_order."""
+        return self.validations.all()
+
+    @property
+    def validation_status(self):
+        """Get summary of validation workflow status.
+        
+        Returns:
+            dict: Contains workflow_complete, steps_completed, total_steps, is_rejected
+        """
+        validations = self.validations.all()
+        total_steps = validations.count()
+        
+        if total_steps == 0:
+            return {
+                'workflow_complete': True,
+                'steps_completed': 0,
+                'total_steps': 0,
+                'is_rejected': False
+            }
+        
+        approved_steps = validations.filter(status='APPROVED').count()
+        rejected_step = validations.filter(status='REJECTED').first()
+        
+        return {
+            'workflow_complete': approved_steps == total_steps,
+            'steps_completed': approved_steps,
+            'total_steps': total_steps,
+            'is_rejected': rejected_step is not None
+        }
+
 
 class DocumentHistory(models.Model):
     class Action(models.TextChoices):
@@ -1035,6 +1081,262 @@ class DocumentHistory(models.Model):
 
     def __str__(self):
         return f"{self.document} {self.action} by {self.by_user}"
+
+
+class DocumentVersion(models.Model):
+    """Version tracking for documents - preserves full history."""
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='versions')
+    numVersion = models.PositiveIntegerField(verbose_name="Version Number")
+    author = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, related_name='document_versions')
+    comment = models.TextField(blank=True, help_text="Description of the change (e.g., 'Correction clause 3')")
+    file_path = models.FileField(upload_to='document_versions/')
+    size = models.BigIntegerField(help_text="File size in bytes")
+    is_current = models.BooleanField(default=False, help_text="Only one version can be current per document")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-numVersion']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['document'],
+                condition=models.Q(is_current=True),
+                name='unique_current_version_per_document',
+                violation_error_message='A document can only have one current version.'
+            )
+        ]
+
+    def __str__(self):
+        current_marker = " (current)" if self.is_current else ""
+        return f"{self.document.title} v{self.numVersion}{current_marker}"
+
+    def mark_as_current(self):
+        """Set this version as current and unset all others for the same document."""
+        with transaction.atomic():
+            # Set all versions of this document to not current
+            DocumentVersion.objects.filter(document=self.document).update(is_current=False)
+            # Set this version as current
+            self.is_current = True
+            self.save(update_fields=['is_current'])
+
+    def restore(self):
+        """Restore this version as the current version.
+        
+        This makes an old version become the current version again.
+        """
+        self.mark_as_current()
+
+    def download(self):
+        """Return file reference for downloading this version.
+        
+        Returns:
+            FileField: The file_path field which can be used to access the file.
+        """
+        return self.file_path
+
+    def compare(self, other_version):
+        """Compare this version with another version.
+        
+        Args:
+            other_version (DocumentVersion): Another version to compare with.
+            
+        Returns:
+            dict: A dictionary containing differences between versions.
+            
+        Raises:
+            ValueError: If other_version is not a DocumentVersion or belongs to a different document.
+        """
+        if not isinstance(other_version, DocumentVersion):
+            raise ValueError("Can only compare with another DocumentVersion instance")
+        
+        if other_version.document_id != self.document_id:
+            raise ValueError("Cannot compare versions from different documents")
+        
+        return {
+            'version_diff': {
+                'from_version': other_version.numVersion,
+                'to_version': self.numVersion,
+                'versions_apart': abs(self.numVersion - other_version.numVersion),
+            },
+            'author_diff': {
+                'from_author': str(other_version.author) if other_version.author else None,
+                'to_author': str(self.author) if self.author else None,
+                'same_author': self.author == other_version.author,
+            },
+            'size_diff': {
+                'from_size': other_version.size,
+                'to_size': self.size,
+                'difference_bytes': self.size - other_version.size,
+            },
+            'time_diff': {
+                'from_date': other_version.created_at,
+                'to_date': self.created_at,
+                'time_elapsed': self.created_at - other_version.created_at,
+            },
+            'comment_diff': {
+                'from_comment': other_version.comment,
+                'to_comment': self.comment,
+            }
+        }
+
+
+class DocumentValidation(models.Model):
+    """Multi-step validation workflow for documents."""
+    
+    class Status(models.TextChoices):
+        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+    
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='validations')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.IN_PROGRESS)
+    validation_date = models.DateTimeField(null=True, blank=True, help_text="When the decision was made")
+    validator = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, related_name='validations')
+    comment = models.TextField(blank=True, help_text="Explanation of the decision")
+    signature = models.CharField(max_length=500, blank=True, help_text="Electronic/digital signature of the validator")
+    step_order = models.PositiveIntegerField(help_text="Step number in the workflow (1, 2, 3...)")
+    is_active = models.BooleanField(default=False, help_text="Indicates the current validation step")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['step_order']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['document', 'step_order'],
+                name='unique_step_per_document',
+                violation_error_message='Each step order must be unique per document.'
+            ),
+            models.UniqueConstraint(
+                fields=['document'],
+                condition=models.Q(is_active=True),
+                name='unique_active_step_per_document',
+                violation_error_message='Only one validation step can be active per document.'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.document.title} - Step {self.step_order} ({self.status})"
+
+    def validate(self, signature):
+        """Mark this step as APPROVED and activate the next step.
+        
+        Args:
+            signature (str): Digital signature of the validator
+            
+        Returns:
+            DocumentValidation or None: The next validation step if exists, None otherwise
+        """
+        with transaction.atomic():
+            # Mark this step as approved
+            self.status = self.Status.APPROVED
+            self.validation_date = timezone.now()
+            self.signature = signature
+            self.is_active = False
+            self.save(update_fields=['status', 'validation_date', 'signature', 'is_active', 'updated_at'])
+            
+            # Find and activate the next step
+            next_step = DocumentValidation.objects.filter(
+                document=self.document,
+                step_order__gt=self.step_order
+            ).order_by('step_order').first()
+            
+            if next_step:
+                next_step.is_active = True
+                next_step.save(update_fields=['is_active', 'updated_at'])
+                next_step.notify()
+                return next_step
+            else:
+                # All steps completed - mark document as VALIDATED
+                self.document.status = Document.Status.VALIDATED
+                self.document.validated_at = timezone.now()
+                self.document.save(update_fields=['status', 'validated_at'])
+                return None
+
+    def reject(self, reason):
+        """Mark this step as REJECTED and stop the workflow.
+        
+        Args:
+            reason (str): Explanation for the rejection
+        """
+        with transaction.atomic():
+            # Mark this step as rejected
+            self.status = self.Status.REJECTED
+            self.validation_date = timezone.now()
+            self.comment = reason
+            self.is_active = False
+            self.save(update_fields=['status', 'validation_date', 'comment', 'is_active', 'updated_at'])
+            
+            # Deactivate all remaining steps in the workflow
+            DocumentValidation.objects.filter(
+                document=self.document,
+                step_order__gt=self.step_order
+            ).update(is_active=False)
+            
+            # Mark document as requiring revision (keep as DRAFT or SENT depending on current state)
+            # Document status is NOT changed to VALIDATED when rejected
+
+    def notify(self):
+        """Send notification to the validator when it's their turn.
+        
+        Creates a notification for the validator using the notification system.
+        """
+        from .views.helpers import notify
+        
+        if self.validator and self.validator.email:
+            try:
+                # Find the User associated with this validator
+                user = User.objects.filter(email=self.validator.email).first()
+                if user:
+                    notify(
+                        user=user,
+                        title="Document Validation Required",
+                        message=f"Document '{self.document.title}' requires your validation (Step {self.step_order})",
+                        link=f"/documents/{self.document.id}"
+                    )
+            except Exception as e:
+                # Log error but don't fail the workflow
+                pass
+
+    @classmethod
+    def getWorkflow(cls, document):
+        """Get all validation steps for a document ordered by step_order.
+        
+        Args:
+            document (Document): The document to get workflow for
+            
+        Returns:
+            QuerySet: All validation steps ordered by step_order
+        """
+        return cls.objects.filter(document=document).order_by('step_order')
+
+    @classmethod
+    def initialize_workflow(cls, document, validators_with_order):
+        """Initialize a validation workflow for a document.
+        
+        Args:
+            document (Document): The document to create workflow for
+            validators_with_order (list): List of tuples (Employee, step_order)
+                Example: [(employee1, 1), (employee2, 2), (employee3, 3)]
+        
+        Returns:
+            list: List of created DocumentValidation instances
+        """
+        with transaction.atomic():
+            validation_steps = []
+            for idx, (validator, step_order) in enumerate(validators_with_order):
+                step = cls.objects.create(
+                    document=document,
+                    validator=validator,
+                    step_order=step_order,
+                    is_active=(idx == 0)  # First step is active
+                )
+                validation_steps.append(step)
+            
+            # Notify the first validator
+            if validation_steps:
+                validation_steps[0].notify()
+            
+            return validation_steps
 
 
 # ============================================================

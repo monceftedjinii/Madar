@@ -7,7 +7,7 @@ from .models import Task
 from .models import Attendance
 from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
 from .models import AbsenceWarning, DisciplineFlag, Notification
-from .models import DocumentType, Document, DocumentHistory
+from .models import DocumentType, Document, DocumentHistory, DocumentVersion, DocumentValidation
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
 import secrets
 
@@ -282,6 +282,40 @@ admin.site.register(Notification)
 admin.site.register(DocumentType)
 admin.site.register(Document)
 admin.site.register(DocumentHistory)
+
+
+class DocumentVersionAdmin(admin.ModelAdmin):
+	list_display = ('document', 'numVersion', 'author', 'size', 'is_current', 'created_at')
+	list_filter = ('is_current', 'created_at')
+	search_fields = ('document__title', 'author__first_name', 'author__last_name', 'comment')
+	readonly_fields = ('created_at',)
+	ordering = ('-created_at',)
+
+
+admin.site.register(DocumentVersion, DocumentVersionAdmin)
+
+
+class DocumentValidationAdmin(admin.ModelAdmin):
+	list_display = ('document', 'step_order', 'validator', 'status', 'is_active', 'validation_date', 'created_at')
+	list_filter = ('status', 'is_active', 'validation_date', 'created_at')
+	search_fields = ('document__title', 'validator__first_name', 'validator__last_name', 'comment')
+	readonly_fields = ('created_at', 'updated_at', 'validation_date')
+	ordering = ('document', 'step_order')
+	fieldsets = (
+		('Workflow Info', {
+			'fields': ('document', 'step_order', 'validator', 'is_active')
+		}),
+		('Validation Decision', {
+			'fields': ('status', 'validation_date', 'comment', 'signature')
+		}),
+		('Timestamps', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+
+
+admin.site.register(DocumentValidation, DocumentValidationAdmin)
 
 
 # ============================================================
