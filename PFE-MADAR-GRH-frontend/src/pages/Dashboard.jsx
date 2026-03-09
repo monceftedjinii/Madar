@@ -74,6 +74,7 @@ function Dashboard({ user, setUser }) {
       { label: 'Profile', href: '/profile' },
     ],
     GRH: [
+      { label: '📊 Analytics Dashboard', href: '/analytics' },
       { label: 'Leaves (Approvals)', href: '/leaves/department' },
       { label: 'Reports', href: '/reports' },
       { label: 'Documents', href: '/documents' },
