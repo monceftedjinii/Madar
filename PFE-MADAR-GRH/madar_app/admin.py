@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from .models import User, Employee, Position, Job, Service, Affectation
 from .models import Task
 from .models import Attendance
-from .models import LeaveType, LeaveRequest, SoldeConge
+from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
 from .models import AbsenceWarning, DisciplineFlag, Notification
 from .models import DocumentType, Document, DocumentHistory
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
@@ -261,6 +261,15 @@ class SoldeCongeAdmin(admin.ModelAdmin):
 			count += 1
 		self.message_user(request, f"{count} solde(s) de congé recalculé(s) avec succès.")
 	recalculate_balances.short_description = "Recalculer les soldes sélectionnés"
+
+
+@admin.register(ValidationWorkflow)
+class ValidationWorkflowAdmin(admin.ModelAdmin):
+	list_display = ('leave_request', 'validation_order', 'validator_role', 'validator', 'decision', 'is_active', 'decided_at')
+	list_filter = ('decision', 'is_active', 'validator_role')
+	search_fields = ('leave_request__employee__first_name', 'leave_request__employee__last_name', 'validator__email')
+	ordering = ('leave_request', 'validation_order')
+	readonly_fields = ('created_at', 'updated_at', 'decided_at')
 
 
 admin.site.register(Employee, EmployeeAdmin)

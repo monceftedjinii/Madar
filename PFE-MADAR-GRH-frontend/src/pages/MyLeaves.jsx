@@ -4,6 +4,7 @@ import api from '../api';
 export default function MyLeaves() {
     // Block leave request if employee has pending or ongoing accepted leave
     const [blockedReason, setBlockedReason] = useState(null);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,18 +22,32 @@ export default function MyLeaves() {
   const [formData, setFormData] = useState({
     start_date: '',
     end_date: '',
-    type: 'ANNUAL',
+    type: '',
     reason: '',
     attachment: null
   });
 
   useEffect(() => {
+    fetchLeaveTypes();
     fetchLeaves();
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     setExportFromDate(firstDay.toISOString().split('T')[0]);
     setExportToDate(today.toISOString().split('T')[0]);
   }, []);
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const response = await api.get('/api/leave-types/');
+      const types = response.data || [];
+      setLeaveTypes(types);
+      if (types.length > 0) {
+        setFormData(prev => ({ ...prev, type: prev.type || types[0].code }));
+      }
+    } catch (err) {
+      setError('Failed to load leave types');
+    }
+  };
 
   const fetchLeaves = async () => {
     try {
@@ -109,9 +124,9 @@ export default function MyLeaves() {
       return;
     }
 
-    // Check attachment for SICK type
-    if (formData.type === 'SICK' && !formData.attachment) {
-      setError('Attachment is required for SICK leave');
+    const selectedType = leaveTypes.find(t => t.code === formData.type);
+    if (selectedType?.requires_attachment && !formData.attachment) {
+      setError('Attachment is required for this leave type');
       return;
     }
 
@@ -133,7 +148,7 @@ export default function MyLeaves() {
       setFormData({
         start_date: '',
         end_date: '',
-        type: 'ANNUAL',
+        type: leaveTypes[0]?.code || '',
         reason: '',
         attachment: null
       });
@@ -153,13 +168,13 @@ export default function MyLeaves() {
   const getStatusColor = (status) => {
     const colors = {
       PENDING: '#fff3cd',
-      APPROVED: '#d4edda',
-      REJECTED: '#f8d7da'
+      ACCEPTED: '#d4edda',
+      REFUSED: '#f8d7da'
     };
     const textColors = {
       PENDING: '#856404',
-      APPROVED: '#155724',
-      REJECTED: '#721c24'
+      ACCEPTED: '#155724',
+      REFUSED: '#721c24'
     };
     return { bg: colors[status] || '#f5f5f5', text: textColors[status] || '#333' };
   };
@@ -550,9 +565,9 @@ export default function MyLeaves() {
                 onChange={(e) => setExportType(e.target.value)}
               >
                 <option value="">All</option>
-                <option value="ANNUAL">Annual</option>
-                <option value="SICK">Sick</option>
-                <option value="OTHER">Other</option>
+                {leaveTypes.map((lt) => (
+                  <option key={lt.code} value={lt.code}>{lt.label}</option>
+                ))}
               </select>
             </div>
             <div style={styles.modalField}>
@@ -640,13 +655,13 @@ export default function MyLeaves() {
                   onChange={handleInputChange}
                   disabled={!!blockedReason}
                 >
-                  <option value="ANNUAL">Annual Leave</option>
-                  <option value="SICK">Sick Leave</option>
-                  <option value="OTHER">Other</option>
+                  {leaveTypes.map((lt) => (
+                    <option key={lt.code} value={lt.code}>{lt.label}</option>
+                  ))}
                 </select>
               </div>
 
-              {formData.type === 'SICK' && (
+              {leaveTypes.find((lt) => lt.code === formData.type)?.requires_attachment && (
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Attachment <span style={styles.required}>*</span></label>
                   <input
@@ -688,7 +703,7 @@ export default function MyLeaves() {
                   setFormData({
                     start_date: '',
                     end_date: '',
-                    type: 'ANNUAL',
+                    type: leaveTypes[0]?.code || '',
                     reason: '',
                     attachment: null
                   });
@@ -715,9 +730,7 @@ export default function MyLeaves() {
                   <div key={leave.id} style={styles.leaveCard}>
                     <div style={styles.leaveHeader}>
                       <div style={styles.leaveTitle}>
-                        {leave.type === 'ANNUAL' && '📅 Annual Leave'}
-                        {leave.type === 'SICK' && '🏥 Sick Leave'}
-                        {leave.type === 'OTHER' && '📝 Other Leave'}
+                        {leave.type_label || leave.type}
                       </div>
                       <div
                         style={{
@@ -735,6 +748,9 @@ export default function MyLeaves() {
                       <div><strong>Reason:</strong> {leave.reason}</div>
                       {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.chef_comment && (
                         <div><strong>Chef Comment:</strong> {leave.chef_comment}</div>
+                      )}
+                      {Array.isArray(leave.workflow) && leave.workflow.length > 0 && (
+                        <div><strong>Workflow:</strong> {leave.workflow.map(step => `${step.validation_order}:${step.validator_role}-${step.decision}`).join(' | ')}</div>
                       )}
                       {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.decided_at && (
                         <div style={{ fontSize: '12px', color: '#999' }}>Decided: {new Date(leave.decided_at).toLocaleDateString()}</div>

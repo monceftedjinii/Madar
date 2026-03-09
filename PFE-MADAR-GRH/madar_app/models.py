@@ -4,6 +4,7 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from django.utils import timezone
 
 
 class RoleChoices(models.TextChoices):
@@ -618,6 +619,104 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"LeaveRequest {self.employee} {self.start_date}..{self.end_date} ({self.status})"
+
+
+class ValidationWorkflow(models.Model):
+    class Decision(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+
+    leave_request = models.ForeignKey(
+        LeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='validation_workflow'
+    )
+    validator = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='workflow_validations'
+    )
+    validator_role = models.CharField(
+        max_length=20,
+        choices=RoleChoices.choices,
+        help_text='Role expected to validate this workflow step'
+    )
+    validation_order = models.PositiveIntegerField()
+    decision = models.CharField(
+        max_length=20,
+        choices=Decision.choices,
+        default=Decision.PENDING
+    )
+    comment = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['leave_request', 'validation_order']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['leave_request', 'validation_order'],
+                name='unique_workflow_order_per_leave_request'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.leave_request_id} - step {self.validation_order} ({self.validator_role})"
+
+    def clean(self):
+        errors = {}
+
+        if self.validation_order < 1:
+            errors['validation_order'] = 'validation_order must be >= 1'
+
+        if self.validator and self.validator_role:
+            if self.validator.role != self.validator_role:
+                if not (
+                    self.validator_role == RoleChoices.RH_SIMPLE and
+                    self.validator.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR}
+                ):
+                    errors['validator'] = 'validator role does not match validator_role for this workflow step'
+
+        if errors:
+            raise ValidationError(errors)
+
+    def approve(self, validator_user, comment=''):
+        self.validator = validator_user
+        self.decision = self.Decision.APPROVED
+        self.comment = comment
+        self.decided_at = timezone.now()
+        self.is_active = False
+        self.save()
+
+    def reject(self, validator_user, comment=''):
+        self.validator = validator_user
+        self.decision = self.Decision.REJECTED
+        self.comment = comment
+        self.decided_at = timezone.now()
+        self.is_active = False
+        self.save()
+
+    @classmethod
+    def initialize_for_leave_request(cls, leave_request):
+        existing = cls.objects.filter(leave_request=leave_request)
+        if existing.exists():
+            return existing.order_by('validation_order')
+
+        steps = [
+            {'validation_order': 1, 'validator_role': RoleChoices.CHEF},
+            {'validation_order': 2, 'validator_role': RoleChoices.RH_SIMPLE},
+            {'validation_order': 3, 'validator_role': RoleChoices.GRH},
+        ]
+
+        for step in steps:
+            cls.objects.create(leave_request=leave_request, **step)
+
+        return cls.objects.filter(leave_request=leave_request).order_by('validation_order')
 
 
 class SoldeConge(models.Model):
