@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from madar_app.models import Department, Employee, Position, Task, LeaveRequest, DocumentType, Notification
+from madar_app.models import Service, Employee, Position, Task, LeaveRequest, DocumentType, Notification
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -13,11 +13,20 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Seeding demo data...')
 
-        # Create departments
-        dept_it, _ = Department.objects.get_or_create(name='IT')
-        dept_hr, _ = Department.objects.get_or_create(name='HR')
-        dept_sales, _ = Department.objects.get_or_create(name='Sales')
-        self.stdout.write(self.style.SUCCESS('✓ Departments created'))
+        # Create services (replaced departments)
+        dept_it, _ = Service.objects.get_or_create(
+            code='IT',
+            defaults={'nomService': 'Information Technology', 'statut': 'ACTIF', 'budget': Decimal('500000.00')}
+        )
+        dept_hr, _ = Service.objects.get_or_create(
+            code='HR',
+            defaults={'nomService': 'Human Resources', 'statut': 'ACTIF', 'budget': Decimal('300000.00')}
+        )
+        dept_sales, _ = Service.objects.get_or_create(
+            code='SALES',
+            defaults={'nomService': 'Sales and Marketing', 'statut': 'ACTIF', 'budget': Decimal('400000.00')}
+        )
+        self.stdout.write(self.style.SUCCESS('✓ Services created'))
 
         # Create positions
         positions = {
@@ -59,7 +68,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('✓ Users created with roles'))
 
-        # Create employees (database Employee records linked to departments)
+        # Create employees (database Employee records linked to services)
         emp_user = created_users['emp@example.com']
         emp, _ = Employee.objects.get_or_create(
             email='emp@example.com',
@@ -67,7 +76,7 @@ class Command(BaseCommand):
                 'first_name': 'Employee',
                 'last_name': 'User',
                 'position': positions['Extra'],
-                'department': dept_it,
+                'service': dept_it,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('50000.00'),
             }
@@ -83,7 +92,7 @@ class Command(BaseCommand):
                 'first_name': 'Chef',
                 'last_name': 'Manager',
                 'position': positions['Chef de service'],
-                'department': dept_sales,
+                'service': dept_sales,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('65000.00'),
             }
@@ -99,7 +108,7 @@ class Command(BaseCommand):
                 'first_name': 'RH',
                 'last_name': 'Officer',
                 'position': positions['Assistant RH'],
-                'department': dept_hr,
+                'service': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('60000.00'),
             }
@@ -115,7 +124,7 @@ class Command(BaseCommand):
                 'first_name': 'RH',
                 'last_name': 'Manager',
                 'position': positions['Responsable RH'],
-                'department': dept_hr,
+                'service': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('75000.00'),
             }
@@ -131,7 +140,7 @@ class Command(BaseCommand):
                 'first_name': 'GRH',
                 'last_name': 'Director',
                 'position': positions['Directeur RH'],
-                'department': dept_hr,
+                'service': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('90000.00'),
             }
@@ -142,7 +151,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('✓ Employees (demo users) created'))
 
-        # Create some additional employees for testing (Sales team)
+        # Create some additional employees for testing
         for i in range(1, 3):
             Employee.objects.get_or_create(
                 email=f'employee{i}@example.com',
@@ -150,7 +159,7 @@ class Command(BaseCommand):
                     'first_name': f'Employee{i}',
                     'last_name': f'Test',
                     'position': positions['Commercial'],
-                    'department': dept_sales,
+                    'service': dept_sales,
                     'hired_at': datetime.now().date(),
                     'salary': Decimal('55000.00'),
                 }
@@ -162,7 +171,7 @@ class Command(BaseCommand):
                 'first_name': 'Nadia',
                 'last_name': 'Comptable',
                 'position': positions['Comptable'],
-                'department': dept_hr,
+                'service': dept_hr,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('58000.00'),
             }
@@ -174,7 +183,7 @@ class Command(BaseCommand):
                 'first_name': 'Amina',
                 'last_name': 'Service',
                 'position': positions['Femme de ménage'],
-                'department': dept_sales,
+                'service': dept_sales,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('32000.00'),
             }
@@ -186,7 +195,7 @@ class Command(BaseCommand):
                 'first_name': 'Yassine',
                 'last_name': 'Extra',
                 'position': positions['Extra'],
-                'department': dept_it,
+                'service': dept_it,
                 'hired_at': datetime.now().date(),
                 'salary': Decimal('30000.00'),
             }

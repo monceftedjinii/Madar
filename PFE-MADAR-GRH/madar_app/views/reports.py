@@ -164,18 +164,18 @@ def _resolve_employee_scope(user):
 			chef_emp = Employee.objects.get(email=user.email)
 		except Employee.DoesNotExist:
 			return None
-		return Employee.objects.filter(department_id=chef_emp.department_id)
+		return Employee.objects.filter(service_id=chef_emp.service_id)
 	if user.role == RoleChoices.GRH:
 		return Employee.objects.all()
 	return None
 
 
 def _get_dept_scope(user):
-	"""Return the department_id for scoped roles (CHEF), None for global roles."""
+	"""Return the service_id for scoped roles (CHEF), None for global roles."""
 	if user.role == RoleChoices.CHEF:
 		try:
 			emp = Employee.objects.get(email=user.email)
-			return emp.department_id
+			return emp.service_id
 		except Employee.DoesNotExist:
 			return None
 	if user.role in [RoleChoices.RH_SIMPLE, RoleChoices.RH_SENIOR, RoleChoices.GRH]:
@@ -191,8 +191,8 @@ def _count_employees(user):
 	if user.role == RoleChoices.EMPLOYEE:
 		return 1
 	if user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		return Employee.objects.filter(department_id=dept_id).count() if dept_id else 0
+		service_id = _get_dept_scope(user)
+		return Employee.objects.filter(service_id=service_id).count() if service_id else 0
 	return Employee.objects.count()
 
 
@@ -205,8 +205,8 @@ def _count_attendance(user, from_date, to_date):
 		except Employee.DoesNotExist:
 			return 0
 	elif user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		qs = qs.filter(employee__department_id=dept_id) if dept_id else qs.none()
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
 	return qs.count()
 
 
@@ -219,8 +219,8 @@ def _count_warnings(user, from_date, to_date):
 		except Employee.DoesNotExist:
 			return 0
 	elif user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		qs = qs.filter(employee__department_id=dept_id) if dept_id else qs.none()
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
 	return qs.count()
 
 
@@ -233,8 +233,8 @@ def _count_discipline_flags(user, from_date, to_date):
 		except Employee.DoesNotExist:
 			return 0
 	elif user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		qs = qs.filter(employee__department_id=dept_id) if dept_id else qs.none()
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
 	return qs.count()
 
 
@@ -247,8 +247,8 @@ def _count_leaves(user, from_date, to_date):
 		except Employee.DoesNotExist:
 			qs = qs.none()
 	elif user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		qs = qs.filter(employee__department_id=dept_id) if dept_id else qs.none()
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
 	return {
 		'leaves_pending_count': qs.filter(status=LeaveRequest.Status.PENDING).count(),
 		'leaves_accepted_count': qs.filter(status=LeaveRequest.Status.ACCEPTED).count(),
@@ -261,8 +261,8 @@ def _count_documents(user, from_date, to_date):
 	if user.role == RoleChoices.EMPLOYEE:
 		qs = qs.filter(created_by=user)
 	elif user.role == RoleChoices.CHEF:
-		dept_id = _get_dept_scope(user)
-		qs = qs.filter(source_department_id=dept_id) if dept_id else qs.none()
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(source_service_id=service_id) if service_id else qs.none()
 	return {
 		'documents_created_count': qs.count(),
 		'documents_validated_count': qs.filter(status=Document.Status.VALIDATED).count(),
@@ -400,7 +400,7 @@ def export_leaves_report(request):
 			chef_emp = Employee.objects.get(email=user.email)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
-		qs = qs.filter(employee__department_id=chef_emp.department_id)
+		qs = qs.filter(employee__service_id=chef_emp.service_id)
 	elif user.role != RoleChoices.GRH:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 

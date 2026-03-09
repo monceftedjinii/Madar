@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from .models import User, Department, Employee, Position
+from .models import User, Employee, Position, Job, Service
 from .models import Task
 from .models import Attendance
 from .models import LeaveRequest
@@ -46,15 +46,68 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(User, UserAdmin)
-admin.site.register(Department)
 admin.site.register(Position)
 
 
+@admin.register(Job)
+class JobAdmin(admin.ModelAdmin):
+	list_display = ('intitule', 'niveauHierarchique', 'estManagerial', 'nbrPostes', 'salaire_range', 'posteParentId')
+	list_filter = ('niveauHierarchique', 'estManagerial')
+	search_fields = ('intitule', 'posteParentId__intitule')
+	ordering = ('niveauHierarchique', 'intitule')
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('intitule', 'niveauHierarchique', 'estManagerial', 'nbrPostes')
+		}),
+		('Salaire', {
+			'fields': ('salaireMini', 'salaireMaxi')
+		}),
+		('Hiérarchie', {
+			'fields': ('posteParentId',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+	def salaire_range(self, obj):
+		"""Display salary range in list view"""
+		return f"${obj.salaireMini:,.0f} - ${obj.salaireMaxi:,.0f}"
+	salaire_range.short_description = 'Salaire'
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+	list_display = ('code', 'nomService', 'statut', 'budget', 'serviceParentId', 'service_hierarchy')
+	list_filter = ('statut',)
+	search_fields = ('code', 'nomService')
+	ordering = ('code',)
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('code', 'nomService', 'statut')
+		}),
+		('Données financières', {
+			'fields': ('budget',)
+		}),
+		('Hiérarchie', {
+			'fields': ('serviceParentId',)
+		}),
+	)
+	
+	def service_hierarchy(self, obj):
+		"""Display the full hierarchy path"""
+		hierarchy = []
+		current = obj
+		while current:
+			hierarchy.insert(0, current.code)
+			current = current.serviceParentId
+		return ' → '.join(hierarchy)
+	service_hierarchy.short_description = 'Hiérarchie'
+
+
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'department', 'attendance_pin', 'user_status')
+	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'service', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name', 'phone_number', 'address', 'position__name')
-	list_filter = ('department', 'position', 'contract_type')
-	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'department', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	list_filter = ('service', 'position', 'contract_type')
+	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'service', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
 	readonly_fields = ('profile_preview', 'user_login_info', 'hired_at')
 	actions = ['reset_user_password']
 
@@ -194,13 +247,13 @@ admin.site.register(MessageReport, MessageReportAdmin)
 
 
 class AnnouncementAdmin(admin.ModelAdmin):
-	list_display = ('title', 'creator', 'scope', 'target_department', 'created_at')
+	list_display = ('title', 'creator', 'scope', 'target_service', 'created_at')
 	search_fields = ('title', 'message', 'creator__email')
 	list_filter = ('scope', 'created_at')
 	readonly_fields = ('created_at',)
 	fieldsets = (
 		('Announcement', {'fields': ('title', 'message', 'creator')}),
-		('Distribution', {'fields': ('scope', 'target_department')}),
+		('Distribution', {'fields': ('scope', 'target_service')}),
 		('Timestamps', {'fields': ('created_at',)}),
 	)
 

@@ -26,7 +26,7 @@ def absences_yesterday(request):
 		{
 			'id': e.id,
 			'full_name': f"{e.first_name} {e.last_name}",
-			'department': e.department.name if e.department else None,
+			'service': e.service.nomService if e.service else None,
 		}
 		for e in qs.order_by('id')
 	]

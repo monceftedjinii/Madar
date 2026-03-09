@@ -13,10 +13,10 @@ def _display_name(user):
 	return name or user.email
 
 
-def _notify_department_users(department_id, actor_user, title, message, link=''):
-	if not department_id:
+def _notify_service_users(service_code, actor_user, title, message, link=''):
+	if not service_code:
 		return
-	for emp in Employee.objects.filter(department_id=department_id):
+	for emp in Employee.objects.filter(service_id=service_code):
 		try:
 			user = User.objects.get(email=emp.email)
 		except User.DoesNotExist:

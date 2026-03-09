@@ -66,15 +66,15 @@ def create_leave(request):
 		status=LeaveRequest.Status.PENDING,
 	)
 
-	# Notify chefs in the same department
-	chef_emails = Employee.objects.filter(department=emp.department).values_list('email', flat=True)
+	# Notify chefs in the same service
+	chef_emails = Employee.objects.filter(service=emp.service).values_list('email', flat=True)
 	chef_users = User.objects.filter(role=RoleChoices.CHEF, email__in=chef_emails)
 	for chef_user in chef_users:
 		notify(
 			chef_user,
 			'New leave request',
 			f'{emp.first_name} {emp.last_name} requested leave from {sd} to {ed}.',
-			link='/leaves/department'
+			link='/leaves/service'
 		)
 
 	return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
@@ -110,16 +110,16 @@ def my_leaves(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsChef])
 def department_pending_leaves(request):
-	"""Chef lists all leaves in his department (history + pending)."""
+	"""Chef lists all leaves in his service (history + pending)."""
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response(
-			{'detail': 'Chef has no Employee record / department assigned'},
+			{'detail': 'Chef has no Employee record / service assigned'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
-	qs = LeaveRequest.objects.filter(employee__department=chef_emp.department).order_by('-created_at')
+	qs = LeaveRequest.objects.filter(employee__service=chef_emp.service).order_by('-created_at')
 	data = [
 		{
 			'id': l.id,
@@ -156,7 +156,7 @@ def _chef_decide_common(request, pk, accept=True):
 	except Employee.DoesNotExist:
 		return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if lr.employee.department_id != chef_emp.department_id:
+	if lr.employee.service_id != chef_emp.service_id:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	comment = request.data.get('comment', '')

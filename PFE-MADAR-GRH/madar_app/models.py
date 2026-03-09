@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
 
 class RoleChoices(models.TextChoices):
@@ -77,11 +79,90 @@ class User(AbstractUser):
         return self.role == RoleChoices.GRH
 
 
-class Department(models.Model):
-    name = models.CharField(max_length=100)
-
+class Service(models.Model):
+    class Statut(models.TextChoices):
+        ACTIF = 'ACTIF', 'Actif'
+        INACTIF = 'INACTIF', 'Inactif'
+    
+    code = models.CharField(max_length=20, primary_key=True, help_text="Unique service code (e.g., RH, INFO)")
+    nomService = models.CharField(max_length=200, verbose_name="Nom du service")
+    statut = models.CharField(
+        max_length=10, 
+        choices=Statut.choices, 
+        default=Statut.ACTIF,
+        verbose_name="Statut"
+    )
+    budget = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        validators=[MinValueValidator(0)],
+        help_text="Budget alloué (doit être >= 0)"
+    )
+    serviceParentId = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sous_services',
+        verbose_name="Service parent"
+    )
+    
+    class Meta:
+        verbose_name = "Service"
+        verbose_name_plural = "Services"
+        ordering = ['code']
+    
     def __str__(self):
-        return self.name
+        return f"{self.code} - {self.nomService}"
+    
+    def clean(self):
+        """Validate that a service cannot be its own ancestor (no cycles)"""
+        super().clean()
+        
+        # Check for self-reference
+        if self.serviceParentId and self.serviceParentId.code == self.code:
+            raise ValidationError({
+                'serviceParentId': 'Un service ne peut pas être son propre parent.'
+            })
+        
+        # Check for cycles in the hierarchy
+        if self.serviceParentId:
+            parent = self.serviceParentId
+            visited = {self.code}
+            
+            while parent:
+                if parent.code in visited:
+                    raise ValidationError({
+                        'serviceParentId': f'Cycle détecté : le service {parent.code} est déjà un ancêtre.'
+                    })
+                visited.add(parent.code)
+                parent = parent.serviceParentId
+        
+        # Business rule: An inactive service cannot contain active employees
+        if self.statut == self.Statut.INACTIF and self.pk:
+            active_employees_count = self.employees.count()
+            if active_employees_count > 0:
+                raise ValidationError({
+                    'statut': f'Impossible de désactiver ce service : {active_employees_count} employé(s) actif(s) y sont affectés.'
+                })
+    
+    def save(self, *args, **kwargs):
+        """Run full validation before saving"""
+        self.full_clean()
+        super().save(*args, **kwargs)
+    
+    def has_active_employees(self):
+        """Check if service has active employees"""
+        return self.employees.exists()
+    
+    def get_all_descendants(self):
+        """Get all descendant services recursively"""
+        descendants = []
+        children = Service.objects.filter(serviceParentId=self)
+        for child in children:
+            descendants.append(child)
+            descendants.extend(child.get_all_descendants())
+        return descendants
 
 
 class Position(models.Model):
@@ -92,6 +173,128 @@ class Position(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Job(models.Model):
+    """
+    Job/Poste model representing roles/functions in the company.
+    Supports hierarchical structure with parent-child relationships.
+    """
+    intitule = models.CharField(
+        max_length=200,
+        unique=True,
+        verbose_name="Intitulé du poste",
+        help_text="Job title/name (e.g., Directeur RH, Développeur Senior)"
+    )
+    niveauHierarchique = models.IntegerField(
+        verbose_name="Niveau hiérarchique",
+        help_text="Hierarchy level (1=Direction, 2=Manager, 3=Execution, etc.)"
+    )
+    estManagerial = models.BooleanField(
+        default=False,
+        verbose_name="Est managérial",
+        help_text="Whether this job manages other people"
+    )
+    salaireMini = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Salaire minimum",
+        help_text="Minimum allowed salary for this job"
+    )
+    salaireMaxi = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Salaire maximum",
+        help_text="Maximum allowed salary for this job"
+    )
+    nbrPostes = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0)],
+        verbose_name="Nombre de postes",
+        help_text="How many people can occupy this job"
+    )
+    posteParentId = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sous_postes',
+        verbose_name="Poste parent",
+        help_text="Parent job in the hierarchy (N+1 relationship)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Poste"
+        verbose_name_plural = "Postes"
+        ordering = ['niveauHierarchique', 'intitule']
+
+    def __str__(self):
+        return f"{self.intitule} (Niveau {self.niveauHierarchique})"
+
+    def clean(self):
+        """Validate Job constraints"""
+        errors = {}
+
+        # Validate salary constraints
+        if self.salaireMini < 0:
+            errors['salaireMini'] = "Salaire minimum must be >= 0"
+        
+        if self.salaireMaxi < 0:
+            errors['salaireMaxi'] = "Salaire maximum must be >= 0"
+        
+        if self.salaireMini > self.salaireMaxi:
+            errors['salaireMaxi'] = "Salaire maximum must be >= Salaire minimum"
+
+        # Validate number of positions
+        if self.nbrPostes < 0:
+            errors['nbrPostes'] = "Nombre de postes must be >= 0"
+
+        # Check for cycles in parent hierarchy
+        if self.posteParentId:
+            visited = set()
+            current = self.posteParentId
+            while current:
+                if current.id in visited:
+                    errors['posteParentId'] = "Cycle detected in job hierarchy"
+                    break
+                visited.add(current.id)
+                current = current.posteParentId
+
+        # Check for self-reference
+        if self.posteParentId and self.pk and self.posteParentId.id == self.pk:
+            errors['posteParentId'] = "A job cannot be its own parent"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def has_subordinate_jobs(self):
+        """Check if this job has subordinate jobs"""
+        return self.sous_postes.exists()
+
+    def get_all_descendants(self):
+        """Get all descendant jobs recursively"""
+        descendants = []
+        for child in self.sous_postes.all():
+            descendants.append(child)
+            descendants.extend(child.get_all_descendants())
+        return descendants
+
+    def get_hierarchy_chain(self):
+        """Get the complete hierarchy chain from this job to the top"""
+        chain = [self]
+        current = self.posteParentId
+        while current:
+            chain.insert(0, current)
+            current = current.posteParentId
+        return chain
 
 
 class Employee(models.Model):
@@ -108,7 +311,7 @@ class Employee(models.Model):
     address = models.CharField(max_length=255, blank=True, default='')
     contract_type = models.CharField(max_length=10, choices=ContractType.choices, default=ContractType.CDI)
     hired_at = models.DateField(auto_now_add=True)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, to_field='code', null=True, blank=True)
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     attendance_pin = models.CharField(max_length=4, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
@@ -244,8 +447,8 @@ class Document(models.Model):
     title = models.CharField(max_length=255)
     doc_type = models.ForeignKey(DocumentType, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to='documents/')
-    source_department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='documents_created')
-    target_department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='documents_received')
+    source_service = models.ForeignKey(Service, on_delete=models.CASCADE, to_field='code', related_name='documents_created')
+    target_service = models.ForeignKey(Service, on_delete=models.SET_NULL, to_field='code', null=True, blank=True, related_name='documents_received')
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='documents_created')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     sent_at = models.DateTimeField(null=True, blank=True)
@@ -371,13 +574,13 @@ class Announcement(models.Model):
     """Internal announcements from Admin RH/DRH."""
     class TargetScope(models.TextChoices):
         GLOBAL = 'GLOBAL', 'All Users'
-        DEPARTMENT = 'DEPARTMENT', 'Specific Department'
+        SERVICE = 'SERVICE', 'Specific Service'
 
     creator = models.ForeignKey('User', on_delete=models.CASCADE, related_name='announcements')
     title = models.CharField(max_length=255)
     message = models.TextField()
     scope = models.CharField(max_length=20, choices=TargetScope.choices, default=TargetScope.GLOBAL)
-    target_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, related_name='announcements')
+    target_service = models.ForeignKey(Service, on_delete=models.CASCADE, to_field='code', null=True, blank=True, related_name='announcements')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -60,7 +60,7 @@ def rbac_test(request):
 @permission_classes([IsAuthenticated])
 def whoami(request):
 	user = request.user
-	employee = Employee.objects.filter(email=user.email).select_related('department', 'position').first()
+	employee = Employee.objects.filter(email=user.email).select_related('service', 'position').first()
 	first_name = user.first_name or (employee.first_name if employee else '')
 	last_name = user.last_name or (employee.last_name if employee else '')
 	user_picture = request.build_absolute_uri(user.profile_picture.url) if getattr(user, 'profile_picture', None) else None
@@ -71,7 +71,7 @@ def whoami(request):
 		'role': getattr(user, 'role', None),
 		'first_name': first_name,
 		'last_name': last_name,
-		'department': employee.department.name if employee and employee.department else None,
+		'service': employee.service.nomService if employee and employee.service else None,
 		'position': employee.position.name if employee and employee.position else None,
 		'phone_number': employee.phone_number if employee else None,
 		'address': employee.address if employee else None,

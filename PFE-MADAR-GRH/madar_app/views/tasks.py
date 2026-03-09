@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsChef])
 def create_task(request):
-	"""Chef assigns a task to an employee in his department only."""
+	"""Chef assigns a task to an employee in his service only."""
 	data = request.data
 	logger.info(f'create_task request from {request.user.email} with data: {data}')
 
@@ -37,14 +37,14 @@ def create_task(request):
 
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
-		logger.info(f'create_task: chef {chef_emp.email} found in dept {chef_emp.department.name}')
+		logger.info(f'create_task: chef {chef_emp.email} found in service {chef_emp.service.nomService}')
 	except Employee.DoesNotExist:
 		logger.warning(f'create_task: chef {request.user.email} has no employee record')
 		return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if emp.department_id != chef_emp.department_id:
-		logger.warning(f'create_task: chef dept {chef_emp.department_id} != employee dept {emp.department_id}')
-		return Response({'detail': 'cannot assign outside your department'}, status=status.HTTP_403_FORBIDDEN)
+	if emp.service_id != chef_emp.service_id:
+		logger.warning(f'create_task: chef service {chef_emp.service_id} != employee service {emp.service_id}')
+		return Response({'detail': 'cannot assign outside your service'}, status=status.HTTP_403_FORBIDDEN)
 
 	task = Task.objects.create(
 		title=title,
@@ -118,10 +118,10 @@ def chef_tasks(request):
 			'email': t.assigned_to.email,
 			'first_name': t.assigned_to.first_name,
 			'last_name': t.assigned_to.last_name,
-			'department': {
-				'id': t.assigned_to.department.id,
-				'name': t.assigned_to.department.name
-			} if t.assigned_to.department else None
+			'service': {
+				'code': t.assigned_to.service.code,
+				'nomService': t.assigned_to.service.nomService
+			} if t.assigned_to.service else None
 		},
 		'assigned_by': {
 			'id': t.assigned_by.id,

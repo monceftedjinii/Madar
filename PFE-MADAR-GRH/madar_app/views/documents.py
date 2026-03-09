@@ -5,11 +5,11 @@ from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
 from ..models import (
-	Employee, User, RoleChoices, Department,
+	Employee, User, RoleChoices, Service,
 	Document, DocumentType, DocumentHistory
 )
 from ..permissions import CanUploadDocument, CanValidateDocument
-from .helpers import notify, _display_name, _notify_department_users
+from .helpers import notify, _display_name, _notify_service_users
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -28,13 +28,18 @@ def _create_doc_history(document, action, by_user, note='', parent=None, is_priv
 	)
 
 
-def _resolve_department(value):
-	"""Resolve a department by id (digit string) or name."""
+def _resolve_service(value):
+	"""Resolve a service by code (string) or nomService."""
 	if not value:
 		return None
-	if str(value).isdigit():
-		return Department.objects.filter(id=int(value)).first()
-	return Department.objects.filter(name=value).first()
+	if isinstance(value, str):
+		# Try by code first
+		service = Service.objects.filter(code=value).first()
+		if service:
+			return service
+		# Fall back to name match
+		return Service.objects.filter(nomService=value).first()
+	return None
 
 
 def _serialize_document(doc, request):
@@ -49,8 +54,8 @@ def _serialize_document(doc, request):
 		'doc_type': doc.doc_type.name,
 		'doc_type_category': doc.doc_type.category,
 		'status': doc.status,
-		'source_department': doc.source_department.name if doc.source_department else None,
-		'target_department': doc.target_department.name if doc.target_department else None,
+		'source_service': doc.source_service.nomService if doc.source_service else None,
+		'target_service': doc.target_service.nomService if doc.target_service else None,
 		'created_by': doc.created_by.email if doc.created_by else None,
 		'created_by_name': created_by_name,
 		'created_at': doc.created_at.isoformat() if doc.created_at else None,
@@ -67,8 +72,8 @@ def _can_access_comments(user, document):
 		try:
 			chef_emp = Employee.objects.get(email=user.email)
 			return (
-				chef_emp.department_id == document.source_department_id or
-				(document.target_department_id and chef_emp.department_id == document.target_department_id)
+				chef_emp.service_id == document.source_service_id or
+				(document.target_service_id and chef_emp.service_id == document.target_service_id)
 			)
 		except Employee.DoesNotExist:
 			return False
@@ -78,8 +83,8 @@ def _can_access_comments(user, document):
 		try:
 			emp = Employee.objects.get(email=user.email)
 			return (
-				emp.department_id == document.source_department_id or
-				(document.target_department_id and emp.department_id == document.target_department_id)
+				emp.service_id == document.source_service_id or
+				(document.target_service_id and emp.service_id == document.target_service_id)
 			)
 		except Employee.DoesNotExist:
 			return False
@@ -119,24 +124,24 @@ def upload_document(request):
 			doc_type.category = category
 			doc_type.save()
 
-	source_dept = _resolve_department(request.data.get('source_department'))
-	if not source_dept:
+	source_service = _resolve_service(request.data.get('source_service'))
+	if not source_service:
 		try:
 			user_emp = Employee.objects.get(email=request.user.email)
-			source_dept = user_emp.department
+			source_service = user_emp.service
 		except Employee.DoesNotExist:
-			return Response({'detail': 'source_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'detail': 'source_service is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	target_dept = _resolve_department(request.data.get('target_department'))
-	if request.user.role == RoleChoices.CHEF and not target_dept:
-		return Response({'detail': 'target_department is required'}, status=status.HTTP_400_BAD_REQUEST)
+	target_service = _resolve_service(request.data.get('target_service'))
+	if request.user.role == RoleChoices.CHEF and not target_service:
+		return Response({'detail': 'target_service is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	# Employees and chefs can only upload for their own department
+	# Employees and chefs can only upload for their own service
 	if request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF]:
 		try:
 			emp = Employee.objects.get(email=request.user.email)
-			if source_dept and emp.department_id != source_dept.id:
-				return Response({'detail': 'can only upload for own department'}, status=status.HTTP_403_FORBIDDEN)
+			if source_service and emp.service_id != source_service.code:
+				return Response({'detail': 'can only upload for own service'}, status=status.HTTP_403_FORBIDDEN)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -147,8 +152,8 @@ def upload_document(request):
 		title=title,
 		doc_type=doc_type,
 		file=file_obj,
-		source_department=source_dept,
-		target_department=target_dept,
+		source_service=source_service,
+		target_service=target_service,
 		created_by=request.user,
 		status=Document.Status.DRAFT
 	)
@@ -168,19 +173,19 @@ def send_document(request, pk):
 
 	if doc.status != Document.Status.DRAFT:
 		return Response({'detail': 'can only send DRAFT documents'}, status=status.HTTP_400_BAD_REQUEST)
-	if not doc.target_department_id:
-		return Response({'detail': 'target_department is required to send'}, status=status.HTTP_400_BAD_REQUEST)
+	if not doc.target_service_id:
+		return Response({'detail': 'target_service is required to send'}, status=status.HTTP_400_BAD_REQUEST)
 
 	is_creator = doc.created_by_id == request.user.id
-	is_chef_of_dept = False
+	is_chef_of_service = False
 	if request.user.role == RoleChoices.CHEF:
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
-			is_chef_of_dept = chef_emp.department_id == doc.source_department_id
+			is_chef_of_service = chef_emp.service_id == doc.source_service_id
 		except Employee.DoesNotExist:
 			pass
 
-	if not (is_creator or is_chef_of_dept):
+	if not (is_creator or is_chef_of_service):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.status = Document.Status.SENT
@@ -188,14 +193,14 @@ def send_document(request, pk):
 	doc.save()
 	_create_doc_history(doc, DocumentHistory.Action.SENT, request.user)
 
-	if doc.target_department_id:
-		for emp in Employee.objects.filter(department_id=doc.target_department_id):
+	if doc.target_service_id:
+		for emp in Employee.objects.filter(service_id=doc.target_service_id):
 			try:
 				user = User.objects.get(email=emp.email)
 				notify(
 					user,
 					title='New document received',
-					message=f"{doc.title} was sent to your department.",
+					message=f"{doc.title} was sent to your service.",
 					link=f"/documents?docId={doc.id}"
 				)
 			except User.DoesNotExist:
@@ -207,7 +212,7 @@ def send_document(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_documents_scoped(request):
-	"""List documents scoped to the user's role and department."""
+	"""List documents scoped to the user's role and service."""
 	role = request.user.role
 
 	if role == RoleChoices.GRH:
@@ -223,8 +228,8 @@ def list_documents_scoped(request):
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
 			qs = Document.objects.filter(
-				Q(source_department_id=chef_emp.department_id) |
-				Q(target_department_id=chef_emp.department_id)
+				Q(source_service_id=chef_emp.service_id) |
+				Q(target_service_id=chef_emp.service_id)
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.none()
@@ -233,8 +238,8 @@ def list_documents_scoped(request):
 			emp = Employee.objects.get(email=request.user.email)
 			qs = Document.objects.filter(
 				Q(created_by=request.user) |
-				Q(target_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
-				Q(source_department_id=emp.department_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
+				Q(target_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
+				Q(source_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.filter(created_by=request.user)
@@ -248,7 +253,7 @@ def list_documents_scoped(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def documents_feed(request):
-	"""Employee feed: documents sent to the employee's department."""
+	"""Employee feed: documents sent to the employee's service."""
 	if request.user.role != RoleChoices.EMPLOYEE:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -258,7 +263,7 @@ def documents_feed(request):
 		return Response([], status=status.HTTP_200_OK)
 
 	qs = Document.objects.filter(
-		target_department_id=emp.department_id,
+		target_service_id=emp.service_id,
 		status=Document.Status.SENT
 	).order_by('-sent_at', '-created_at')
 
@@ -269,7 +274,7 @@ def documents_feed(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def documents_mine(request):
-	"""Chef history: documents posted from the chef's department."""
+	"""Chef history: documents posted from the chef's service."""
 	if request.user.role != RoleChoices.CHEF:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -279,7 +284,7 @@ def documents_mine(request):
 		return Response([], status=status.HTTP_200_OK)
 
 	qs = Document.objects.filter(
-		source_department_id=chef_emp.department_id
+		source_service_id=chef_emp.service_id
 	).order_by('-created_at')
 
 	data = [_serialize_document(d, request) for d in qs]
@@ -348,10 +353,10 @@ def comment_document(request, pk):
 			msg = f"{actor_name} left a {'private ' if is_private else ''}comment on {doc.title}."
 			notify(owner, label, msg, link=comment_link)
 
-	# Notify department users for public top-level comments
+	# Notify service users for public top-level comments
 	if not parent and not is_private:
-		dept_id = doc.target_department_id or doc.source_department_id
-		_notify_department_users(dept_id, request.user, 'New comment', f"{actor_name} commented on {doc.title}.", link=comment_link)
+		service_code = doc.target_service_id or doc.source_service_id
+		_notify_service_users(service_code, request.user, 'New comment', f"{actor_name} commented on {doc.title}.", link=comment_link)
 
 	return Response({'detail': 'comment added'})
 
