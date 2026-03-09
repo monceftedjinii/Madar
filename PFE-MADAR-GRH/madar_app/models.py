@@ -525,12 +525,74 @@ class Attendance(models.Model):
         return f"Attendance {self.employee} {self.date}"
 
 
-class LeaveRequest(models.Model):
-    class LeaveType(models.TextChoices):
-        ANNUAL = 'ANNUAL', 'Annual'
-        SICK = 'SICK', 'Sick'
-        OTHER = 'OTHER', 'Other'
+class LeaveType(models.Model):
+    """
+    Leave Type model defining different types of leave/absence.
+    Specifies rules, entitlements, and constraints for each leave category.
+    """
+    class SexeAutorise(models.TextChoices):
+        HOMME = 'HOMME', 'Homme'
+        FEMME = 'FEMME', 'Femme'
+        TOUS = 'TOUS', 'Tous'
 
+    code = models.CharField(
+        max_length=10,
+        unique=True,
+        primary_key=True,
+        verbose_name="Code",
+        help_text="Short unique identifier (e.g., CA, CM, MAT)"
+    )
+    libelle = models.CharField(
+        max_length=100,
+        verbose_name="Libellé",
+        help_text="Displayed name (e.g., Congé Annuel, Congé Maladie)"
+    )
+    nbrJoursDroit = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        verbose_name="Nombre de jours de droit",
+        help_text="Number of days allowed per year"
+    )
+    estPayant = models.BooleanField(
+        default=True,
+        verbose_name="Est payant",
+        help_text="Whether the leave is paid"
+    )
+    reconductible = models.BooleanField(
+        default=False,
+        verbose_name="Reconductible",
+        help_text="Can unused days carry to next year?"
+    )
+    delaiPreavis = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        default=0,
+        verbose_name="Délai de préavis",
+        help_text="Number of days notice required"
+    )
+    justificatifRequis = models.BooleanField(
+        default=False,
+        verbose_name="Justificatif requis",
+        help_text="Whether a supporting document is required"
+    )
+    sexeAutorise = models.CharField(
+        max_length=10,
+        choices=SexeAutorise.choices,
+        default=SexeAutorise.TOUS,
+        verbose_name="Sexe autorisé",
+        help_text="Gender eligibility for this leave type"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Type de congé"
+        verbose_name_plural = "Types de congé"
+        ordering = ['code']
+
+    def __str__(self):
+        return self.libelle
+
+
+class LeaveRequest(models.Model):
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
         ACCEPTED = 'ACCEPTED', 'Accepted'
@@ -539,7 +601,12 @@ class LeaveRequest(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_requests')
     start_date = models.DateField()
     end_date = models.DateField()
-    type = models.CharField(max_length=20, choices=LeaveType.choices, default=LeaveType.ANNUAL)
+    type = models.ForeignKey(
+        LeaveType,
+        on_delete=models.PROTECT,
+        related_name='leave_requests',
+        verbose_name="Type de congé"
+    )
     reason = models.TextField(blank=True)
     attachment = models.FileField(upload_to='leave_attachments/', null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
@@ -550,6 +617,154 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"LeaveRequest {self.employee} {self.start_date}..{self.end_date} ({self.status})"
+
+
+class SoldeConge(models.Model):
+    """
+    Leave Balance model tracking employee leave entitlements and usage.
+    Maintains annual balance per employee per leave type.
+    """
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='soldes_conge',
+        verbose_name="Employé"
+    )
+    leaveType = models.ForeignKey(
+        LeaveType,
+        on_delete=models.CASCADE,
+        related_name='soldes',
+        verbose_name="Type de congé"
+    )
+    annee = models.IntegerField(
+        validators=[MinValueValidator(2000)],
+        verbose_name="Année",
+        help_text="Year for this leave balance (e.g., 2026)"
+    )
+    joursAcquis = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        validators=[MinValueValidator(0)],
+        default=0,
+        verbose_name="Jours acquis",
+        help_text="Days acquired/earned for this year"
+    )
+    joursPris = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        validators=[MinValueValidator(0)],
+        default=0,
+        verbose_name="Jours pris",
+        help_text="Days taken/used"
+    )
+    joursRestants = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        validators=[MinValueValidator(0)],
+        default=0,
+        verbose_name="Jours restants",
+        help_text="Remaining days (calculated)"
+    )
+    joursReportes = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        validators=[MinValueValidator(0)],
+        default=0,
+        verbose_name="Jours reportés",
+        help_text="Days carried over from previous year"
+    )
+    derniereMaj = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Dernière mise à jour",
+        help_text="Last time this balance was updated"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Solde de congé"
+        verbose_name_plural = "Soldes de congé"
+        ordering = ['employee', 'leaveType', '-annee']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['employee', 'leaveType', 'annee'],
+                name='unique_solde_per_employee_leavetype_year'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.employee} - {self.leaveType} {self.annee}: {self.joursRestants} jours restants"
+
+    def clean(self):
+        """Validate SoldeConge constraints"""
+        errors = {}
+
+        # Validate non-negative values
+        if self.joursAcquis < 0:
+            errors['joursAcquis'] = "Jours acquis must be >= 0"
+        
+        if self.joursPris < 0:
+            errors['joursPris'] = "Jours pris must be >= 0"
+        
+        if self.joursReportes < 0:
+            errors['joursReportes'] = "Jours reportés must be >= 0"
+        
+        if self.joursRestants < 0:
+            errors['joursRestants'] = "Jours restants must be >= 0"
+
+        # Validate year is reasonable
+        from datetime import date
+        current_year = date.today().year
+        if self.annee < 2000 or self.annee > current_year + 1:
+            errors['annee'] = f"Year must be between 2000 and {current_year + 1}"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def calculer(self):
+        """
+        Calculate and update the leave balance.
+        Formula: joursRestants = joursAcquis + joursReportes - joursPris
+        """
+        self.joursRestants = self.joursAcquis + self.joursReportes - self.joursPris
+        
+        # Ensure non-negative result
+        if self.joursRestants < 0:
+            self.joursRestants = 0
+        
+        # Save updates joursRestants and derniereMaj (auto_now)
+        self.save()
+
+    @classmethod
+    def get_or_create_balance(cls, employee, leave_type, annee):
+        """
+        Get or create a leave balance for an employee, leave type, and year.
+        Automatically initializes with the leave type's default entitlement.
+        """
+        solde, created = cls.objects.get_or_create(
+            employee=employee,
+            leaveType=leave_type,
+            annee=annee,
+            defaults={
+                'joursAcquis': leave_type.nbrJoursDroit,
+                'joursPris': 0,
+                'joursReportes': 0,
+                'joursRestants': leave_type.nbrJoursDroit
+            }
+        )
+        return solde, created
+
+    @classmethod
+    def get_employee_balances(cls, employee, annee=None):
+        """Get all leave balances for an employee for a specific year"""
+        from datetime import date
+        if annee is None:
+            annee = date.today().year
+        
+        return cls.objects.filter(employee=employee, annee=annee).select_related('leaveType')
 
 
 class AbsenceWarning(models.Model):

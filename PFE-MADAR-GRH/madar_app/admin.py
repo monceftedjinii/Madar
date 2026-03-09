@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from .models import User, Employee, Position, Job, Service, Affectation
 from .models import Task
 from .models import Attendance
-from .models import LeaveRequest
+from .models import LeaveType, LeaveRequest, SoldeConge
 from .models import AbsenceWarning, DisciplineFlag, Notification
 from .models import DocumentType, Document, DocumentHistory
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
@@ -206,6 +206,61 @@ class EmployeeAdmin(admin.ModelAdmin):
 		msg = f'Password reset for {updated_count} employee(s). Check browser notifications for passwords.'
 		self.message_user(request, msg)
 	reset_user_password.short_description = 'Reset user password(s)'
+
+
+@admin.register(LeaveType)
+class LeaveTypeAdmin(admin.ModelAdmin):
+	list_display = ('code', 'libelle', 'nbrJoursDroit', 'estPayant', 'reconductible', 'delaiPreavis', 'justificatifRequis', 'sexeAutorise')
+	list_filter = ('estPayant', 'reconductible', 'justificatifRequis', 'sexeAutorise')
+	search_fields = ('code', 'libelle')
+	ordering = ('code',)
+	fieldsets = (
+		('Informations de base', {
+			'fields': ('code', 'libelle', 'sexeAutorise')
+		}),
+		('Droits et règles', {
+			'fields': ('nbrJoursDroit', 'estPayant', 'reconductible')
+		}),
+		('Contraintes', {
+			'fields': ('delaiPreavis', 'justificatifRequis')
+		}),
+		('Audit', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(SoldeConge)
+class SoldeCongeAdmin(admin.ModelAdmin):
+	list_display = ('employee', 'leaveType', 'annee', 'joursAcquis', 'joursPris', 'joursReportes', 'joursRestants', 'derniereMaj')
+	list_filter = ('annee', 'leaveType')
+	search_fields = ('employee__first_name', 'employee__last_name', 'leaveType__libelle')
+	ordering = ('employee', 'leaveType', '-annee')
+	fieldsets = (
+		('Références', {
+			'fields': ('employee', 'leaveType', 'annee')
+		}),
+		('Balance', {
+			'fields': ('joursAcquis', 'joursPris', 'joursReportes', 'joursRestants')
+		}),
+		('Audit', {
+			'fields': ('derniereMaj', 'created_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('derniereMaj', 'created_at')
+	actions = ['recalculate_balances']
+
+	def recalculate_balances(self, request, queryset):
+		"""Admin action to recalculate selected leave balances"""
+		count = 0
+		for solde in queryset:
+			solde.calculer()
+			count += 1
+		self.message_user(request, f"{count} solde(s) de congé recalculé(s) avec succès.")
+	recalculate_balances.short_description = "Recalculer les soldes sélectionnés"
 
 
 admin.site.register(Employee, EmployeeAdmin)
