@@ -51,7 +51,7 @@ export default function Profile() {
     var me = await axios.get("/api/whoami/", {
       headers: { Authorization: `Bearer ${access}` },
     });
-    console.log(me.data);
+    console.log("DEBUG whoami:", me.data);
     setProfileData({
       fullName: `${me.data.first_name || ""} ${me.data.last_name || ""}`.trim(),
       email: me.data.email,
@@ -59,7 +59,10 @@ export default function Profile() {
       address: me.data.address || me.data.employee_info?.address || "",
       position: me.data.position || me.data.employee_info?.position || "",
       department:
-        me.data.department || me.data.employee_info?.department?.name || "",
+        me.data.service ||
+        me.data.department ||
+        me.data.employee_info?.department?.name ||
+        "",
       contract:
         me.data.contract ||
         me.data.employee_info?.contract ||
