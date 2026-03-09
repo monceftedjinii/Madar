@@ -320,6 +320,177 @@ class Employee(models.Model):
         return f"{self.first_name} {self.last_name}"
 
 
+class Affectation(models.Model):
+    """
+    Affectation model linking an employee to a job over time.
+    Tracks job assignments, supporting multiple assignments per employee
+    (temporary assignments, interim positions, detachments).
+    """
+    class TypeAffectation(models.TextChoices):
+        TITULAIRE = 'TITULAIRE', 'Titulaire'
+        INTERIM = 'INTERIM', 'Intérim'
+        DETACHEMENT = 'DETACHEMENT', 'Détachement'
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='affectations',
+        verbose_name="Employé"
+    )
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.PROTECT,
+        related_name='affectations',
+        verbose_name="Poste"
+    )
+    dateDebut = models.DateField(
+        verbose_name="Date de début",
+        help_text="Start date of the assignment"
+    )
+    dateFin = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Date de fin",
+        help_text="End date of the assignment (null = ongoing)"
+    )
+    typeAffectation = models.CharField(
+        max_length=20,
+        choices=TypeAffectation.choices,
+        default=TypeAffectation.TITULAIRE,
+        verbose_name="Type d'affectation"
+    )
+    motif = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Motif",
+        help_text="Reason for the assignment (e.g., replacement, project, etc.)"
+    )
+    estPrimaire = models.BooleanField(
+        default=False,
+        verbose_name="Affectation primaire",
+        help_text="Is this the employee's main official post?"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Affectation"
+        verbose_name_plural = "Affectations"
+        ordering = ['employee', '-estPrimaire', '-dateDebut']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(dateFin__isnull=True) | models.Q(dateDebut__lte=models.F('dateFin')),
+                name='affectation_date_logic'
+            ),
+            models.UniqueConstraint(
+                fields=['employee'],
+                condition=models.Q(estPrimaire=True),
+                name='unique_primary_affectation_per_employee'
+            ),
+        ]
+
+    def __str__(self):
+        status = "(primaire)" if self.estPrimaire else ""
+        if self.dateFin:
+            return f"{self.employee} -> {self.job.intitule} [{self.dateDebut.strftime('%d/%m/%Y')}-{self.dateFin.strftime('%d/%m/%Y')}] {status}"
+        return f"{self.employee} -> {self.job.intitule} [depuis {self.dateDebut.strftime('%d/%m/%Y')}] {status}"
+
+    def clean(self):
+        """Validate Affectation constraints"""
+        from django.utils import timezone
+        from datetime import date
+
+        errors = {}
+
+        # 1. Validate date logic: dateDebut <= dateFin (when dateFin is not null)
+        if self.dateFin and self.dateDebut > self.dateFin:
+            errors['dateFin'] = "Date de fin must be >= Date de début"
+
+        # 2. Validate only one primary affectation per employee
+        if self.estPrimaire:
+            # Count other primary affectations for this employee
+            other_primary = Affectation.objects.filter(
+                employee=self.employee,
+                estPrimaire=True
+            ).exclude(id=self.id)  # Exclude current instance if updating
+            
+            if other_primary.exists():
+                errors['estPrimaire'] = f"Employee {self.employee} already has a primary assignment"
+
+        # 3. Validate no overlap for TITULAIRE affectations
+        if self.typeAffectation == self.TypeAffectation.TITULAIRE:
+            # Check for overlapping TITULAIRE assignments
+            overlapping = Affectation.objects.filter(
+                employee=self.employee,
+                typeAffectation=self.TypeAffectation.TITULAIRE
+            ).exclude(id=self.id)  # Exclude current instance
+
+            for other in overlapping:
+                # Check if assignments overlap
+                # Overlap occurs when: self.start <= other.end AND other.start <= self.end
+                # (considering null dateFin as ongoing)
+                if self._affectations_overlap(other):
+                    errors['typeAffectation'] = (
+                        f"Titulaire assignment overlaps with existing assignment "
+                        f"from {other.dateDebut.strftime('%d/%m/%Y')} "
+                        f"to {other.dateFin.strftime('%d/%m/%Y') if other.dateFin else 'ongoing'}"
+                    )
+                    break
+
+        if errors:
+            raise ValidationError(errors)
+
+    def _affectations_overlap(self, other):
+        """Check if two affectations overlap in time"""
+        # self.dateDebut <= other.dateFin (or other.dateFin is None)
+        if other.dateFin and self.dateDebut > other.dateFin:
+            return False
+        
+        # other.dateDebut <= self.dateFin (or self.dateFin is None)
+        if self.dateFin and other.dateDebut > self.dateFin:
+            return False
+        
+        return True
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def get_current_assignment(self):
+        """Returns True if this assignment is currently active"""
+        from datetime import date
+        today = date.today()
+        return self.dateDebut <= today and (self.dateFin is None or today <= self.dateFin)
+
+    @classmethod
+    def get_employee_primary_affectation(cls, employee, date_ref=None):
+        """Get the primary affectation for an employee at a given date (or today)"""
+        from datetime import date
+        if date_ref is None:
+            date_ref = date.today()
+        
+        return cls.objects.filter(
+            employee=employee,
+            estPrimaire=True,
+            dateDebut__lte=date_ref
+        ).filter(
+            models.Q(dateFin__isnull=True) | models.Q(dateFin__gte=date_ref)
+        ).first()
+
+    @classmethod
+    def get_employee_current_affectations(cls, employee):
+        """Get all current/active affectations for an employee"""
+        from datetime import date
+        today = date.today()
+        
+        return cls.objects.filter(
+            employee=employee,
+            dateDebut__lte=today
+        ).filter(
+            models.Q(dateFin__isnull=True) | models.Q(dateFin__gte=today)
+        )
+
+
 class Task(models.Model):
     class Status(models.TextChoices):
         TODO = 'TODO', 'To Do'

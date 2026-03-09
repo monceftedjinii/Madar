@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from .models import User, Employee, Position, Job, Service
+from .models import User, Employee, Position, Job, Service, Affectation
 from .models import Task
 from .models import Attendance
 from .models import LeaveRequest
@@ -101,6 +101,41 @@ class ServiceAdmin(admin.ModelAdmin):
 			current = current.serviceParentId
 		return ' → '.join(hierarchy)
 	service_hierarchy.short_description = 'Hiérarchie'
+
+
+@admin.register(Affectation)
+class AffectationAdmin(admin.ModelAdmin):
+	list_display = ('employee', 'job', 'dateDebut', 'dateFin', 'typeAffectation', 'estPrimaire', 'status_badge', 'motif')
+	list_filter = ('typeAffectation', 'estPrimaire', 'dateDebut')
+	search_fields = ('employee__first_name', 'employee__last_name', 'job__intitule', 'motif')
+	ordering = ('employee', '-estPrimaire', '-dateDebut')
+	fieldsets = (
+		('Assignation', {
+			'fields': ('employee', 'job')
+		}),
+		('Période', {
+			'fields': ('dateDebut', 'dateFin')
+		}),
+		('Détails', {
+			'fields': ('typeAffectation', 'motif', 'estPrimaire')
+		}),
+		('Audit', {
+			'fields': ('created_at', 'updated_at'),
+			'classes': ('collapse',)
+		}),
+	)
+	readonly_fields = ('created_at', 'updated_at')
+
+	def status_badge(self, obj):
+		"""Display current/inactive status with color"""
+		if obj.get_current_assignment():
+			return format_html(
+				'<span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px;">Active</span>'
+			)
+		return format_html(
+			'<span style="background-color: #6c757d; color: white; padding: 3px 8px; border-radius: 3px;">Inactive</span>'
+		)
+	status_badge.short_description = 'Statut'
 
 
 class EmployeeAdmin(admin.ModelAdmin):
