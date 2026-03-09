@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.utils import timezone
+import hashlib
 
 
 class RoleChoices(models.TextChoices):
@@ -998,7 +999,13 @@ class Document(models.Model):
         DRAFT = 'DRAFT', 'Draft'
         SENT = 'SENT', 'Sent'
         VALIDATED = 'VALIDATED', 'Validated'
+        REJECTED = 'REJECTED', 'Rejected'
         ARCHIVED = 'ARCHIVED', 'Archived'
+
+    class ConfidentialityLevel(models.TextChoices):
+        PUBLIC = 'PUBLIC', 'Public'
+        INTERNAL = 'INTERNAL', 'Internal'
+        CONFIDENTIAL = 'CONFIDENTIAL', 'Confidential'
 
     title = models.CharField(max_length=255)
     doc_type = models.ForeignKey(DocumentType, on_delete=models.CASCADE, related_name='documents')
@@ -1007,6 +1014,7 @@ class Document(models.Model):
     target_service = models.ForeignKey(Service, on_delete=models.SET_NULL, to_field='code', null=True, blank=True, related_name='documents_received')
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='documents_created')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    confidentiality_level = models.CharField(max_length=20, choices=ConfidentialityLevel.choices, default=ConfidentialityLevel.INTERNAL)
     sent_at = models.DateTimeField(null=True, blank=True)
     validated_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='documents_validated')
     validated_at = models.DateTimeField(null=True, blank=True)
@@ -1061,6 +1069,66 @@ class Document(models.Model):
             'is_rejected': rejected_step is not None
         }
 
+    def log_access(self, user, action, ip_address=None, result=True, details=''):
+        """Log an access to this document.
+        
+        Args:
+            user (User): The user accessing the document
+            action (str): The action being performed
+            ip_address (str, optional): IP address of the request
+            result (bool): Whether access was allowed
+            details (str, optional): Additional details
+            
+        Returns:
+            DocumentAccess: The created access log
+        """
+        return self.access_logs.create(
+            user=user,
+            action=action,
+            ip_address=ip_address,
+            result=result,
+            details=details
+        )
+
+    def create_new_version(self, file_obj, author=None, comment=''):
+        """Create a new document version and mark it as the current version."""
+        if not file_obj:
+            raise ValidationError('file is required to create a new version')
+
+        with transaction.atomic():
+            self.versions.filter(is_current=True).update(is_current=False)
+            latest_version = self.versions.order_by('-numVersion').first()
+            next_version = (latest_version.numVersion + 1) if latest_version else 1
+
+            version = DocumentVersion.objects.create(
+                document=self,
+                numVersion=next_version,
+                author=author,
+                comment=comment,
+                file_path=file_obj,
+                size=getattr(file_obj, 'size', 0),
+                is_current=True,
+            )
+
+            self.file = file_obj
+            self.save(update_fields=['file'])
+            return version
+
+    def get_access_logs(self, action=None, user=None):
+        """Get access logs for this document.
+        
+        Args:
+            action (str, optional): Filter by action
+            user (User, optional): Filter by user
+            
+        Returns:
+            QuerySet: Access logs for this document
+        """
+        return self.access_logs.filter(
+            **(dict(action=action) if action else {}),
+            **(dict(user=user) if user else {})
+        )
+
 
 class DocumentHistory(models.Model):
     class Action(models.TextChoices):
@@ -1091,6 +1159,7 @@ class DocumentVersion(models.Model):
     comment = models.TextField(blank=True, help_text="Description of the change (e.g., 'Correction clause 3')")
     file_path = models.FileField(upload_to='document_versions/')
     size = models.BigIntegerField(help_text="File size in bytes")
+    checksum = models.CharField(max_length=64, blank=True, help_text="SHA256 checksum of this file version")
     is_current = models.BooleanField(default=False, help_text="Only one version can be current per document")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -1108,6 +1177,67 @@ class DocumentVersion(models.Model):
     def __str__(self):
         current_marker = " (current)" if self.is_current else ""
         return f"{self.document.title} v{self.numVersion}{current_marker}"
+
+    @staticmethod
+    def generate_checksum(file_obj):
+        """Generate SHA256 checksum for a file object."""
+        if not file_obj:
+            return ''
+
+        hasher = hashlib.sha256()
+        should_close = False
+
+        try:
+            if hasattr(file_obj, 'open') and getattr(file_obj, 'closed', True):
+                file_obj.open('rb')
+                should_close = True
+
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
+
+            if hasattr(file_obj, 'chunks'):
+                for chunk in file_obj.chunks():
+                    hasher.update(chunk)
+            else:
+                while True:
+                    chunk = file_obj.read(8192)
+                    if not chunk:
+                        break
+                    hasher.update(chunk)
+
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
+
+            return hasher.hexdigest()
+        finally:
+            if should_close and hasattr(file_obj, 'close'):
+                file_obj.close()
+
+    def verify_integrity(self):
+        """Recompute checksum and verify this file version integrity."""
+        if not self.file_path or not self.checksum:
+            return False
+
+        current_checksum = self.generate_checksum(self.file_path)
+        is_valid = current_checksum == self.checksum
+
+        if not is_valid:
+            DocumentAccess.log_access(
+                document=self.document,
+                user=self.document.created_by,
+                action=DocumentAccess.Action.READ,
+                result=False,
+                details=f"Integrity verification failed for version {self.numVersion}"
+            )
+
+        return is_valid
+
+    def save(self, *args, **kwargs):
+        """Automatically generate checksum when file content is saved/updated."""
+        if self.file_path:
+            self.checksum = self.generate_checksum(self.file_path)
+
+        super().save(*args, **kwargs)
 
     def mark_as_current(self):
         """Set this version as current and unset all others for the same document."""
@@ -1271,9 +1401,9 @@ class DocumentValidation(models.Model):
                 document=self.document,
                 step_order__gt=self.step_order
             ).update(is_active=False)
-            
-            # Mark document as requiring revision (keep as DRAFT or SENT depending on current state)
-            # Document status is NOT changed to VALIDATED when rejected
+
+            self.document.status = Document.Status.REJECTED
+            self.document.save(update_fields=['status'])
 
     def notify(self):
         """Send notification to the validator when it's their turn.
@@ -1337,6 +1467,168 @@ class DocumentValidation(models.Model):
                 validation_steps[0].notify()
             
             return validation_steps
+
+
+class DocumentAccess(models.Model):
+    """Audit log for document access traceability."""
+    
+    class Action(models.TextChoices):
+        READ = 'READ', 'Read'
+        DOWNLOAD = 'DOWNLOAD', 'Download'
+        MODIFY = 'MODIFY', 'Modify'
+        DELETE = 'DELETE', 'Delete'
+        SHARE = 'SHARE', 'Share'
+    
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='access_logs')
+    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='document_accesses')
+    access_datetime = models.DateTimeField(auto_now_add=True, help_text="Exact timestamp of the access")
+    action = models.CharField(max_length=20, choices=Action.choices, help_text="Action performed on the document")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, help_text="IP address from which access was made")
+    result = models.BooleanField(default=True, help_text="True = access allowed, False = access denied")
+    details = models.TextField(blank=True, help_text="Additional details about the access attempt")
+
+    class Meta:
+        ordering = ['-access_datetime']
+        verbose_name = 'Document Access Log'
+        verbose_name_plural = 'Document Access Logs'
+        indexes = [
+            models.Index(fields=['document', '-access_datetime']),
+            models.Index(fields=['user', '-access_datetime']),
+            models.Index(fields=['action', '-access_datetime']),
+        ]
+
+    def __str__(self):
+        status = "allowed" if self.result else "denied"
+        return f"{self.user} - {self.action} on {self.document.title} ({status})"
+
+    @classmethod
+    def log_access(cls, document, user, action, ip_address=None, result=True, details=''):
+        """Create an access log entry.
+        
+        Args:
+            document (Document): The document being accessed
+            user (User): The user performing the action
+            action (str): The action being performed (READ, DOWNLOAD, MODIFY, DELETE, SHARE)
+            ip_address (str, optional): IP address of the request
+            result (bool): Whether the access was allowed (True) or denied (False)
+            details (str, optional): Additional details about the access
+            
+        Returns:
+            DocumentAccess: The created access log entry
+        """
+        return cls.objects.create(
+            document=document,
+            user=user,
+            action=action,
+            ip_address=ip_address,
+            result=result,
+            details=details
+        )
+
+    @classmethod
+    def get_logs(cls, document, action=None, user=None, result=None):
+        """Get all access logs for a document with optional filters.
+        
+        Args:
+            document (Document): The document to get logs for
+            action (str, optional): Filter by action type
+            user (User, optional): Filter by user
+            result (bool, optional): Filter by access result (allowed/denied)
+            
+        Returns:
+            QuerySet: Filtered access logs ordered by datetime (newest first)
+        """
+        queryset = cls.objects.filter(document=document)
+        
+        if action:
+            queryset = queryset.filter(action=action)
+        if user:
+            queryset = queryset.filter(user=user)
+        if result is not None:
+            queryset = queryset.filter(result=result)
+        
+        return queryset
+
+    @classmethod
+    def get_user_activity(cls, user, days=30):
+        """Get a user's document access activity for the last N days.
+        
+        Args:
+            user (User): The user to get activity for
+            days (int): Number of days to look back
+            
+        Returns:
+            QuerySet: User's access logs for the period
+        """
+        from datetime import timedelta
+        cutoff_date = timezone.now() - timedelta(days=days)
+        return cls.objects.filter(user=user, access_datetime__gte=cutoff_date)
+
+    @classmethod
+    def get_denied_attempts(cls, document=None, user=None):
+        """Get all denied access attempts.
+        
+        Args:
+            document (Document, optional): Filter by specific document
+            user (User, optional): Filter by specific user
+            
+        Returns:
+            QuerySet: Denied access attempts
+        """
+        queryset = cls.objects.filter(result=False)
+        
+        if document:
+            queryset = queryset.filter(document=document)
+        if user:
+            queryset = queryset.filter(user=user)
+        
+        return queryset
+
+    @staticmethod
+    def check_permission(user, document, action):
+        """Check if a user has permission to perform an action on a document.
+        
+        This is a basic permission check that can be extended with custom logic.
+        
+        Args:
+            user (User): The user attempting the action
+            document (Document): The document being accessed
+            action (str): The action being performed
+            
+        Returns:
+            dict: Contains 'allowed' (bool) and 'reason' (str) keys
+        """
+        # Basic permission logic - can be extended based on business rules
+        if not user or not user.is_authenticated:
+            return {'allowed': False, 'reason': 'User not authenticated'}
+        
+        # Document creator always has access
+        if document.created_by_id == user.id:
+            return {'allowed': True, 'reason': 'Document creator'}
+        
+        # Check if user is in the document's service
+        try:
+            employee = Employee.objects.filter(email=user.email).first()
+            if employee:
+                # User in source or target service
+                if document.source_service_id == employee.service_id:
+                    return {'allowed': True, 'reason': 'User in source service'}
+                if document.target_service_id == employee.service_id:
+                    return {'allowed': True, 'reason': 'User in target service'}
+        except Exception:
+            pass
+        
+        # GRH and RH roles have access to all documents
+        if user.role in ['GRH', 'RH_SENIOR', 'RH_AGENT', 'RH_SIMPLE']:
+            return {'allowed': True, 'reason': f'User has {user.role} role'}
+        
+        # MODIFY and DELETE actions require higher permissions
+        if action in [DocumentAccess.Action.MODIFY, DocumentAccess.Action.DELETE]:
+            if user.role not in ['GRH', 'RH_SENIOR', 'CHEF']:
+                return {'allowed': False, 'reason': 'Insufficient permissions for modify/delete'}
+        
+        # Default: deny access
+        return {'allowed': False, 'reason': 'No matching permissions'}
 
 
 # ============================================================

@@ -23,13 +23,17 @@ from .formation import (
 )
 from .documents import (
 	upload_document,
+	document_detail,
 	send_document,
+	modify_document,
+	download_document,
 	list_documents_scoped,
 	documents_feed,
 	documents_mine,
 	comment_document,
 	document_comments,
 	validate_document,
+	reject_document_validation,
 	archive_document,
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
@@ -82,9 +86,9 @@ __all__ = [
 	'approve_formation_request', 'reject_formation_request',
 	'get_department_employees', 'add_formation_participants',
 	# documents
-	'upload_document', 'send_document', 'list_documents_scoped',
+	'upload_document', 'document_detail', 'send_document', 'modify_document', 'download_document', 'list_documents_scoped',
 	'documents_feed', 'documents_mine', 'comment_document',
-	'document_comments', 'validate_document', 'archive_document',
+	'document_comments', 'validate_document', 'reject_document_validation', 'archive_document',
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# messages

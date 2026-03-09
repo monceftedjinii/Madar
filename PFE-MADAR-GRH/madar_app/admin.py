@@ -7,7 +7,7 @@ from .models import Task
 from .models import Attendance
 from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
 from .models import AbsenceWarning, DisciplineFlag, Notification
-from .models import DocumentType, Document, DocumentHistory, DocumentVersion, DocumentValidation
+from .models import DocumentType, Document, DocumentHistory, DocumentVersion, DocumentValidation, DocumentAccess
 from .models import Message, MessageAttachment, Draft, BlockedUser, MessageReport, Announcement, MessagingSettings
 import secrets
 
@@ -285,10 +285,10 @@ admin.site.register(DocumentHistory)
 
 
 class DocumentVersionAdmin(admin.ModelAdmin):
-	list_display = ('document', 'numVersion', 'author', 'size', 'is_current', 'created_at')
+	list_display = ('document', 'numVersion', 'author', 'size', 'checksum', 'is_current', 'created_at')
 	list_filter = ('is_current', 'created_at')
 	search_fields = ('document__title', 'author__first_name', 'author__last_name', 'comment')
-	readonly_fields = ('created_at',)
+	readonly_fields = ('checksum', 'created_at',)
 	ordering = ('-created_at',)
 
 
@@ -316,6 +316,26 @@ class DocumentValidationAdmin(admin.ModelAdmin):
 
 
 admin.site.register(DocumentValidation, DocumentValidationAdmin)
+
+
+class DocumentAccessAdmin(admin.ModelAdmin):
+	list_display = ('document', 'user', 'action', 'result', 'ip_address', 'access_datetime')
+	list_filter = ('action', 'result', 'access_datetime')
+	search_fields = ('document__title', 'user__email', 'user__first_name', 'user__last_name', 'ip_address', 'details')
+	readonly_fields = ('access_datetime',)
+	ordering = ('-access_datetime',)
+	date_hierarchy = 'access_datetime'
+	
+	def has_add_permission(self, request):
+		# Access logs should only be created programmatically
+		return False
+	
+	def has_change_permission(self, request, obj=None):
+		# Access logs should not be modified once created
+		return False
+
+
+admin.site.register(DocumentAccess, DocumentAccessAdmin)
 
 
 # ============================================================

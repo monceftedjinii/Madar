@@ -4,9 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
+from django.http import FileResponse
+import os
 from ..models import (
 	Employee, User, RoleChoices, Service,
-	Document, DocumentType, DocumentHistory
+	Document, DocumentType, DocumentHistory,
+	DocumentVersion, DocumentValidation, DocumentAccess
 )
 from ..permissions import CanUploadDocument, CanValidateDocument
 from .helpers import notify, _display_name, _notify_service_users
@@ -48,11 +51,13 @@ def _serialize_document(doc, request):
 	if doc.created_by:
 		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
 		created_by_name = name or doc.created_by.email
+	current_version = doc.current_version
 	return {
 		'id': doc.id,
 		'title': doc.title,
 		'doc_type': doc.doc_type.name,
 		'doc_type_category': doc.doc_type.category,
+		'confidentiality_level': doc.confidentiality_level,
 		'status': doc.status,
 		'source_service': doc.source_service.nomService if doc.source_service else None,
 		'target_service': doc.target_service.nomService if doc.target_service else None,
@@ -60,7 +65,9 @@ def _serialize_document(doc, request):
 		'created_by_name': created_by_name,
 		'created_at': doc.created_at.isoformat() if doc.created_at else None,
 		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
-		'file_url': request.build_absolute_uri(doc.file.url) if doc.file else None,
+		'file_url': request.build_absolute_uri(current_version.file_path.url) if current_version and current_version.file_path else (request.build_absolute_uri(doc.file.url) if doc.file else None),
+		'current_version': current_version.numVersion if current_version else None,
+		'current_checksum': current_version.checksum if current_version else None,
 	}
 
 
@@ -91,6 +98,48 @@ def _can_access_comments(user, document):
 	return False
 
 
+def _get_client_ip(request):
+	"""Extract client IP address from request."""
+	x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+	if x_forwarded_for:
+		return x_forwarded_for.split(',')[0].strip()
+	return request.META.get('REMOTE_ADDR')
+
+
+def _employee_from_user(user):
+	"""Resolve employee profile from user email."""
+	if not user or not user.email:
+		return None
+	return Employee.objects.filter(email=user.email).first()
+
+
+def _initialize_validation_workflow(document):
+	"""Create a default two-step workflow (RH_SIMPLE -> RH_SENIOR/GRH) if none exists."""
+	if document.validations.exists():
+		return
+
+	validators = []
+	rh_user = User.objects.filter(role=RoleChoices.RH_SIMPLE).order_by('id').first()
+	if rh_user:
+		rh_emp = _employee_from_user(rh_user)
+		if rh_emp:
+			validators.append(rh_emp)
+
+	drh_user = User.objects.filter(role=RoleChoices.RH_SENIOR).order_by('id').first()
+	if not drh_user:
+		drh_user = User.objects.filter(role=RoleChoices.GRH).order_by('id').first()
+	if drh_user:
+		drh_emp = _employee_from_user(drh_user)
+		if drh_emp and (not validators or drh_emp.id != validators[-1].id):
+			validators.append(drh_emp)
+
+	if validators:
+		DocumentValidation.initialize_workflow(
+			document,
+			[(validator, idx + 1) for idx, validator in enumerate(validators)]
+		)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Endpoints
 # ──────────────────────────────────────────────────────────────────────────────
@@ -107,6 +156,10 @@ def upload_document(request):
 	doc_type_id = request.data.get('doc_type')
 	doc_type_name = request.data.get('type')
 	category = (request.data.get('category') or DocumentType.Category.INTERNAL).upper()
+	confidentiality_level = (request.data.get('confidentiality_level') or Document.ConfidentialityLevel.INTERNAL).upper()
+	valid_confidentiality = {choice[0] for choice in Document.ConfidentialityLevel.choices}
+	if confidentiality_level not in valid_confidentiality:
+		return Response({'detail': 'invalid confidentiality_level'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if doc_type_id:
 		try:
@@ -155,7 +208,14 @@ def upload_document(request):
 		source_service=source_service,
 		target_service=target_service,
 		created_by=request.user,
+		confidentiality_level=confidentiality_level,
 		status=Document.Status.DRAFT
+	)
+	author_employee = _employee_from_user(request.user)
+	doc.create_new_version(
+		file_obj=file_obj,
+		author=author_employee,
+		comment='Initial version'
 	)
 	_create_doc_history(doc, DocumentHistory.Action.CREATED, request.user)
 
@@ -191,6 +251,7 @@ def send_document(request, pk):
 	doc.status = Document.Status.SENT
 	doc.sent_at = timezone.now()
 	doc.save()
+	_initialize_validation_workflow(doc)
 	_create_doc_history(doc, DocumentHistory.Action.SENT, request.user)
 
 	if doc.target_service_id:
@@ -207,6 +268,40 @@ def send_document(request, pk):
 				continue
 
 	return Response({'id': doc.id, 'status': doc.status, 'sent_at': doc.sent_at.isoformat()})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def document_detail(request, pk):
+	"""Read a document metadata with permission check and access traceability."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.READ)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.READ,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.READ,
+		ip_address=ip_address,
+		result=True,
+		details='Document metadata viewed',
+	)
+
+	return Response(_serialize_document(doc, request))
 
 
 @api_view(['GET'])
@@ -418,23 +513,169 @@ def document_comments(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def validate_document(request, pk):
-	"""Validate a document (RH_SENIOR/GRH only, status → VALIDATED)."""
+	"""Approve the active validation step for a document workflow."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	if doc.status == Document.Status.VALIDATED:
-		return Response({'detail': 'already validated'}, status=status.HTTP_400_BAD_REQUEST)
-	if doc.status == Document.Status.ARCHIVED:
-		return Response({'detail': 'cannot validate archived documents'}, status=status.HTTP_400_BAD_REQUEST)
+	if doc.status in [Document.Status.ARCHIVED, Document.Status.VALIDATED, Document.Status.REJECTED]:
+		return Response({'detail': f'cannot validate document with status {doc.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
-	doc.status = Document.Status.VALIDATED
-	doc.validated_by = request.user
-	doc.validated_at = timezone.now()
-	doc.save()
-	_create_doc_history(doc, DocumentHistory.Action.VALIDATED, request.user)
-	return Response({'id': doc.id, 'status': doc.status})
+	if not doc.validations.exists():
+		_initialize_validation_workflow(doc)
+
+	active_step = doc.current_validation_step
+	if not active_step:
+		if doc.status != Document.Status.VALIDATED:
+			doc.status = Document.Status.VALIDATED
+			doc.validated_by = request.user
+			doc.validated_at = timezone.now()
+			doc.save(update_fields=['status', 'validated_by', 'validated_at'])
+		return Response({'id': doc.id, 'status': doc.status, 'detail': 'workflow already completed'})
+
+	if not active_step.validator or active_step.validator.email != request.user.email:
+		return Response({'detail': 'it is not your validation step'}, status=status.HTTP_403_FORBIDDEN)
+
+	signature = request.data.get('signature')
+	if not signature:
+		return Response({'detail': 'signature is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	next_step = active_step.validate(signature)
+	if not next_step:
+		doc.validated_by = request.user
+		doc.validated_at = timezone.now()
+		doc.save(update_fields=['validated_by', 'validated_at'])
+		_create_doc_history(doc, DocumentHistory.Action.VALIDATED, request.user, note='Final workflow approval')
+
+	return Response({
+		'id': doc.id,
+		'status': doc.status,
+		'active_step': next_step.step_order if next_step else None,
+		'detail': 'validation step approved',
+	})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, CanValidateDocument])
+def reject_document_validation(request, pk):
+	"""Reject the active validation step and stop the workflow."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	active_step = doc.current_validation_step
+	if not active_step:
+		return Response({'detail': 'no active validation step'}, status=status.HTTP_400_BAD_REQUEST)
+	if not active_step.validator or active_step.validator.email != request.user.email:
+		return Response({'detail': 'it is not your validation step'}, status=status.HTTP_403_FORBIDDEN)
+
+	reason = request.data.get('reason') or request.data.get('comment')
+	if not reason:
+		return Response({'detail': 'reason is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	active_step.reject(reason)
+	_create_doc_history(doc, DocumentHistory.Action.RETURNED, request.user, note=reason)
+	return Response({'id': doc.id, 'status': doc.status, 'detail': 'validation rejected'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def modify_document(request, pk):
+	"""Create a new document version after permission check and access logging."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.MODIFY)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.MODIFY,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	file_obj = request.FILES.get('file')
+	if not file_obj:
+		return Response({'detail': 'file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	comment = request.data.get('comment', '').strip()
+	author_employee = _employee_from_user(request.user)
+	version = doc.create_new_version(file_obj=file_obj, author=author_employee, comment=comment or 'Document modified')
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.MODIFY,
+		ip_address=ip_address,
+		result=True,
+		details=f'Created version {version.numVersion}',
+	)
+
+	return Response({
+		'detail': 'document version created',
+		'document': _serialize_document(doc, request),
+		'version': version.numVersion,
+		'checksum': version.checksum,
+	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_document(request, pk):
+	"""Download current document version with permission and integrity checks."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	ip_address = _get_client_ip(request)
+	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.DOWNLOAD)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.DOWNLOAD,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	current_version = doc.current_version
+	if not current_version or not current_version.file_path:
+		return Response({'detail': 'no current version available'}, status=status.HTTP_404_NOT_FOUND)
+
+	if not current_version.verify_integrity():
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.DOWNLOAD,
+			ip_address=ip_address,
+			result=False,
+			details=f'Integrity check failed for version {current_version.numVersion}',
+		)
+		return Response({'detail': 'integrity verification failed'}, status=status.HTTP_409_CONFLICT)
+
+	DocumentAccess.log_access(
+		document=doc,
+		user=request.user,
+		action=DocumentAccess.Action.DOWNLOAD,
+		ip_address=ip_address,
+		result=True,
+		details=f'Downloaded version {current_version.numVersion}',
+	)
+
+	file_name = os.path.basename(current_version.file_path.name)
+	response = FileResponse(current_version.file_path.open('rb'), as_attachment=True, filename=file_name)
+	return response
 
 
 @api_view(['POST'])
