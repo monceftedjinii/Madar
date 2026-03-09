@@ -51,6 +51,100 @@ class KPIResult:
         }
 
 
+@dataclass
+class Indicator:
+    label: str
+    target: float
+    unit: str
+    kpi_type: KPIType
+    filters: ReportFilter = field(default_factory=ReportFilter)
+    value: float = 0.0
+    trend: KPITrend = KPITrend.STABLE
+    evolution_history: list = field(default_factory=list)
+
+    def _build_period_filter(self, period):
+        today = timezone.now().date()
+        normalized = (period or '').lower().strip()
+
+        if normalized == 'weekly':
+            start_date = today - timedelta(days=6)
+        elif normalized == 'yearly':
+            start_date = today.replace(month=1, day=1)
+        else:
+            start_date = today.replace(day=1)
+
+        return ReportFilter(
+            start_date=start_date,
+            end_date=today,
+            service_id=self.filters.service_id,
+            contract_type=self.filters.contract_type,
+            employee_status=self.filters.employee_status,
+        )
+
+    def calculate(self, period='monthly'):
+        period_filter = self._build_period_filter(period)
+        result = StatisticsService.calculerKPI(self.kpi_type.value.lower(), filters=period_filter)
+        self.value = float(result.value)
+        self.trend = result.trend
+        return result
+
+    def getEvolution(self, months=6):
+        today = timezone.now().date()
+        evolution = []
+
+        for offset in range(months - 1, -1, -1):
+            month_number = today.month - offset
+            year = today.year
+            while month_number <= 0:
+                month_number += 12
+                year -= 1
+
+            start_date = date(year, month_number, 1)
+            if month_number == 12:
+                next_month = date(year + 1, 1, 1)
+            else:
+                next_month = date(year, month_number + 1, 1)
+            end_date = next_month - timedelta(days=1)
+
+            month_filter = ReportFilter(
+                start_date=start_date,
+                end_date=end_date,
+                service_id=self.filters.service_id,
+                contract_type=self.filters.contract_type,
+                employee_status=self.filters.employee_status,
+            )
+            result = StatisticsService.calculerKPI(self.kpi_type.value.lower(), filters=month_filter)
+            evolution.append({
+                'month': start_date.strftime('%b'),
+                'value': round(float(result.value), 2),
+            })
+
+        self.evolution_history = evolution
+        return evolution
+
+    def compareTarget(self):
+        difference = round(float(self.value) - float(self.target), 2)
+        return {
+            'label': self.label,
+            'value': round(float(self.value), 2),
+            'target': round(float(self.target), 2),
+            'difference': difference,
+            'unit': self.unit,
+            'on_target': self.value <= self.target,
+        }
+
+    def alert(self, threshold):
+        triggered = float(self.value) > float(threshold)
+        return {
+            'triggered': triggered,
+            'label': self.label,
+            'value': round(float(self.value), 2),
+            'threshold': round(float(threshold), 2),
+            'unit': self.unit,
+            'message': f'{self.label} exceeded threshold' if triggered else f'{self.label} is within threshold',
+        }
+
+
 class StatisticsService:
     """Service layer for HR KPI/statistics aggregation across modules."""
 
@@ -357,6 +451,7 @@ class StatisticsService:
             'turnover': cls.calculTurnover,
             'absenteeism': cls.calculAbsenteisme,
             'absenteisme': cls.calculAbsenteisme,
+            'performance_score': cls.calculEvaluations,
             'evaluations': cls.calculEvaluations,
         }
 
