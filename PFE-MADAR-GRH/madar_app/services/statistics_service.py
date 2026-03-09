@@ -1,10 +1,54 @@
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from enum import Enum
+from typing import Optional, Union
 from django.apps import apps
 from django.core.cache import cache
+from django.db import models
 from django.db.models import Count, Avg
 from django.utils import timezone
 
 from ..models import Employee, LeaveRequest, AbsenceWarning
+
+
+@dataclass
+class ReportFilter:
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    service_id: Optional[Union[int, str]] = None
+    contract_type: Optional[str] = None
+    employee_status: Optional[str] = None
+
+
+class KPIType(Enum):
+    EMPLOYEE_COUNT = 'EMPLOYEE_COUNT'
+    TURNOVER = 'TURNOVER'
+    ABSENTEEISM = 'ABSENTEEISM'
+    PERFORMANCE_SCORE = 'PERFORMANCE_SCORE'
+
+
+class KPITrend(Enum):
+    INCREASE = 'INCREASE'
+    DECREASE = 'DECREASE'
+    STABLE = 'STABLE'
+
+
+@dataclass
+class KPIResult:
+    type: KPIType
+    value: float
+    trend: KPITrend
+    calculation_date: date = field(default_factory=lambda: timezone.now().date())
+    details: dict = field(default_factory=dict)
+
+    def to_dict(self):
+        return {
+            'type': self.type.value,
+            'value': self.value,
+            'trend': self.trend.value,
+            'calculation_date': self.calculation_date.isoformat(),
+            'details': self.details,
+        }
 
 
 class StatisticsService:
@@ -21,20 +65,61 @@ class StatisticsService:
             return None
 
     @classmethod
+    def _normalize_filter(cls, filters=None):
+        if filters is None:
+            return ReportFilter()
+        if isinstance(filters, ReportFilter):
+            return filters
+        if isinstance(filters, dict):
+            return ReportFilter(
+                start_date=filters.get('start_date') or filters.get('date_from'),
+                end_date=filters.get('end_date') or filters.get('date_to'),
+                service_id=filters.get('service_id') or filters.get('service'),
+                contract_type=filters.get('contract_type'),
+                employee_status=filters.get('employee_status') or filters.get('statutEmploye'),
+            )
+        raise ValueError('filters must be a ReportFilter, dict, or None')
+
+    @classmethod
     def _parse_filters(cls, filters=None):
-        filters = filters or {}
+        report_filter = cls._normalize_filter(filters)
         today = timezone.now().date()
-        date_to = filters.get('date_to') or today
-        date_from = filters.get('date_from') or (date_to - timedelta(days=30))
-        service_code = filters.get('service')
-        contract_type = filters.get('contract_type')
+        date_to = report_filter.end_date or today
+        date_from = report_filter.start_date or (date_to - timedelta(days=30))
+        service_id = report_filter.service_id
+        contract_type = report_filter.contract_type
+        employee_status = (report_filter.employee_status or '').upper() or None
 
         return {
             'date_from': date_from,
             'date_to': date_to,
-            'service': service_code,
+            'service': service_id,
             'contract_type': contract_type,
+            'employee_status': employee_status,
         }
+
+    @classmethod
+    def _employee_departure_field(cls):
+        for candidate in ['left_at', 'departure_date', 'terminated_at', 'date_sortie', 'left_date']:
+            if any(field.name == candidate for field in Employee._meta.fields):
+                return candidate
+        return None
+
+    @classmethod
+    def _apply_employee_status_filter(cls, queryset, employee_status):
+        if not employee_status:
+            return queryset
+
+        departure_field = cls._employee_departure_field()
+        if not departure_field:
+            return queryset
+
+        if employee_status in ['ACTIF', 'ACTIVE']:
+            return queryset.filter(**{f'{departure_field}__isnull': True})
+        if employee_status in ['INACTIF', 'INACTIVE']:
+            return queryset.filter(**{f'{departure_field}__isnull': False})
+
+        return queryset
 
     @classmethod
     def _employee_queryset(cls, filters=None):
@@ -42,14 +127,38 @@ class StatisticsService:
         queryset = Employee.objects.all()
 
         if parsed['service']:
-            queryset = queryset.filter(service_id=parsed['service'])
+            queryset = queryset.filter(
+                models.Q(service_id=parsed['service']) | models.Q(service__id=parsed['service'])
+            )
         if parsed['contract_type']:
             queryset = queryset.filter(contract_type=parsed['contract_type'])
+        queryset = cls._apply_employee_status_filter(queryset, parsed['employee_status'])
 
         return queryset, parsed
 
     @classmethod
-    def calculEffectif(cls, filters=None):
+    def _compute_trend(cls, current_value, previous_value):
+        if current_value > previous_value:
+            return KPITrend.INCREASE
+        if current_value < previous_value:
+            return KPITrend.DECREASE
+        return KPITrend.STABLE
+
+    @classmethod
+    def _previous_period_filter(cls, parsed):
+        period_days = max((parsed['date_to'] - parsed['date_from']).days, 1)
+        prev_end = parsed['date_from'] - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=period_days)
+        return ReportFilter(
+            start_date=prev_start,
+            end_date=prev_end,
+            service_id=parsed['service'],
+            contract_type=parsed['contract_type'],
+            employee_status=parsed['employee_status'],
+        )
+
+    @classmethod
+    def _effectif_details(cls, filters=None):
         queryset, _ = cls._employee_queryset(filters)
 
         by_service = (
@@ -74,7 +183,7 @@ class StatisticsService:
         }
 
     @classmethod
-    def calculTurnover(cls, filters=None):
+    def _turnover_details(cls, filters=None):
         queryset, parsed = cls._employee_queryset(filters)
         date_from = parsed['date_from']
         date_to = parsed['date_to']
@@ -84,12 +193,7 @@ class StatisticsService:
         average_workforce = (start_headcount + end_headcount) / 2 if (start_headcount or end_headcount) else 0
 
         departures = 0
-        departure_field = None
-        for candidate in ['left_at', 'departure_date', 'terminated_at', 'date_sortie', 'left_date']:
-            if any(field.name == candidate for field in Employee._meta.fields):
-                departure_field = candidate
-                break
-
+        departure_field = cls._employee_departure_field()
         if departure_field:
             departures = queryset.filter(**{
                 f'{departure_field}__isnull': False,
@@ -108,7 +212,7 @@ class StatisticsService:
         }
 
     @classmethod
-    def calculAbsenteisme(cls, filters=None):
+    def _absenteisme_details(cls, filters=None):
         queryset, parsed = cls._employee_queryset(filters)
         date_from = parsed['date_from']
         date_to = parsed['date_to']
@@ -143,7 +247,7 @@ class StatisticsService:
         }
 
     @classmethod
-    def calculEvaluations(cls, filters=None):
+    def _evaluations_details(cls, filters=None):
         _, parsed = cls._employee_queryset(filters)
         date_from = parsed['date_from']
         date_to = parsed['date_to']
@@ -204,6 +308,46 @@ class StatisticsService:
         }
 
     @classmethod
+    def calculEffectif(cls, filters=None):
+        details = cls._effectif_details(filters)
+        parsed = cls._parse_filters(filters)
+        prev_filter = cls._previous_period_filter(parsed)
+        prev_total = cls._effectif_details(prev_filter)['total']
+        current_total = float(details['total'])
+        trend = cls._compute_trend(current_total, float(prev_total))
+        return KPIResult(type=KPIType.EMPLOYEE_COUNT, value=current_total, trend=trend, details=details)
+
+    @classmethod
+    def calculTurnover(cls, filters=None):
+        details = cls._turnover_details(filters)
+        parsed = cls._parse_filters(filters)
+        prev_filter = cls._previous_period_filter(parsed)
+        prev_rate = cls._turnover_details(prev_filter)['turnover_rate']
+        current_rate = float(details['turnover_rate'])
+        trend = cls._compute_trend(current_rate, float(prev_rate))
+        return KPIResult(type=KPIType.TURNOVER, value=current_rate, trend=trend, details=details)
+
+    @classmethod
+    def calculAbsenteisme(cls, filters=None):
+        details = cls._absenteisme_details(filters)
+        parsed = cls._parse_filters(filters)
+        prev_filter = cls._previous_period_filter(parsed)
+        prev_rate = cls._absenteisme_details(prev_filter)['absenteeism_rate']
+        current_rate = float(details['absenteeism_rate'])
+        trend = cls._compute_trend(current_rate, float(prev_rate))
+        return KPIResult(type=KPIType.ABSENTEEISM, value=current_rate, trend=trend, details=details)
+
+    @classmethod
+    def calculEvaluations(cls, filters=None):
+        details = cls._evaluations_details(filters)
+        parsed = cls._parse_filters(filters)
+        prev_filter = cls._previous_period_filter(parsed)
+        prev_value = cls._evaluations_details(prev_filter).get('global_average') or 0.0
+        current_value = details.get('global_average') or 0.0
+        trend = cls._compute_trend(float(current_value), float(prev_value))
+        return KPIResult(type=KPIType.PERFORMANCE_SCORE, value=float(current_value), trend=trend, details=details)
+
+    @classmethod
     def calculerKPI(cls, type, filters=None):
         kpi_type = (type or '').lower().strip()
 
@@ -219,39 +363,35 @@ class StatisticsService:
         if kpi_type not in mapping:
             raise ValueError(f'Unsupported KPI type: {type}')
 
-        return {
-            'kpi_type': kpi_type,
-            'data': mapping[kpi_type](filters=filters),
-        }
+        return mapping[kpi_type](filters=filters)
 
     @classmethod
     def genererGraphique(cls, type, filters=None):
         graph_type = (type or '').lower().strip()
 
         if graph_type in ['effectif_by_service', 'employee_by_service']:
-            data = cls.calculEffectif(filters=filters)
-            labels = list(data['by_service'].keys())
-            values = list(data['by_service'].values())
+            data = cls.calculEffectif(filters=filters).details
+            labels = list(data.get('by_service', {}).keys())
+            values = list(data.get('by_service', {}).values())
             return {'labels': labels, 'values': values, 'meta': {'source': 'calculEffectif'}}
 
         if graph_type in ['effectif_by_contract', 'employee_by_contract']:
-            data = cls.calculEffectif(filters=filters)
-            labels = list(data['by_contract'].keys())
-            values = list(data['by_contract'].values())
+            data = cls.calculEffectif(filters=filters).details
+            labels = list(data.get('by_contract', {}).keys())
+            values = list(data.get('by_contract', {}).values())
             return {'labels': labels, 'values': values, 'meta': {'source': 'calculEffectif'}}
 
         if graph_type in ['evaluations_by_service', 'evaluation_by_service']:
-            data = cls.calculEvaluations(filters=filters)
-            labels = list(data['by_service'].keys())
-            values = list(data['by_service'].values())
+            data = cls.calculEvaluations(filters=filters).details
+            labels = list(data.get('by_service', {}).keys())
+            values = list(data.get('by_service', {}).values())
             return {'labels': labels, 'values': values, 'meta': {'source': 'calculEvaluations'}}
 
         if graph_type in ['turnover', 'absenteeism', 'absenteisme']:
-            payload = cls.calculerKPI(graph_type, filters=filters)['data']
-            value_key = 'turnover_rate' if graph_type == 'turnover' else 'absenteeism_rate'
+            payload = cls.calculerKPI(graph_type, filters=filters)
             return {
                 'labels': [graph_type],
-                'values': [payload.get(value_key, 0)],
+                'values': [payload.value],
                 'meta': {'source': 'calculerKPI'},
             }
 
@@ -269,10 +409,10 @@ class StatisticsService:
 
         cache.delete_many(cache_keys)
 
-        cache.set(cache_keys[0], cls.calculEffectif(), cls.CACHE_TIMEOUT_SECONDS)
-        cache.set(cache_keys[1], cls.calculTurnover(), cls.CACHE_TIMEOUT_SECONDS)
-        cache.set(cache_keys[2], cls.calculAbsenteisme(), cls.CACHE_TIMEOUT_SECONDS)
-        cache.set(cache_keys[3], cls.calculEvaluations(), cls.CACHE_TIMEOUT_SECONDS)
+        cache.set(cache_keys[0], cls.calculEffectif().to_dict(), cls.CACHE_TIMEOUT_SECONDS)
+        cache.set(cache_keys[1], cls.calculTurnover().to_dict(), cls.CACHE_TIMEOUT_SECONDS)
+        cache.set(cache_keys[2], cls.calculAbsenteisme().to_dict(), cls.CACHE_TIMEOUT_SECONDS)
+        cache.set(cache_keys[3], cls.calculEvaluations().to_dict(), cls.CACHE_TIMEOUT_SECONDS)
 
         return {
             'refreshed': True,
