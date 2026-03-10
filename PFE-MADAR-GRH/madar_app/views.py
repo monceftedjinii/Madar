@@ -458,6 +458,7 @@ def department_pending_leaves(request):
 			'reason': l.reason,
 			'status': l.status,
 		}
+		for l in qs
 	]
 	return Response(data)
 
