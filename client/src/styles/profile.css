@@ -362,7 +362,14 @@
 
 .activite-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
+}
+
+.activite-table-scroll {
+  width: 100%;
+  max-height: 420px;
+  overflow: auto;
 }
 
 .activite-table thead tr {
@@ -370,6 +377,10 @@
 }
 
 .activite-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #ffffff;
   text-align: left;
   padding: 12px 22px;
   font-size: 13px;
@@ -544,6 +555,7 @@
 }
 
 .profile-page.dark .activite-table th {
+  background: #1a2035;
   color: #94a3b8;
 }
 

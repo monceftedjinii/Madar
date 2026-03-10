@@ -514,47 +514,49 @@ export default function Attendance() {
                 Aucun enregistrement de présence sur cette période.
               </div>
             ) : (
-              <table className="activite-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Entrée</th>
-                    <th>Sortie</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedRecords.map((record) => {
-                    const isComplete =
-                      record.check_in_time && record.check_out_time;
-                    const statusLabel = isComplete
-                      ? "Complet"
-                      : record.check_in_time
-                        ? "En cours"
-                        : "Absent";
-                    const statusClass = isComplete
-                      ? "badge-termine"
-                      : record.check_in_time
-                        ? "badge-attente"
-                        : "badge-absent";
+              <div className="activite-table-scroll">
+                <table className="activite-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Entrée</th>
+                      <th>Sortie</th>
+                      <th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedRecords.map((record) => {
+                      const isComplete =
+                        record.check_in_time && record.check_out_time;
+                      const statusLabel = isComplete
+                        ? "Complet"
+                        : record.check_in_time
+                          ? "En cours"
+                          : "Absent";
+                      const statusClass = isComplete
+                        ? "badge-termine"
+                        : record.check_in_time
+                          ? "badge-attente"
+                          : "badge-absent";
 
-                    return (
-                      <tr
-                        key={`${record.date}-${record.check_in_time || "none"}`}
-                      >
-                        <td>{formatDate(record.date)}</td>
-                        <td>{formatTime(record.check_in_time)}</td>
-                        <td>{formatTime(record.check_out_time)}</td>
-                        <td>
-                          <span className={`badge ${statusClass}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr
+                          key={`${record.date}-${record.check_in_time || "none"}`}
+                        >
+                          <td>{formatDate(record.date)}</td>
+                          <td>{formatTime(record.check_in_time)}</td>
+                          <td>{formatTime(record.check_out_time)}</td>
+                          <td>
+                            <span className={`badge ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
