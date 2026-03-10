@@ -402,19 +402,32 @@
   padding: 4px 14px;
   border-radius: 999px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge-attente {
-  background-color: #f5f0e0;
-  color: #92400e;
-  border: 1px solid #d8c97a;
+  background-color: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
 }
 
 .badge-termine {
-  background-color: #d8f2df;
-  color: #0b6a31;
-  border: 1px solid #7bb08a;
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.badge-absent {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.badge-absent::before {
+  content: "•";
+  margin-right: 6px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .badge-genere {

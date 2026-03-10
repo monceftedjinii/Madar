@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 
 export default function Navbar(props) {
   const { fullName, post, image, email } = props;
+  const navigate = useNavigate();
   const [fetchedProfile, setFetchedProfile] = useState({
     fullName: "",
     post: "",
@@ -71,14 +72,28 @@ export default function Navbar(props) {
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) => `pvv nav-link ${isActive ? "active-nav" : ""}`}
+            className={({ isActive }) =>
+              `pvv nav-link ${isActive ? "active-nav" : ""}`
+            }
           >
             {item.label}
           </NavLink>
         ))}
       </div>
 
-      <div className="profile-navbar">
+      <div
+        className="profile-navbar"
+        role="button"
+        tabIndex={0}
+        onClick={() => navigate("/profile")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            navigate("/profile");
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      >
         <div
           className="profile-img"
           role="img"
@@ -97,7 +112,9 @@ export default function Navbar(props) {
         <div className="profile-name">
           <h4>{resolvedName}</h4>
           <p className="text-nav account-role">{resolvedPost}</p>
-          {resolvedEmail && <p className="text-nav account-email">{resolvedEmail}</p>}
+          {resolvedEmail && (
+            <p className="text-nav account-email">{resolvedEmail}</p>
+          )}
         </div>
       </div>
     </div>
