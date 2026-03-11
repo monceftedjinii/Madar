@@ -1,11 +1,13 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import "../styles/home.css";
 import logo from "../assets/Logo_madar_holding.png";
+import useDarkModePreference from "../hooks/useDarkModePreference";
 
 export default function Home() {
+  const [dark] = useDarkModePreference();
+
   return (
-    <main className="home-simple">
+    <main className={`home-simple${dark ? " dark" : ""}`}>
       <div className="home-card">
         <img src={logo} alt="Madar Holding" className="home-logo" />
         <h1>Plateforme de gestion Madar</h1>

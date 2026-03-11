@@ -240,6 +240,30 @@ html {
 
 .login-logo:hover {
   transform: scale(1.05);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1b0b7;
+  background: #fdecef;
+  color: #9f1d2b;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.login-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: contain;
+  border: 3px solid #cfa15a; /* Madar Gold */
+  box-shadow: 0 4px 15px rgba(207, 161, 90, 0.3);
+  margin-bottom: 10px;
+  background: white;
+  padding: 8px;
+  transition: transform 0.3s ease;
+}
+
+.login-logo:hover {
+  transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(207, 161, 90, 0.5);
 }
 
@@ -288,4 +312,82 @@ html {
   .login-button {
     padding: 12px 0;
   }
+}
+
+/* Dark Mode */
+.login-page.dark {
+  background: radial-gradient(circle at top left, #0d1117, #161b22, #010409);
+  color: #c9d1d9;
+}
+
+.login-page.dark .login-page::before {
+  background: rgba(207, 161, 90, 0.1);
+}
+
+.login-page.dark .login-page::after {
+  background: rgba(35, 134, 54, 0.08);
+}
+
+.login-page.dark .login-container {
+  background: rgba(13, 17, 23, 0.8);
+  border-color: rgba(48, 54, 61, 0.7);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+.login-page.dark .login-header {
+  color: #39d353;
+}
+
+.login-page.dark .login-subheader {
+  color: #cfa15a;
+}
+
+.login-page.dark .login-logo {
+  background: #0d1117;
+  border-color: #cfa15a;
+  box-shadow: 0 4px 15px rgba(207, 161, 90, 0.2);
+}
+
+.login-page.dark .loginForm .MuiInputBase-root {
+  color: #f0f6fc !important;
+  background: rgba(48, 54, 61, 0.3);
+}
+
+.login-page.dark .loginForm .MuiInputBase-root:hover {
+  background: rgba(48, 54, 61, 0.5);
+}
+
+.login-page.dark .loginForm .MuiInputLabel-root {
+  color: #8b949e !important;
+}
+
+.login-page.dark .loginForm .MuiInputLabel-root.Mui-focused {
+  color: #39d353 !important;
+}
+
+.login-page.dark .loginForm .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(48, 54, 61, 0.8) !important;
+}
+
+.login-page.dark .loginForm .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #cfa15a !important;
+}
+
+.login-page.dark .loginForm .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #39d353 !important;
+}
+
+.login-page.dark .login-button {
+  background: linear-gradient(135deg, #238636 0%, #1a632a 100%);
+  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.2);
+}
+
+.login-page.dark .login-button:hover {
+  background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+}
+
+.login-page.dark .login-error-message {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.4);
+  color: #f85149;
 }

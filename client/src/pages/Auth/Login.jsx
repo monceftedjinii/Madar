@@ -5,7 +5,9 @@ import logo from "../../assets/logo.jfif";
 import login from "../../api/auth.api";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import useDarkModePreference from "../../hooks/useDarkModePreference";
 export default function Login() {
+  const [dark] = useDarkModePreference();
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +48,7 @@ export default function Login() {
     }
   };
   return (
-    <div className="login-page">
+    <div className={`login-page${dark ? " dark" : ""}`}>
       <div className="login-container">
         <img src={logo} alt="Madar Logo" className="login-logo" />
         <h1 className="login-header">MADAR HOLDING</h1>

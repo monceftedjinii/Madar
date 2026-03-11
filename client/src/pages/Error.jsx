@@ -2,12 +2,14 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/error.css";
 import logo from "../Assets/Logo_madar_holding.png";
+import useDarkModePreference from "../hooks/useDarkModePreference";
 
 export default function Error() {
   const navigate = useNavigate();
+  const [dark] = useDarkModePreference();
 
   return (
-    <main className="error-page">
+    <main className={`error-page${dark ? " dark" : ""}`}>
       <div className="error-card">
         <img src={logo} alt="Madar Holding" className="error-logo" />
         <span className="error-code">404</span>

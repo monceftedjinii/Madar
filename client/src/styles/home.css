@@ -74,3 +74,28 @@
     font-size: 24px;
   }
 }
+
+/* Dark Mode */
+.home-simple.dark {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  color: #c9d1d9;
+}
+
+.home-simple.dark .home-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+.home-simple.dark .home-card h1 {
+  color: #f0f6fc;
+}
+
+.home-simple.dark .home-card p {
+  color: #8b949e;
+}
+
+.home-simple.dark .home-button {
+  background: #238636;
+  box-shadow: 0 10px 24px rgba(35, 134, 54, 0.2);
+}
