@@ -28,7 +28,7 @@ def attendance_check_in(request):
 	if str(pin) != emp.attendance_pin:
 		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
 
-	now = timezone.now()
+	now = timezone.localtime()
 	today = now.date()
 
 	att, created = Attendance.objects.get_or_create(employee=emp, date=today)
@@ -63,7 +63,7 @@ def attendance_check_out(request):
 	if str(pin) != emp.attendance_pin:
 		return Response({'detail': 'Invalid PIN'}, status=status.HTTP_403_FORBIDDEN)
 
-	now = timezone.now()
+	now = timezone.localtime()
 	today = now.date()
 
 	try:
@@ -87,7 +87,7 @@ def attendance_me(request):
 	"""Return attendance records for the current employee in a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
-	today = timezone.now().date()
+	today = timezone.localdate()
 
 	from_date = datetime.fromisoformat(qfrom).date() if qfrom else today.replace(day=1)
 	to_date = datetime.fromisoformat(qto).date() if qto else today

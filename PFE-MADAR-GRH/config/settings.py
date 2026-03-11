@@ -108,7 +108,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Use local timezone for business-facing times (attendance, reports, etc.)
+TIME_ZONE = 'Africa/Algiers'
 
 USE_I18N = True
 
