@@ -5,10 +5,11 @@
   display: flex;
   flex-flow: row wrap;
   gap: 20px;
+  transition: width 0.28s ease;
 }
 
 .profile-page.nav-closed .contenu-page-mail {
-  width: 98%;
+  width: 90%;
   justify-content: center;
 }
 

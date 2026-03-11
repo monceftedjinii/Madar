@@ -25,6 +25,7 @@
   overflow-y: auto;
   position: relative;
   z-index: 20;
+  transition: margin-left 0.28s ease, width 0.28s ease;
 }
 
 .navbar-profile-page {
@@ -55,6 +56,11 @@
   flex-flow: row wrap;
   justify-content: space-between;
   align-items: center;
+  transition: width 0.28s ease;
+}
+
+.profile-page.nav-closed .profile-naaav {
+  width: 90%; /* Slight adjustment for better focus when centered */
 }
 .yasar {
   line-height: 4px;
