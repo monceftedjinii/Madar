@@ -4,8 +4,6 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import "../styles/profile.css";
 
-const getTodayISO = () => new Date().toISOString().split("T")[0];
-
 const parseISODate = (value) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -17,6 +15,8 @@ const toISODate = (value) => {
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const getTodayISO = () => toISODate(new Date());
 
 const getDatesInRange = (from, to) => {
   if (!from || !to || from > to) return [];
@@ -37,8 +37,8 @@ const getDefaultRange = () => {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   return {
-    from: firstDay.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
+    from: toISODate(firstDay),
+    to: toISODate(today),
   };
 };
 
@@ -46,7 +46,7 @@ const formatTime = (value) => (value ? value.slice(0, 5) : "--:--");
 
 const formatDate = (value) => {
   try {
-    return new Date(value).toLocaleDateString("fr-FR", {
+    return parseISODate(value).toLocaleDateString("fr-FR", {
       weekday: "short",
       day: "2-digit",
       month: "short",
@@ -244,6 +244,13 @@ export default function Attendance() {
     setPinError("");
   };
 
+  const forceClosePinModal = () => {
+    setPinModalOpen(false);
+    setPendingAction("");
+    setPinValue("");
+    setPinError("");
+  };
+
   const openPinModal = (action) => {
     setActionMessage(null);
     setPendingAction(action);
@@ -275,7 +282,56 @@ export default function Attendance() {
           ? "/api/attendance/check-in/"
           : "/api/attendance/check-out/";
 
-      await axios.post(endpoint, { pin: pinValue }, authConfig);
+      const response = await axios.post(
+        endpoint,
+        { pin: pinValue },
+        authConfig,
+      );
+
+      const today = getTodayISO();
+      const existingRecord = records.find((record) => record.date === today);
+
+      if (pendingAction === "check-in") {
+        const updatedRecord = {
+          date: today,
+          check_in_time:
+            response.data?.check_in_time ||
+            existingRecord?.check_in_time ||
+            todayRecord?.check_in_time ||
+            null,
+          check_out_time:
+            existingRecord?.check_out_time ||
+            todayRecord?.check_out_time ||
+            null,
+        };
+
+        setTodayRecord(updatedRecord);
+        setRecords((previousRecords) => {
+          const filteredRecords = previousRecords.filter(
+            (record) => record.date !== today,
+          );
+          return [...filteredRecords, updatedRecord];
+        });
+      } else {
+        const updatedRecord = {
+          date: today,
+          check_in_time:
+            existingRecord?.check_in_time || todayRecord?.check_in_time || null,
+          check_out_time:
+            response.data?.check_out_time ||
+            existingRecord?.check_out_time ||
+            todayRecord?.check_out_time ||
+            null,
+        };
+
+        setTodayRecord(updatedRecord);
+        setRecords((previousRecords) => {
+          const filteredRecords = previousRecords.filter(
+            (record) => record.date !== today,
+          );
+          return [...filteredRecords, updatedRecord];
+        });
+      }
 
       setActionMessage({
         type: "success",
@@ -285,7 +341,7 @@ export default function Attendance() {
             : "Pointage de sortie enregistré avec succès.",
       });
 
-      closePinModal();
+      forceClosePinModal();
       await Promise.all([
         fetchAttendance(appliedRange.from, appliedRange.to),
         fetchTodayAttendance(),
