@@ -101,24 +101,32 @@ export default function Tasks() {
       )}
 
       <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div className="profile-naaav">
-          <div className="yasar">
-            <h1 className="monprofile">Mes taches</h1>
-            <p className="morinfo">
-              Taches recues depuis votre chef de service et suivi de leur avancement.
-            </p>
-          </div>
-          <div className="yamin">
-            <button
-              className="nav-toggle"
-              onClick={() => setIsNavOpen((prev) => !prev)}
-              type="button"
-            >
-              {isNavOpen ? "Masquer menu" : "Afficher menu"}
-            </button>
-            <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
-              {dark ? "mode clair" : "mode sombre"}
-            </button>
+        <div
+          className={`sticky top-0 z-40 backdrop-blur ${
+            dark
+              ? "border-b border-slate-800 bg-slate-950/90"
+              : "border-b border-slate-200/80 bg-white/90"
+          }`}
+        >
+          <div className="profile-naaav">
+            <div className="yasar">
+              <h1 className="monprofile">Mes taches</h1>
+              <p className="morinfo">
+                Taches recues depuis votre chef de service et suivi de leur avancement.
+              </p>
+            </div>
+            <div className="yamin">
+              <button
+                className="nav-toggle"
+                onClick={() => setIsNavOpen((prev) => !prev)}
+                type="button"
+              >
+                {isNavOpen ? "Masquer menu" : "Afficher menu"}
+              </button>
+              <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
+                {dark ? "mode clair" : "mode sombre"}
+              </button>
+            </div>
           </div>
         </div>
 

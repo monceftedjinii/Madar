@@ -97,6 +97,29 @@
   text-decoration: none;
   color: #f4f8f6;
 }
+.nav-link.pvv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 18px;
+  box-sizing: border-box;
+}
+.nav-badge {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+  flex-shrink: 0;
+}
 .pvv:hover {
   background: rgba(20, 92, 63, 0.95);
   transform: translateY(-2px);

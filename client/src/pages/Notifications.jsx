@@ -28,7 +28,9 @@ export default function Notifications() {
     try {
       setLoading(true);
       const response = await axios.get("/api/notifications/");
-      setItems(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setItems(data);
+      window.dispatchEvent(new Event("notifications-updated"));
     } catch (error) {
       console.error("Erreur chargement notifications:", error);
       setItems([]);
@@ -55,6 +57,7 @@ export default function Notifications() {
           item.id === notificationId ? { ...item, is_read: true } : item,
         ),
       );
+      window.dispatchEvent(new Event("notifications-updated"));
       if (link) {
         window.location.assign(link);
       }
@@ -82,24 +85,32 @@ export default function Notifications() {
       )}
 
       <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div className="profile-naaav">
-          <div className="yasar">
-            <h1 className="monprofile">Notifications</h1>
-            <p className="morinfo">
-              Consultez vos alertes et les informations envoyees par la plateforme.
-            </p>
-          </div>
-          <div className="yamin">
-            <button
-              className="nav-toggle"
-              onClick={() => setIsNavOpen((prev) => !prev)}
-              type="button"
-            >
-              {isNavOpen ? "Masquer menu" : "Afficher menu"}
-            </button>
-            <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
-              {dark ? "mode clair" : "mode sombre"}
-            </button>
+        <div
+          className={`sticky top-0 z-40 backdrop-blur ${
+            dark
+              ? "border-b border-slate-800 bg-slate-950/90"
+              : "border-b border-slate-200/80 bg-white/90"
+          }`}
+        >
+          <div className="profile-naaav">
+            <div className="yasar">
+              <h1 className="monprofile">Notifications</h1>
+              <p className="morinfo">
+                Consultez vos alertes et les informations envoyees par la plateforme.
+              </p>
+            </div>
+            <div className="yamin">
+              <button
+                className="nav-toggle"
+                onClick={() => setIsNavOpen((prev) => !prev)}
+                type="button"
+              >
+                {isNavOpen ? "Masquer menu" : "Afficher menu"}
+              </button>
+              <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
+                {dark ? "mode clair" : "mode sombre"}
+              </button>
+            </div>
           </div>
         </div>
 
