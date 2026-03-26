@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
@@ -21,6 +21,8 @@ export default function Conge() {
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [editingRequestId, setEditingRequestId] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -41,26 +43,43 @@ export default function Conge() {
     fetchData();
   }, []);
 
+  const selectedLeaveType = useMemo(
+    () => leaveTypes.find((item) => item.code === form.type),
+    [form.type, leaveTypes],
+  );
+
+  const resetFormState = () => {
+    setForm({ ...initialForm, type: leaveTypes[0]?.code || "ANNUAL" });
+    setSelectedAttachment(null);
+    setEditingRequestId(null);
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
-    const date = new Date(dateStr);
+    const date = new Date(`${dateStr}T00:00:00`);
+    return date.toLocaleDateString("fr-FR");
+  };
+
+  const formatIsoDateLabel = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString("fr-FR");
   };
 
   const calculateDays = (startDate, endDate) => {
     if (!startDate || !endDate) return "-";
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
     const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
   const getStatusLabel = (status) => {
     const statusMap = {
       PENDING: "En attente",
       ACCEPTED: "Accepté",
-      REFUSED: "Refused",
+      REFUSED: "Refusé",
     };
     return statusMap[status] || status;
   };
@@ -75,46 +94,142 @@ export default function Conge() {
 
   const onChange = (event) => {
     const { name, value } = event.target;
+    setErrorMessage("");
+    setFeedback("");
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const validateForm = () => {
+    if (selectedLeaveType?.requires_attachment && !selectedAttachment) {
+      setFeedback("");
+      setErrorMessage("Un justificatif est obligatoire pour ce type de congé.");
+      return false;
+    }
+
+    if (selectedLeaveType?.notice_days && form.startDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const startDate = new Date(`${form.startDate}T00:00:00`);
+      const diffTime = startDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < selectedLeaveType.notice_days) {
+        const earliestDate = new Date(today);
+        earliestDate.setDate(today.getDate() + selectedLeaveType.notice_days);
+        setFeedback("");
+        setErrorMessage(
+          `Ce type de congé demande un préavis de ${selectedLeaveType.notice_days} jour(s). La première date possible est le ${earliestDate.toLocaleDateString("fr-FR")}.`,
+        );
+        return false;
+      }
+    }
+
+    if (form.endDate < form.startDate) {
+      setFeedback("");
+      setErrorMessage(
+        "La date de fin doit être supérieure ou égale à la date de début.",
+      );
+      return false;
+    }
+
+    return true;
   };
 
   const onSubmit = async (event) => {
     event.preventDefault();
     if (!form.startDate || !form.endDate || !form.reason.trim()) return;
-    const currentType = leaveTypes.find((item) => item.code === form.type);
-
-    if (currentType?.requires_attachment && !selectedAttachment) {
-      alert("Un justificatif est obligatoire pour ce type de congé.");
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setIsSubmitting(true);
       setFeedback("");
+      setErrorMessage("");
+
       const payload = new FormData();
       payload.append("type", form.type);
       payload.append("start_date", form.startDate);
       payload.append("end_date", form.endDate);
       payload.append("reason", form.reason);
+
       if (selectedAttachment) {
         payload.append("attachment", selectedAttachment);
       }
 
-      await axios.post("/api/leaves/", payload, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      if (editingRequestId) {
+        await axios.patch(`/api/leaves/${editingRequestId}/update/`, payload, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setFeedback("Demande de congé modifiée avec succès.");
+      } else {
+        await axios.post("/api/leaves/", payload, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setFeedback("Demande de congé envoyée avec succès.");
+      }
 
       await fetchData();
-      setForm({ ...initialForm, type: leaveTypes[0]?.code || "ANNUAL" });
-      setSelectedAttachment(null);
-      setFeedback("Demande de congé envoyée avec succès.");
+      resetFormState();
     } catch (err) {
       console.error("Error submitting leave request:", err);
-      const errorMessage =
-        err?.response?.data?.detail || "Erreur lors de l'envoi de la demande";
-      alert(errorMessage);
+      const errorData = err?.response?.data;
+
+      if (errorData?.code === "NOTICE_PERIOD_NOT_RESPECTED") {
+        const earliestDate = formatIsoDateLabel(errorData.earliest_start_date);
+        setErrorMessage(
+          `Préavis non respecté: ${errorData.required_notice_days} jour(s) requis.${earliestDate ? ` Première date possible: ${earliestDate}.` : ""}`,
+        );
+      } else {
+        setErrorMessage(
+          errorData?.detail || "Erreur lors de l'envoi de la demande.",
+        );
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const startEditingRequest = (requestItem) => {
+    setFeedback("");
+    setErrorMessage("");
+    setEditingRequestId(requestItem.id);
+    setSelectedAttachment(null);
+    setForm({
+      type: requestItem.type,
+      startDate: requestItem.start_date,
+      endDate: requestItem.end_date,
+      reason: requestItem.reason || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEditing = () => {
+    setFeedback("");
+    setErrorMessage("");
+    resetFormState();
+  };
+
+  const cancelPendingRequest = async (requestId) => {
+    const confirmed = window.confirm(
+      "Voulez-vous vraiment annuler cette demande de congé ?",
+    );
+    if (!confirmed) return;
+
+    try {
+      setFeedback("");
+      setErrorMessage("");
+      await axios.post(`/api/leaves/${requestId}/cancel/`);
+      if (editingRequestId === requestId) {
+        resetFormState();
+      }
+      await fetchData();
+      setFeedback("Demande de congé annulée avec succès.");
+    } catch (err) {
+      console.error("Error canceling leave request:", err);
+      setErrorMessage(
+        err?.response?.data?.detail ||
+          "Erreur lors de l'annulation de la demande.",
+      );
     }
   };
 
@@ -125,6 +240,7 @@ export default function Conge() {
         value: `${item.joursRestants} jours`,
       }));
     }
+
     return [
       { label: "Solde annuel", value: "0 jours" },
       { label: "Congé maladie", value: "0 jours" },
@@ -151,8 +267,10 @@ export default function Conge() {
         <div style={{ borderBottom: "1px solid rgba(0, 0, 0, 0.1)" }}>
           <div className="profile-naaav">
             <div className="yasar">
-              <h3 className="monprofile">Gestion des conges</h3>
-              <p className="morinfo">Demande, suivi et historique des conges</p>
+              <h3 className="monprofile">Gestion des congés</h3>
+              <p className="morinfo">
+                Demande, suivi et historique des congés
+              </p>
             </div>
             <div className="yamin">
               <button
@@ -182,7 +300,7 @@ export default function Conge() {
                   <div className="status">Actif</div>
                 </div>
                 <p>
-                  Consultez vos soldes et deposez une nouvelle demande de conge.
+                  Consultez vos soldes et déposez une nouvelle demande de congé.
                 </p>
                 <div>
                   {balancesDisplay.map((item) => (
@@ -198,11 +316,18 @@ export default function Conge() {
           <div className="infopro-infoper">
             <div className="info-per">
               <div className="top">
-                <h3 className="title">Nouvelle demande</h3>
+                <h3 className="title">
+                  {editingRequestId
+                    ? "Modifier la demande"
+                    : "Nouvelle demande"}
+                </h3>
                 <p className="desc">
-                  Remplissez le formulaire pour envoyer votre demande
+                  {editingRequestId
+                    ? "Mettez à jour votre demande en attente."
+                    : "Remplissez le formulaire pour envoyer votre demande"}
                 </p>
               </div>
+
               {feedback && (
                 <div
                   style={{
@@ -212,6 +337,18 @@ export default function Conge() {
                   }}
                 >
                   {feedback}
+                </div>
+              )}
+
+              {errorMessage && (
+                <div
+                  style={{
+                    padding: "12px 22px 0",
+                    color: "#b91c1c",
+                    fontWeight: 600,
+                  }}
+                >
+                  {errorMessage}
                 </div>
               )}
 
@@ -225,7 +362,7 @@ export default function Conge() {
                   style={{ gridTemplateColumns: "1fr 1fr" }}
                 >
                   <label>
-                    Type de conge
+                    Type de congé
                     <select name="type" value={form.type} onChange={onChange}>
                       {leaveTypes.map((lt) => (
                         <option key={lt.code} value={lt.code}>
@@ -233,9 +370,15 @@ export default function Conge() {
                         </option>
                       ))}
                     </select>
+                    {selectedLeaveType?.notice_days > 0 && (
+                      <span style={{ fontSize: 12, color: "#1d4ed8" }}>
+                        Préavis requis: {selectedLeaveType.notice_days} jour(s).
+                      </span>
+                    )}
                   </label>
+
                   <label>
-                    Date de debut
+                    Date de début
                     <input
                       type="date"
                       name="startDate"
@@ -244,6 +387,7 @@ export default function Conge() {
                       required
                     />
                   </label>
+
                   <label>
                     Date de fin
                     <input
@@ -254,6 +398,7 @@ export default function Conge() {
                       required
                     />
                   </label>
+
                   <label style={{ gridColumn: "1 / -1" }}>
                     Motif
                     <input
@@ -261,43 +406,63 @@ export default function Conge() {
                       name="reason"
                       value={form.reason}
                       onChange={onChange}
-                      placeholder="Ex: conge familial"
+                      placeholder="Ex: congé familial"
                       required
                     />
                   </label>
+
                   <label style={{ gridColumn: "1 / -1" }}>
                     Justificatif
                     <input
                       type="file"
                       name="attachment"
-                      onChange={(event) =>
-                        setSelectedAttachment(event.target.files?.[0] || null)
-                      }
+                      onChange={(event) => {
+                        setErrorMessage("");
+                        setFeedback("");
+                        setSelectedAttachment(event.target.files?.[0] || null);
+                      }}
                     />
-                    {leaveTypes.find((item) => item.code === form.type)
-                      ?.requires_attachment && (
+                    {selectedLeaveType?.requires_attachment && (
                       <span style={{ fontSize: 12, color: "#b45309" }}>
                         Ce type de congé nécessite un justificatif.
                       </span>
                     )}
                   </label>
                 </div>
-                <div className="profile-edit-actions">
+
+                <div
+                  className="profile-edit-actions"
+                  style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                >
                   <button
                     className="btn-save"
                     type="submit"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Envoi..." : "Envoyer la demande"}
+                    {isSubmitting
+                      ? "Envoi..."
+                      : editingRequestId
+                        ? "Enregistrer les modifications"
+                        : "Envoyer la demande"}
                   </button>
+                  {editingRequestId && (
+                    <button
+                      type="button"
+                      className="btn-save"
+                      onClick={cancelEditing}
+                      style={{ background: "#475569" }}
+                    >
+                      Annuler la modification
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
 
             <div className="info-pro">
               <div className="top">
-                <h3 className="title">Soldes de conges</h3>
-                <p className="desc">Etat courant de vos droits</p>
+                <h3 className="title">Soldes de congés</h3>
+                <p className="desc">État courant de vos droits</p>
               </div>
               {balancesDisplay.map((item) => (
                 <div key={item.label}>
@@ -312,24 +477,24 @@ export default function Conge() {
             <div className="activite-top">
               <h3 className="activite-title">Historique des demandes</h3>
               <p className="activite-subtitle">
-                Dernieres demandes enregistrees
+                Dernières demandes enregistrées
               </p>
             </div>
             <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Periode</th>
+                  <th>Période</th>
                   <th>Type</th>
                   <th>Jours</th>
                   <th>Statut</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      {formatDate(item.start_date)} -{" "}
-                      {formatDate(item.end_date)}
+                      {formatDate(item.start_date)} - {formatDate(item.end_date)}
                     </td>
                     <td>{item.type_label || item.type}</td>
                     <td>{calculateDays(item.start_date, item.end_date)}</td>
@@ -337,6 +502,46 @@ export default function Conge() {
                       <span className={`badge ${getStatusClass(item.status)}`}>
                         {getStatusLabel(item.status)}
                       </span>
+                    </td>
+                    <td>
+                      {item.status === "PENDING" ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="btn-save"
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 13,
+                              background: "#2563eb",
+                            }}
+                            onClick={() => startEditingRequest(item)}
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-save"
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 13,
+                              background: "#dc2626",
+                            }}
+                            onClick={() => cancelPendingRequest(item.id)}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: "#64748b", fontSize: 13 }}>
+                          Aucune action
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -52,7 +52,16 @@ def create_leave(request):
 		return Response({'detail': 'attachment required for this leave type'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if leave_type.delaiPreavis and (sd - date.today()).days < leave_type.delaiPreavis:
-		return Response({'detail': f'notice period not respected: {leave_type.delaiPreavis} day(s) required'}, status=status.HTTP_400_BAD_REQUEST)
+		earliest_date = date.today() + timedelta(days=leave_type.delaiPreavis)
+		return Response(
+			{
+				'detail': f"délai de préavis non respecté : {leave_type.delaiPreavis} jour(s) requis",
+				'code': 'NOTICE_PERIOD_NOT_RESPECTED',
+				'required_notice_days': leave_type.delaiPreavis,
+				'earliest_start_date': earliest_date.isoformat(),
+			},
+			status=status.HTTP_400_BAD_REQUEST
+		)
 
 	# Block if employee has a pending request or ongoing approved leave
 	today = date.today()
@@ -119,6 +128,88 @@ def my_leaves(request):
 		for l in qs
 	]
 	return Response(data)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_my_leave(request, pk):
+	"""Allow an employee to modify their own pending leave request."""
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		leave = LeaveRequest.objects.select_related('type').get(id=pk, employee=emp)
+	except LeaveRequest.DoesNotExist:
+		return Response({'detail': 'leave request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if leave.status != LeaveRequest.Status.PENDING:
+		return Response({'detail': 'only pending leave requests can be modified'}, status=status.HTTP_400_BAD_REQUEST)
+
+	ltype_code = request.data.get('type', leave.type.code)
+	start_date = request.data.get('start_date', leave.start_date.isoformat())
+	end_date = request.data.get('end_date', leave.end_date.isoformat())
+	reason = request.data.get('reason', leave.reason or '')
+
+	leave_type = LeaveType.objects.filter(code=ltype_code).first()
+	if not leave_type:
+		return Response({'detail': 'invalid leave type'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		sd = date.fromisoformat(start_date)
+		ed = date.fromisoformat(end_date)
+	except Exception:
+		return Response({'detail': 'invalid date format, use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if ed < sd:
+		return Response({'detail': 'end_date must be the same or after start_date'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if leave_type.justificatifRequis and not request.FILES.get('attachment') and not leave.attachment:
+		return Response({'detail': 'attachment required for this leave type'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if leave_type.delaiPreavis and (sd - date.today()).days < leave_type.delaiPreavis:
+		earliest_date = date.today() + timedelta(days=leave_type.delaiPreavis)
+		return Response(
+			{
+				'detail': f"délai de préavis non respecté : {leave_type.delaiPreavis} jour(s) requis",
+				'code': 'NOTICE_PERIOD_NOT_RESPECTED',
+				'required_notice_days': leave_type.delaiPreavis,
+				'earliest_start_date': earliest_date.isoformat(),
+			},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+
+	leave.type = leave_type
+	leave.start_date = sd
+	leave.end_date = ed
+	leave.reason = reason
+	if request.FILES.get('attachment'):
+		leave.attachment = request.FILES.get('attachment')
+	leave.save()
+
+	return Response({'id': leave.id, 'detail': 'leave request updated'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_my_leave(request, pk):
+	"""Allow an employee to cancel their own pending leave request."""
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		leave = LeaveRequest.objects.get(id=pk, employee=emp)
+	except LeaveRequest.DoesNotExist:
+		return Response({'detail': 'leave request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if leave.status != LeaveRequest.Status.PENDING:
+		return Response({'detail': 'only pending leave requests can be canceled'}, status=status.HTTP_400_BAD_REQUEST)
+
+	leave.delete()
+	return Response({'detail': 'leave request canceled'})
 
 
 @api_view(['GET'])
