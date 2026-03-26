@@ -67,6 +67,12 @@ export default function Conge() {
     return date.toLocaleDateString("fr-FR");
   };
 
+  const formatDaysValue = (value) => {
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue)) return value;
+    return Number.isInteger(numericValue) ? String(numericValue) : String(value);
+  };
+
   const calculateDays = (startDate, endDate) => {
     if (!startDate || !endDate) return "-";
     const start = new Date(`${startDate}T00:00:00`);
@@ -237,7 +243,7 @@ export default function Conge() {
     if (balances.length > 0) {
       return balances.map((item) => ({
         label: item.type_label || item.type_code,
-        value: `${item.joursRestants} jours`,
+        value: `${formatDaysValue(item.joursRestants)} jours`,
       }));
     }
 
