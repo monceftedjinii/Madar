@@ -49,6 +49,28 @@ def get_user_display_name(user):
     # Final fallback to email
     return user.email
 
+
+def notify_new_message(recipient, sender, subject, kind="message"):
+    """Create an in-app notification for a new messaging event."""
+    sender_name = get_user_display_name(sender)
+
+    if kind == "reply":
+        title = "Nouvelle reponse"
+        message = f"{sender_name} vous a repondu : {subject}"
+    elif kind == "forward":
+        title = "Message transfere"
+        message = f"{sender_name} vous a transfere un message : {subject}"
+    else:
+        title = "Nouveau message"
+        message = f"{sender_name} vous a envoye un message : {subject}"
+
+    notify(
+        recipient,
+        title=title,
+        message=message,
+        link="/messagerie",
+    )
+
 def serialize_message(msg, requesting_user=None):
     """Serialize a message with attachments and report status."""
     data = {
@@ -393,6 +415,8 @@ def send_message(request):
             logger.error(f'send_message: {error_msg}')
     
     logger.info(f'send_message: completed - message {msg.id} with {attachment_count}/{len(files)} attachments')
+
+    notify_new_message(recipient, request.user, subject, kind="message")
     
     return Response({
         'id': msg.id,
@@ -444,6 +468,8 @@ def reply_message(request, pk):
     )
     
     logger.info(f'reply_message: reply {reply_msg.id} to message {parent_msg.id}')
+
+    notify_new_message(reply_recipient, request.user, reply_msg.subject, kind="reply")
     
     return Response({'id': reply_msg.id}, status=status.HTTP_201_CREATED)
 
@@ -483,6 +509,8 @@ def forward_message(request, pk):
     )
     
     logger.info(f'forward_message: forwarded message {original_msg.id} to {forwarded_msg.id}')
+
+    notify_new_message(new_recipient, request.user, forwarded_msg.subject, kind="forward")
     
     return Response({'id': forwarded_msg.id}, status=status.HTTP_201_CREATED)
 

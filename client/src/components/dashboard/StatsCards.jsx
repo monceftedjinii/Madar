@@ -26,15 +26,22 @@ const colorMap = {
   score: "bg-violet-50 text-violet-600",
 };
 
-function StatCard({ item }) {
+function StatCard({ item, dark = false }) {
   const Icon = iconMap[item.id];
+  const cardClass = dark
+    ? "group rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+    : "group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg";
 
   return (
-    <article className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+    <article className={cardClass}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-500">{item.label}</p>
-          <h3 className="mt-3 text-3xl font-bold text-slate-900">{item.value}</h3>
+          <p className={`text-sm font-medium ${dark ? "text-slate-300" : "text-slate-500"}`}>
+            {item.label}
+          </p>
+          <h3 className={`mt-3 text-3xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+            {item.value}
+          </h3>
           <p className="mt-2 text-xs text-slate-400">{item.helper}</p>
         </div>
         <div
@@ -47,11 +54,11 @@ function StatCard({ item }) {
   );
 }
 
-export default function StatsCards({ items }) {
+export default function StatsCards({ items, dark = false }) {
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
       {items.map((item) => (
-        <StatCard key={item.id} item={item} />
+        <StatCard key={item.id} dark={dark} item={item} />
       ))}
     </section>
   );

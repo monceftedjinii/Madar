@@ -1,5 +1,6 @@
 const statusStyles = {
   Terminée: "bg-emerald-100 text-emerald-700",
+  "TerminÃ©e": "bg-emerald-100 text-emerald-700",
   "En cours": "bg-blue-100 text-blue-700",
   "En retard": "bg-rose-100 text-rose-700",
   "En attente": "bg-amber-100 text-amber-700",
@@ -11,12 +12,18 @@ const priorityStyles = {
   Basse: "text-emerald-600",
 };
 
-export default function TasksTable({ rows }) {
+export default function TasksTable({ rows, dark = false }) {
+  const cardClass = dark
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm"
+    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <article className={cardClass}>
       <div className="mb-5">
-        <h3 className="text-lg font-bold text-slate-900">Tâches assignées</h3>
-        <p className="mt-1 text-sm text-slate-500">
+        <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+          Tâches assignées
+        </h3>
+        <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
           Suivez rapidement le statut, la priorité et l'avancement de vos tâches.
         </p>
       </div>
@@ -34,30 +41,40 @@ export default function TasksTable({ rows }) {
           </thead>
           <tbody>
             {rows.map((task) => (
-              <tr key={task.id} className="rounded-2xl bg-slate-50">
-                <td className="rounded-l-2xl px-3 py-4 text-sm font-semibold text-slate-800">
+              <tr key={task.id} className={dark ? "rounded-2xl bg-slate-800" : "rounded-2xl bg-slate-50"}>
+                <td
+                  className={`rounded-l-2xl px-3 py-4 text-sm font-semibold ${
+                    dark ? "text-slate-100" : "text-slate-800"
+                  }`}
+                >
                   {task.name}
                 </td>
                 <td className={`px-3 py-4 text-sm font-semibold ${priorityStyles[task.priority]}`}>
                   {task.priority}
                 </td>
-                <td className="px-3 py-4 text-sm text-slate-600">{task.deadline}</td>
+                <td className={`px-3 py-4 text-sm ${dark ? "text-slate-300" : "text-slate-600"}`}>
+                  {task.deadline}
+                </td>
                 <td className="px-3 py-4 text-sm">
                   <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[task.status]}`}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      statusStyles[task.status] || "bg-slate-200 text-slate-700"
+                    }`}
                   >
                     {task.status}
                   </span>
                 </td>
                 <td className="rounded-r-2xl px-3 py-4">
                   <div className="flex min-w-[160px] items-center gap-3">
-                    <div className="h-2 flex-1 rounded-full bg-slate-200">
+                    <div className={`h-2 flex-1 rounded-full ${dark ? "bg-slate-700" : "bg-slate-200"}`}>
                       <div
                         className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
                         style={{ width: `${task.progress}%` }}
                       />
                     </div>
-                    <span className="text-sm font-semibold text-slate-700">{task.progress}%</span>
+                    <span className={`text-sm font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>
+                      {task.progress}%
+                    </span>
                   </div>
                 </td>
               </tr>

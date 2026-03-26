@@ -43,10 +43,10 @@ const emptyDashboard = {
     overallProgress: 0,
     finalScore: 0,
     topSkill: "",
-    statusLabel: "À améliorer",
+    statusLabel: "A ameliorer",
   },
   header: {
-    department: "Non renseigné",
+    department: "Non renseigne",
     monthLabel: "",
     monthValue: "",
   },
@@ -77,10 +77,11 @@ const emptyDashboard = {
 };
 
 const statusOrder = {
-  Terminée: 0,
+  "Terminée": 0,
   "En cours": 1,
   "En attente": 2,
   "En retard": 3,
+  "TerminÃ©e": 0,
 };
 
 export default function Dashboard() {
@@ -131,10 +132,26 @@ export default function Dashboard() {
   const orderedTasks = useMemo(
     () =>
       [...dashboardData.tasks].sort(
-        (left, right) => statusOrder[left.status] - statusOrder[right.status],
+        (left, right) =>
+          (statusOrder[left.status] ?? 99) - (statusOrder[right.status] ?? 99),
       ),
     [dashboardData.tasks],
   );
+
+  const stickyHeaderClass = dark
+    ? "border-b border-slate-800 bg-slate-950/90"
+    : "border-b border-slate-200/80 bg-white/90";
+
+  const topButtonClass = dark
+    ? "border border-slate-700 bg-slate-900 text-slate-100"
+    : "border border-slate-200 bg-white text-slate-700";
+
+  const chartCardClass = dark
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm"
+    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+
+  const chartTitleClass = dark ? "text-lg font-bold text-slate-50" : "text-lg font-bold text-slate-900";
+  const chartTextClass = dark ? "mt-1 text-sm text-slate-300" : "mt-1 text-sm text-slate-500";
 
   return (
     <div
@@ -158,27 +175,27 @@ export default function Dashboard() {
       )}
 
       <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+        <div className={`sticky top-0 z-40 backdrop-blur ${stickyHeaderClass}`}>
           <div className="mx-auto flex w-[96%] flex-wrap items-center justify-between gap-4 py-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
                 Espace RH moderne
               </p>
-              <h2 className="text-xl font-bold text-slate-900">
-                Tableau de bord employé
+              <h2 className={`text-xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                Tableau de bord employe
               </h2>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <button
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${topButtonClass}`}
                 onClick={() => setIsNavOpen((prev) => !prev)}
                 type="button"
               >
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
               <button
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${topButtonClass}`}
                 onClick={() => setDark((prev) => !prev)}
                 type="button"
               >
@@ -190,16 +207,18 @@ export default function Dashboard() {
 
         <main className="mx-auto flex w-[96%] flex-col gap-6 py-6">
           <DashboardHeader
+            dark={dark}
             monthLabel={dashboardData.header.monthLabel}
             monthValue={dashboardData.header.monthValue || selectedMonth}
             monthOptions={monthOptions}
             onMonthChange={setSelectedMonth}
           />
-          <StatsCards items={dashboardData.stats} />
+          <StatsCards dark={dark} items={dashboardData.stats} />
 
           <section className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
-            <EmployeeSummaryCard employee={dashboardData.profile} />
+            <EmployeeSummaryCard dark={dark} employee={dashboardData.profile} />
             <MonthlyScoreCard
+              dark={dark}
               achievement={dashboardData.scoreInsights.achievement}
               improvement={dashboardData.scoreInsights.improvement}
               score={dashboardData.profile.finalScore}
@@ -207,13 +226,11 @@ export default function Dashboard() {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <article className={chartCardClass}>
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Performance hebdomadaire
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h3 className={chartTitleClass}>Performance hebdomadaire</h3>
+                  <p className={chartTextClass}>
                     Vue de votre performance semaine par semaine.
                   </p>
                 </div>
@@ -226,14 +243,12 @@ export default function Dashboard() {
               </div>
             </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <article className={chartCardClass}>
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Progression mensuelle
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Suivez l'évolution de votre progression sur le mois.
+                  <h3 className={chartTitleClass}>Progression mensuelle</h3>
+                  <p className={chartTextClass}>
+                    Suivez l evolution de votre progression sur le mois.
                   </p>
                 </div>
                 <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
@@ -247,14 +262,12 @@ export default function Dashboard() {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <article className={chartCardClass}>
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Répartition des tâches
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Répartition entre tâches terminées, en attente et en retard.
+                  <h3 className={chartTitleClass}>Repartition des taches</h3>
+                  <p className={chartTextClass}>
+                    Repartition entre taches terminees, en attente et en retard.
                   </p>
                 </div>
                 <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
@@ -266,14 +279,12 @@ export default function Dashboard() {
               </div>
             </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <article className={chartCardClass}>
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Radar des compétences
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Principales compétences observées sur le mois.
+                  <h3 className={chartTitleClass}>Radar des competences</h3>
+                  <p className={chartTextClass}>
+                    Principales competences observees sur le mois.
                   </p>
                 </div>
                 <div className="rounded-2xl bg-violet-50 p-3 text-violet-600">
@@ -286,8 +297,9 @@ export default function Dashboard() {
             </article>
           </section>
 
-          <TasksTable rows={orderedTasks} />
+          <TasksTable dark={dark} rows={orderedTasks} />
           <ActivityPanels
+            dark={dark}
             hrRequests={dashboardData.panels.hrRequests}
             notifications={dashboardData.panels.notifications}
             planning={dashboardData.panels.planning}
