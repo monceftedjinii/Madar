@@ -1,482 +1,123 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
-import DonutLargeOutlinedIcon from "@mui/icons-material/DonutLargeOutlined";
-import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
-import RadarOutlinedIcon from "@mui/icons-material/RadarOutlined";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
-import ActivityPanels from "../../components/dashboard/ActivityPanels";
-import DashboardHeader from "../../components/dashboard/DashboardHeader";
-import EmployeeSummaryCard from "../../components/dashboard/EmployeeSummaryCard";
-import MonthlyScoreCard from "../../components/dashboard/MonthlyScoreCard";
-import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
-import ProgressLineChart from "../../components/dashboard/ProgressLineChart";
-import SkillsRadarChart from "../../components/dashboard/SkillsRadarChart";
-import StatsCards from "../../components/dashboard/StatsCards";
-import TasksDoughnutChart from "../../components/dashboard/TasksDoughnutChart";
-import TasksTable from "../../components/dashboard/TasksTable";
-import {
-  employeeInfo,
-  hrRequests as mockHrRequests,
-  monthlyProgress as mockMonthlyProgress,
-  monthlyScoreInsights,
-  notifications as mockNotifications,
-  planning as mockPlanning,
-  quickMessages as mockQuickMessages,
-  skillsData as mockSkillsData,
-  tasks as mockTasks,
-  weeklyPerformance as mockWeeklyPerformance,
-} from "../../data/dashboardMock";
+import "../../styles/profile.css";
 
-const statusOrder = {
-  Terminée: 0,
-  "En cours": 1,
-  "En attente": 2,
-  "En retard": 3,
+const emptyDashboard = {
+  profile: {
+    fullName: "",
+    role: "",
+    department: "",
+    email: "",
+    avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+    attendanceRate: 0,
+    overallProgress: 0,
+    finalScore: 0,
+    topSkill: "",
+    statusLabel: "A ameliorer",
+  },
+  header: {
+    department: "Non renseigne",
+    monthLabel: "",
+  },
+  stats: [],
+  charts: {
+    weeklyPerformance: [],
+    monthlyProgress: [],
+    taskBreakdown: { completed: 0, pending: 0, late: 0 },
+    skills: {
+      punctuality: 0,
+      productivity: 0,
+      teamwork: 0,
+      discipline: 0,
+      qualityOfWork: 0,
+    },
+  },
+  scoreInsights: {
+    achievement: "",
+    improvement: "",
+  },
+  tasks: [],
+  panels: {
+    planning: [],
+    notifications: [],
+    hrRequests: [],
+    quickMessages: [],
+  },
 };
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+const scoreLabelMap = {
+  Excellent: "Excellent",
+  Bon: "Bon",
+  Moyen: "Moyen",
+  "A ameliorer": "A ameliorer",
+  "À améliorer": "A ameliorer",
+};
+
+function formatDate(value) {
+  if (!value || value === "-") return "-";
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("fr-FR");
 }
 
-function formatMonthLabel(date = new Date()) {
-  return date.toLocaleDateString("fr-FR", {
-    month: "long",
-    year: "numeric",
-  });
+function getStatusBadgeClass(status) {
+  if (status === "Terminée") return "badge-termine";
+  if (status === "En retard") return "badge-refuse";
+  return "badge-attente";
 }
 
-function getTaskPriority(dueDate) {
-  if (!dueDate) return "Moyenne";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(`${dueDate}T00:00:00`);
-  const diffDays = Math.ceil(
-    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  if (diffDays <= 1) return "Haute";
-  if (diffDays <= 4) return "Moyenne";
-  return "Basse";
-}
-
-function mapTaskStatus(task) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueDate = task?.due_date ? new Date(`${task.due_date}T00:00:00`) : null;
-
-  if (task.status === "DONE") return "Terminée";
-  if (dueDate && dueDate < today) return "En retard";
-  if (dueDate) {
-    const diffDays = Math.ceil(
-      (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (diffDays <= 2) return "En cours";
+function getPlanningDotClass(item) {
+  if (item?.title?.toLowerCase().includes("pointage")) {
+    return "dashboard-planning-dot work";
   }
-  return "En attente";
-}
-
-function getTaskProgress(task, statusLabel) {
-  if (statusLabel === "Terminée") return 100;
-  if (statusLabel === "En retard") return 80;
-  if (statusLabel === "En cours") return 65;
-  return task.due_date ? 35 : 20;
-}
-
-function buildWeeklyPerformance(tasks, attendanceRate) {
-  const completedTasks = tasks.filter((task) => task.status === "Terminée").length;
-  const totalTasks = tasks.length || 1;
-  const completionRate = Math.round((completedTasks / totalTasks) * 100);
-  const base = Math.round((attendanceRate + completionRate) / 2);
-
-  return [base - 8, base - 2, base + 3, base + 7].map((value) =>
-    clamp(value, 35, 100),
-  );
-}
-
-function buildMonthlyProgress(weeklyValues) {
-  const first = Math.max(18, weeklyValues[0] - 20);
-  return [
-    first,
-    weeklyValues[0] - 8,
-    weeklyValues[0],
-    weeklyValues[1] - 4,
-    weeklyValues[1],
-    weeklyValues[2] - 3,
-    weeklyValues[2],
-    weeklyValues[3],
-  ].map((value) => clamp(value, 15, 100));
+  if (item?.subtitle?.toLowerCase().includes("priorite haute")) {
+    return "dashboard-planning-dot deadline";
+  }
+  if (item?.title?.toLowerCase().includes("presence")) {
+    return "dashboard-planning-dot work";
+  }
+  return "dashboard-planning-dot task";
 }
 
 export default function Dashboard() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
-  const [searchValue, setSearchValue] = useState("");
-  const [dashboardData, setDashboardData] = useState({
-    profile: null,
-    tasks: [],
-    attendance: [],
-    notifications: [],
-    leaves: [],
-    inboxMessages: [],
-    announcements: [],
-  });
+  const [dashboardData, setDashboardData] = useState(emptyDashboard);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [
-          profileRes,
-          tasksRes,
-          attendanceRes,
-          notificationsRes,
-          leavesRes,
-          inboxRes,
-          announcementsRes,
-        ] = await Promise.all([
-          axios.get("/api/whoami/"),
-          axios.get("/api/tasks/me/"),
-          axios.get("/api/attendance/me/"),
-          axios.get("/api/notifications/"),
-          axios.get("/api/leaves/me/"),
-          axios.get("/api/messages/inbox/"),
-          axios.get("/api/announcements/"),
-        ]);
-
-        setDashboardData({
-          profile: profileRes.data,
-          tasks: Array.isArray(tasksRes.data) ? tasksRes.data : [],
-          attendance: Array.isArray(attendanceRes.data) ? attendanceRes.data : [],
-          notifications: Array.isArray(notificationsRes.data)
-            ? notificationsRes.data
-            : [],
-          leaves: Array.isArray(leavesRes.data) ? leavesRes.data : [],
-          inboxMessages: inboxRes.data?.messages || [],
-          announcements: announcementsRes.data?.announcements || [],
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        setLoading(true);
+        setError("");
+        const response = await axios.get("/api/dashboard/employee/");
+        setDashboardData({ ...emptyDashboard, ...response.data });
+      } catch (requestError) {
+        console.error("Erreur chargement dashboard employe:", requestError);
+        setError(
+          requestError?.response?.data?.detail ||
+            requestError?.response?.data?.error ||
+            "Impossible de charger le dashboard depuis le backend.",
+        );
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchDashboardData();
   }, []);
 
-  const employee = useMemo(() => {
-    const profile = dashboardData.profile;
-    if (!profile) {
-      const finalScore = employeeInfo.finalScore;
-      const statusLabel =
-        finalScore >= 16
-          ? "Excellent"
-          : finalScore >= 12
-            ? "Bon"
-            : finalScore >= 8
-              ? "Moyen"
-              : "À améliorer";
-
-      return {
-        ...employeeInfo,
-        statusLabel,
-      };
-    }
-
-    const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
-    const attendanceTotal = dashboardData.attendance.length;
-    const attendanceCompleted = dashboardData.attendance.filter(
-      (item) => item.check_in_time && item.check_out_time,
-    ).length;
-    const attendanceRate = attendanceTotal
-      ? Math.round((attendanceCompleted / attendanceTotal) * 100)
-      : 0;
-
-    const mappedTasks = dashboardData.tasks.map((task) => ({
-      ...task,
-      mappedStatus: mapTaskStatus(task),
-    }));
-    const completedTasks = mappedTasks.filter(
-      (task) => task.mappedStatus === "Terminée",
-    ).length;
-    const overallProgress = mappedTasks.length
-      ? Math.round((completedTasks / mappedTasks.length) * 100)
-      : 0;
-
-    const unreadNotifications = dashboardData.notifications.filter(
-      (item) => !item.is_read,
-    ).length;
-    const lateTasks = mappedTasks.filter(
-      (task) => task.mappedStatus === "En retard",
-    ).length;
-    const rawScore =
-      8 +
-      attendanceRate * 0.05 +
-      overallProgress * 0.06 -
-      lateTasks * 0.7 -
-      unreadNotifications * 0.15;
-    const finalScore = Number(clamp(rawScore, 6, 20).toFixed(1));
-
-    const statusLabel =
-      finalScore >= 16
-        ? "Excellent"
-        : finalScore >= 12
-          ? "Bon"
-          : finalScore >= 8
-            ? "Moyen"
-            : "À améliorer";
-
+  const scoreRingStyle = useMemo(() => {
+    const ratio = Math.max(0, Math.min(100, (dashboardData.profile.finalScore / 20) * 100));
     return {
-      fullName: fullName || profile.email,
-      role: profile.position || "Employé",
-      department: profile.service || "Non renseigné",
-      email: profile.email,
-      avatar:
-        profile.profile_picture ||
-        "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-      attendanceRate,
-      overallProgress,
-      finalScore,
-      topSkill:
-        attendanceRate >= 90
-          ? "Ponctualité"
-          : overallProgress >= 70
-            ? "Productivité"
-            : "Rigueur",
-      statusLabel,
+      background: `conic-gradient(#2563eb 0 ${ratio}%, #dbe5f2 ${ratio}% 100%)`,
     };
-  }, [dashboardData]);
+  }, [dashboardData.profile.finalScore]);
 
-  const allTasks = useMemo(() => {
-    if (!dashboardData.tasks.length) return mockTasks;
-
-    return dashboardData.tasks.map((task) => {
-      const status = mapTaskStatus(task);
-      return {
-        id: task.id,
-        name: task.title,
-        priority: getTaskPriority(task.due_date),
-        deadline: task.due_date || "-",
-        status,
-        progress: getTaskProgress(task, status),
-      };
-    });
-  }, [dashboardData.tasks]);
-
-  const filteredTasks = useMemo(() => {
-    const search = searchValue.trim().toLowerCase();
-    if (!search) return allTasks;
-    return allTasks.filter(
-      (task) =>
-        task.name.toLowerCase().includes(search) ||
-        task.priority.toLowerCase().includes(search) ||
-        task.status.toLowerCase().includes(search),
-    );
-  }, [allTasks, searchValue]);
-
-  const orderedTasks = useMemo(
-    () =>
-      [...filteredTasks].sort(
-        (left, right) => statusOrder[left.status] - statusOrder[right.status],
-      ),
-    [filteredTasks],
-  );
-
-  const weeklyPerformance = useMemo(() => {
-    if (!dashboardData.profile) return mockWeeklyPerformance;
-    return buildWeeklyPerformance(allTasks, employee.attendanceRate);
-  }, [allTasks, dashboardData.profile, employee.attendanceRate]);
-
-  const monthlyProgress = useMemo(() => {
-    if (!dashboardData.profile) return mockMonthlyProgress;
-    return buildMonthlyProgress(weeklyPerformance);
-  }, [dashboardData.profile, weeklyPerformance]);
-
-  const taskBreakdown = useMemo(() => {
-    const source = dashboardData.profile ? allTasks : mockTasks;
-    return {
-      completed: source.filter((task) => task.status === "Terminée").length,
-      pending: source.filter(
-        (task) => task.status === "En attente" || task.status === "En cours",
-      ).length,
-      late: source.filter((task) => task.status === "En retard").length,
-    };
-  }, [allTasks, dashboardData.profile]);
-
-  const skillsData = useMemo(() => {
-    if (!dashboardData.profile) return mockSkillsData;
-
-    const completed = allTasks.filter((task) => task.status === "Terminée").length;
-    const late = allTasks.filter((task) => task.status === "En retard").length;
-
-    return {
-      punctuality: clamp(Math.round(employee.attendanceRate / 5), 6, 20),
-      productivity: clamp(Math.round(employee.overallProgress / 5), 6, 20),
-      teamwork: clamp(
-        15 - late + Math.min(dashboardData.inboxMessages.length, 4),
-        6,
-        20,
-      ),
-      discipline: clamp(
-        14 - late + Math.round(employee.attendanceRate / 20),
-        6,
-        20,
-      ),
-      qualityOfWork: clamp(12 + completed, 6, 20),
-    };
-  }, [
-    allTasks,
-    dashboardData.inboxMessages.length,
-    dashboardData.profile,
-    employee.attendanceRate,
-    employee.overallProgress,
-  ]);
-
-  const stats = useMemo(() => {
-    const completed = allTasks.filter((task) => task.status === "Terminée").length;
-    const pending = allTasks.filter(
-      (task) => task.status === "En attente" || task.status === "En cours",
-    ).length;
-    const late = allTasks.filter((task) => task.status === "En retard").length;
-    const monthlyPerformance = Math.round(
-      weeklyPerformance.reduce((sum, value) => sum + value, 0) /
-        weeklyPerformance.length,
-    );
-
-    return [
-      {
-        id: "total",
-        label: "Total des tâches",
-        value: allTasks.length,
-        helper: "Toutes les tâches assignées",
-      },
-      {
-        id: "completed",
-        label: "Tâches terminées",
-        value: completed,
-        helper: "Tâches finalisées",
-      },
-      {
-        id: "pending",
-        label: "Tâches en attente",
-        value: pending,
-        helper: "En cours ou à démarrer",
-      },
-      {
-        id: "late",
-        label: "Tâches en retard",
-        value: late,
-        helper: "Délais dépassés",
-      },
-      {
-        id: "attendance",
-        label: "Taux de présence",
-        value: `${employee.attendanceRate}%`,
-        helper: "Présence personnelle",
-      },
-      {
-        id: "performance",
-        label: "Performance mensuelle",
-        value: `${monthlyPerformance}%`,
-        helper: "Performance du mois",
-      },
-      {
-        id: "score",
-        label: "Note mensuelle",
-        value: `${employee.finalScore.toFixed(1)}/20`,
-        helper: "Score estimé actuel",
-      },
-    ];
-  }, [allTasks, employee.attendanceRate, employee.finalScore, weeklyPerformance]);
-
-  const planning = useMemo(() => {
-    if (!dashboardData.profile) return mockPlanning;
-
-    const attendanceToday = dashboardData.attendance.find(
-      (item) => item.date === new Date().toISOString().slice(0, 10),
-    );
-    const nextTasks = allTasks
-      .filter((task) => task.deadline && task.deadline !== "-")
-      .slice(0, 3)
-      .map((task) => ({
-        id: `task-${task.id}`,
-        time: task.deadline,
-        title: task.name,
-        subtitle: `Priorité ${task.priority.toLowerCase()}`,
-      }));
-
-    const attendanceCard = {
-      id: "attendance",
-      time: attendanceToday?.check_in_time?.slice(0, 5) || "08:30",
-      title: attendanceToday?.check_out_time
-        ? "Présence enregistrée aujourd'hui"
-        : "Pointage du jour",
-      subtitle: attendanceToday?.check_out_time
-        ? `Entrée ${attendanceToday.check_in_time?.slice(0, 5)} • Sortie ${attendanceToday.check_out_time.slice(0, 5)}`
-        : "Pensez à valider votre présence",
-    };
-
-    return [attendanceCard, ...nextTasks].slice(0, 3);
-  }, [allTasks, dashboardData.attendance, dashboardData.profile]);
-
-  const notifications = useMemo(() => {
-    if (!dashboardData.profile) return mockNotifications;
-
-    const directNotifications = dashboardData.notifications.slice(0, 2).map((item) => ({
-      id: `notif-${item.id}`,
-      title: item.title,
-      message: item.message,
-      level: item.is_read ? "info" : "important",
-    }));
-
-    const announcements = dashboardData.announcements.slice(0, 1).map((item) => ({
-      id: `ann-${item.id}`,
-      title: item.title,
-      message: item.message,
-      level: "info",
-    }));
-
-    return [...directNotifications, ...announcements];
-  }, [dashboardData.announcements, dashboardData.notifications, dashboardData.profile]);
-
-  const hrRequests = useMemo(() => {
-    if (!dashboardData.profile) return mockHrRequests;
-
-    return dashboardData.leaves.slice(0, 3).map((item) => ({
-      id: item.id,
-      label: item.type_label || item.type,
-      status:
-        item.status === "PENDING"
-          ? "En attente"
-          : item.status === "ACCEPTED"
-            ? "Accepté"
-            : "Refusé",
-    }));
-  }, [dashboardData.leaves, dashboardData.profile]);
-
-  const quickMessages = useMemo(() => {
-    if (!dashboardData.profile) return mockQuickMessages;
-
-    return dashboardData.inboxMessages.slice(0, 3).map((item) => ({
-      id: item.id,
-      sender: item.sender?.name || item.sender?.email || "Interne",
-      subject: item.subject,
-    }));
-  }, [dashboardData.inboxMessages, dashboardData.profile]);
-
-  const scoreInsights = useMemo(() => {
-    const achievement =
-      employee.attendanceRate >= 90
-        ? "Présence régulière et implication stable tout au long du mois."
-        : monthlyScoreInsights.achievement;
-
-    const lateTasks = allTasks.filter((task) => task.status === "En retard").length;
-    const improvement =
-      lateTasks > 0
-        ? "Réduire les tâches en retard pour améliorer la note mensuelle."
-        : "Maintenir le rythme actuel et clôturer plus vite les tâches en attente.";
-
-    return { achievement, improvement };
-  }, [allTasks, employee.attendanceRate]);
+  const scoreLabel = scoreLabelMap[dashboardData.profile.statusLabel] || "A ameliorer";
 
   return (
     <div
@@ -484,10 +125,10 @@ export default function Dashboard() {
     >
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
         <Navbar
-          fullName={employee.fullName}
-          post={employee.role}
-          image={employee.avatar}
-          email={employee.email}
+          fullName={dashboardData.profile.fullName}
+          post={dashboardData.profile.role}
+          image={dashboardData.profile.avatar}
+          email={dashboardData.profile.email}
         />
       </div>
 
@@ -499,143 +140,304 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex w-[96%] flex-wrap items-center justify-between gap-4 py-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Espace RH moderne
+      <div className="profile-content">
+        <div style={{ borderBottom: "1px solid rgba(0, 0, 0, 0.1)" }}>
+          <div className="profile-naaav">
+            <div className="yasar">
+              <h3 className="monprofile">Dashboard</h3>
+              <p className="morinfo">
+                Tableau de bord employe relie au backend Django
               </p>
-              <h2 className="text-xl font-bold text-slate-900">
-                Tableau de bord employé
-              </h2>
             </div>
-
-            <div className="flex flex-wrap gap-3">
+            <div className="yamin">
               <button
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="nav-toggle"
                 onClick={() => setIsNavOpen((prev) => !prev)}
                 type="button"
               >
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
               <button
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="mode"
                 onClick={() => setDark((prev) => !prev)}
                 type="button"
               >
-                {dark ? "Mode clair" : "Mode sombre"}
+                {dark ? " mode clair" : " mode sombre"}
               </button>
             </div>
           </div>
         </div>
 
-        <main className="mx-auto flex w-[96%] flex-col gap-6 py-6">
-          <DashboardHeader
-            department={employee.department}
-            monthLabel={formatMonthLabel()}
-            searchValue={searchValue}
-            onSearchChange={setSearchValue}
-          />
-          <StatsCards items={stats} />
+        <div className="profile-infos dashboard-shell">
+          <div className="quelques-infos">
+            <div className="gauche">
+              <img
+                src={dashboardData.profile.avatar}
+                alt="Profile"
+                className="profile-pic"
+              />
+              <div className="infooos">
+                <div className="nom-status">
+                  <h3>{dashboardData.profile.fullName || "Employe"}</h3>
+                  <div className="status">{scoreLabel}</div>
+                </div>
+                <p>
+                  Poste : {dashboardData.profile.role || "-"} • Departement :{" "}
+                  {dashboardData.profile.department || "-"}
+                </p>
+                <div>
+                  <div>{dashboardData.profile.email || "-"}</div>
+                  <div>{dashboardData.header.monthLabel || "-"}</div>
+                  <div>Top skill : {dashboardData.profile.topSkill || "-"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <section className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
-            <EmployeeSummaryCard employee={employee} />
-            <MonthlyScoreCard
-              achievement={scoreInsights.achievement}
-              improvement={scoreInsights.improvement}
-              score={employee.finalScore}
-            />
+          {error && <div className="dashboard-inline-alert">{error}</div>}
+
+          <section className="dashboard-hero-saas">
+            <div className="dashboard-hero-copy">
+              <div className="dashboard-chip">Connecte au backend</div>
+              <h1>Suivi personnel, performance et activite RH</h1>
+              <p>
+                Cette page utilise directement les donnees du backend pour vos
+                taches, votre presence, vos demandes RH, vos notifications et
+                votre score mensuel.
+              </p>
+              <div className="dashboard-hero-actions">
+                <div className="dashboard-soft-stat">
+                  <span>Mois</span>
+                  <strong>{dashboardData.header.monthLabel || "-"}</strong>
+                </div>
+                <div className="dashboard-soft-stat">
+                  <span>Departement</span>
+                  <strong>{dashboardData.header.department || "-"}</strong>
+                </div>
+                <div className="dashboard-soft-stat">
+                  <span>Taches</span>
+                  <strong>{dashboardData.tasks.length}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-score-card">
+              <div className="dashboard-score-ring modern" style={scoreRingStyle}>
+                <div className="dashboard-score-ring-inner">
+                  <strong>{dashboardData.profile.finalScore.toFixed(1)}</strong>
+                  <span>/20</span>
+                </div>
+              </div>
+              <div className="dashboard-score-text">
+                <h4>Note mensuelle</h4>
+                <p>{scoreLabel}</p>
+              </div>
+            </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Performance hebdomadaire
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Vue de votre performance semaine par semaine.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
-                  <BarChartOutlinedIcon fontSize="small" />
-                </div>
-              </div>
-              <div className="h-80">
-                <PerformanceBarChart values={weeklyPerformance} />
-              </div>
-            </article>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Progression mensuelle
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Suivez l'évolution de votre progression sur le mois.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
-                  <InsightsOutlinedIcon fontSize="small" />
-                </div>
-              </div>
-              <div className="h-80">
-                <ProgressLineChart values={monthlyProgress} />
-              </div>
-            </article>
+          <section className="dashboard-kpi-grid modern">
+            {dashboardData.stats.map((item) => (
+              <article key={item.id} className="dashboard-kpi-card modern">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.helper}</small>
+              </article>
+            ))}
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Répartition des tâches
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Répartition entre tâches terminées, en attente et en retard.
-                  </p>
+          <section className="dashboard-main-grid">
+            <div className="dashboard-main-column">
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Progression hebdomadaire</h3>
+                    <p>Evolution de vos performances sur les semaines du mois.</p>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
-                  <DonutLargeOutlinedIcon fontSize="small" />
+                <div className="dashboard-progress-chart">
+                  {(dashboardData.charts.weeklyPerformance || []).map((value, index) => (
+                    <div key={`weekly-${index}`} className="dashboard-progress-row">
+                      <div className="dashboard-progress-head">
+                        <span>Semaine {index + 1}</span>
+                        <span>{value}%</span>
+                      </div>
+                      <div className="dashboard-progress-track">
+                        <div
+                          className="dashboard-progress-fill"
+                          style={{ width: `${value}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="h-80">
-                <TasksDoughnutChart values={taskBreakdown} />
-              </div>
-            </article>
+              </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Radar des compétences
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Principales compétences observées sur le mois.
-                  </p>
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Taches assignees</h3>
+                    <p>Ancienne vue dashboard, maintenant alimentee par le backend.</p>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-violet-50 p-3 text-violet-600">
-                  <RadarOutlinedIcon fontSize="small" />
+                <div className="dashboard-task-list">
+                  {loading ? (
+                    <p className="dashboard-empty-text">Chargement des taches...</p>
+                  ) : dashboardData.tasks.length === 0 ? (
+                    <p className="dashboard-empty-text">Aucune tache disponible.</p>
+                  ) : (
+                    dashboardData.tasks.slice(0, 5).map((task) => (
+                      <div key={task.id} className="dashboard-task-item">
+                        <div className="dashboard-task-top">
+                          <div>
+                            <h4>{task.name}</h4>
+                            <p>Echeance : {formatDate(task.deadline)}</p>
+                          </div>
+                          <span className={`badge ${getStatusBadgeClass(task.status)}`}>
+                            {task.status}
+                          </span>
+                        </div>
+                        <div className="dashboard-task-meta">
+                          <span>Priorite : {task.priority}</span>
+                          <span>Progression : {task.progress}%</span>
+                        </div>
+                        <div className="dashboard-progress-track slim">
+                          <div
+                            className="dashboard-progress-fill"
+                            style={{ width: `${task.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              </div>
-              <div className="h-80">
-                <SkillsRadarChart values={skillsData} />
-              </div>
-            </article>
+              </article>
+
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Repartition des taches</h3>
+                    <p>Synthese backend des taches terminees, en attente et en retard.</p>
+                  </div>
+                </div>
+                <div className="dashboard-mini-stats">
+                  <div>
+                    <span>Terminees</span>
+                    <strong>{dashboardData.charts.taskBreakdown.completed}</strong>
+                  </div>
+                  <div>
+                    <span>En attente</span>
+                    <strong>{dashboardData.charts.taskBreakdown.pending}</strong>
+                  </div>
+                  <div>
+                    <span>En retard</span>
+                    <strong>{dashboardData.charts.taskBreakdown.late}</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div className="dashboard-side-column">
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Planning</h3>
+                    <p>Elements du jour remontes par le backend.</p>
+                  </div>
+                </div>
+                <div className="dashboard-planning-list">
+                  {dashboardData.panels.planning.length === 0 ? (
+                    <p className="dashboard-empty-text">Aucun planning disponible.</p>
+                  ) : (
+                    dashboardData.panels.planning.map((item) => (
+                      <div key={item.id} className="dashboard-planning-item">
+                        <i className={getPlanningDotClass(item)} />
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.subtitle}</p>
+                        </div>
+                        <span>{item.time}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Demandes RH</h3>
+                    <p>Suivi direct des demandes de conge cote backend.</p>
+                  </div>
+                </div>
+                <div className="dashboard-rh-list">
+                  {dashboardData.panels.hrRequests.length === 0 ? (
+                    <p className="dashboard-empty-text">Aucune demande RH.</p>
+                  ) : (
+                    dashboardData.panels.hrRequests.map((item) => (
+                      <div key={item.id} className="dashboard-rh-item">
+                        <i className="dashboard-planning-dot hr" />
+                        <div>
+                          <strong>{item.label}</strong>
+                          <p>Suivi personnel</p>
+                        </div>
+                        <span className="badge badge-attente">{item.status}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Notifications et messages</h3>
+                    <p>Resume backend de votre communication interne.</p>
+                  </div>
+                </div>
+                <div className="dashboard-feed-list compact">
+                  {dashboardData.panels.notifications.map((item) => (
+                    <div key={item.id} className="dashboard-feed-item modern">
+                      <strong>{item.title}</strong>
+                      <p>{item.message}</p>
+                      <span>{item.level}</span>
+                    </div>
+                  ))}
+                  {dashboardData.panels.quickMessages.map((item) => (
+                    <div key={item.id} className="dashboard-message-item">
+                      <strong>{item.sender}</strong>
+                      <p>{item.subject}</p>
+                    </div>
+                  ))}
+                  {dashboardData.panels.notifications.length === 0 &&
+                    dashboardData.panels.quickMessages.length === 0 && (
+                      <p className="dashboard-empty-text">
+                        Aucune notification ni message.
+                      </p>
+                    )}
+                </div>
+              </article>
+
+              <article className="dashboard-panel modern">
+                <div className="dashboard-panel-header">
+                  <div>
+                    <h3>Note et axes d'amelioration</h3>
+                    <p>Commentaires calcules cote backend.</p>
+                  </div>
+                </div>
+                <div className="dashboard-feed-list">
+                  <div className="dashboard-feed-item modern">
+                    <strong>Point fort</strong>
+                    <p>{dashboardData.scoreInsights.achievement || "-"}</p>
+                  </div>
+                  <div className="dashboard-feed-item modern">
+                    <strong>Point a ameliorer</strong>
+                    <p>{dashboardData.scoreInsights.improvement || "-"}</p>
+                  </div>
+                </div>
+              </article>
+            </div>
           </section>
-
-          <TasksTable rows={orderedTasks} />
-          <ActivityPanels
-            hrRequests={hrRequests}
-            notifications={notifications}
-            planning={planning}
-            quickMessages={quickMessages}
-          />
-        </main>
+        </div>
       </div>
     </div>
   );

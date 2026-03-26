@@ -135,6 +135,7 @@ urlpatterns = [
     
     # Dashboard endpoints
     path('api/dashboard/', madar_views.dashboard.get_dashboard, name='api-dashboard'),
+    path('api/dashboard/employee/', madar_views.dashboard.get_employee_dashboard, name='api-dashboard-employee'),
     path('api/dashboard/refresh/', madar_views.dashboard.refresh_dashboard, name='api-dashboard-refresh'),
     path('api/dashboard/customize/', madar_views.dashboard.customize_dashboard, name='api-dashboard-customize'),
     path('api/dashboard/widgets/', madar_views.dashboard.get_dashboard_widgets, name='api-dashboard-widgets'),

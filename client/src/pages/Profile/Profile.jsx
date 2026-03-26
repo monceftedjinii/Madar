@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { logout as logoutRequest } from "../../api/auth.api";
@@ -30,6 +30,15 @@ export default function Profile() {
   const [formData, setFormData] = useState(profileData);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [activitiesData, setActivitiesData] = useState({
+    leaves: [],
+    tasks: [],
+    notifications: [],
+    attendance: [],
+  });
+
+  const getProfileActivityStorageKey = (email = "") =>
+    `madar_profile_activity_${email}`;
 
   const splitFullName = (value = "") => {
     const clean = value.trim().replace(/\s+/g, " ");
@@ -48,8 +57,68 @@ export default function Profile() {
     return parsed.toLocaleDateString("fr-FR");
   };
 
+  const formatDate = (value = "") => {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      const dateOnly = new Date(`${value}T00:00:00`);
+      return Number.isNaN(dateOnly.getTime())
+        ? value
+        : dateOnly.toLocaleDateString("fr-FR");
+    }
+    return parsed.toLocaleDateString("fr-FR");
+  };
+
+  const isSameDay = (value, targetDate = new Date()) => {
+    if (!value) return false;
+    const parsed = new Date(value);
+    const date = Number.isNaN(parsed.getTime())
+      ? new Date(`${value}T00:00:00`)
+      : parsed;
+
+    if (Number.isNaN(date.getTime())) return false;
+
+    return (
+      date.getFullYear() === targetDate.getFullYear() &&
+      date.getMonth() === targetDate.getMonth() &&
+      date.getDate() === targetDate.getDate()
+    );
+  };
+
+  const saveProfileActivity = (email, activity) => {
+    if (!email) return;
+    try {
+      window.localStorage.setItem(
+        getProfileActivityStorageKey(email),
+        JSON.stringify(activity),
+      );
+    } catch {
+      // Ignore storage issues and keep the page functional.
+    }
+  };
+
+  const getLeaveStatusLabel = (status) => {
+    if (status === "PENDING") return "En attente";
+    if (status === "ACCEPTED") return "Accepté";
+    if (status === "REFUSED") return "Refusé";
+    return status;
+  };
+
+  const getLeaveStatusClass = (status) => {
+    if (status === "PENDING") return "badge-attente";
+    if (status === "ACCEPTED") return "badge-termine";
+    return "badge-refuse";
+  };
+
   const fetchProfile = async () => {
-    const me = await axios.get("/api/whoami/");
+    const [me, leaves, tasks, notifications, attendance] = await Promise.all([
+      axios.get("/api/whoami/"),
+      axios.get("/api/leaves/me/"),
+      axios.get("/api/tasks/me/"),
+      axios.get("/api/notifications/"),
+      axios.get("/api/attendance/me/"),
+    ]);
+
     setProfileData({
       fullName: `${me.data.first_name || ""} ${me.data.last_name || ""}`.trim(),
       email: me.data.email,
@@ -79,11 +148,118 @@ export default function Profile() {
       photoName: me.data.profile_picture,
       is_online: me.data.is_online,
     });
+
+    setActivitiesData({
+      leaves: Array.isArray(leaves.data) ? leaves.data : [],
+      tasks: Array.isArray(tasks.data) ? tasks.data : [],
+      notifications: Array.isArray(notifications.data) ? notifications.data : [],
+      attendance: Array.isArray(attendance.data) ? attendance.data : [],
+    });
   };
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const todayActivities = useMemo(() => {
+    let profileActivity = null;
+    if (profileData.email) {
+      try {
+        const raw = window.localStorage.getItem(
+          getProfileActivityStorageKey(profileData.email),
+        );
+        profileActivity = raw ? JSON.parse(raw) : null;
+      } catch {
+        profileActivity = null;
+      }
+    }
+    const leaveActivities = activitiesData.leaves
+      .filter((leave) => isSameDay(leave.created_at) || isSameDay(leave.decided_at))
+      .map((leave) => ({
+        id: `leave-${leave.id}`,
+        date: leave.decided_at || leave.created_at || leave.start_date,
+        action: "Demande de congé",
+        details: `${leave.type_label || leave.type} (${formatDate(leave.start_date)} - ${formatDate(leave.end_date)})`,
+        status: getLeaveStatusLabel(leave.status),
+        statusClass: getLeaveStatusClass(leave.status),
+      }));
+
+    const taskActivities = activitiesData.tasks
+      .filter((task) => isSameDay(task.completed_at) || isSameDay(task.created_at))
+      .map((task) => {
+        const isCompletedToday = isSameDay(task.completed_at);
+        return {
+          id: `task-${task.id}`,
+          date: task.completed_at || task.created_at,
+          action: isCompletedToday ? "Tâche terminée" : "Nouvelle tâche",
+          details: task.title,
+          status: isCompletedToday ? "Terminé" : "Assignée",
+          statusClass: isCompletedToday ? "badge-termine" : "badge-attente",
+        };
+      });
+
+    const notificationActivities = activitiesData.notifications
+      .filter((notification) => isSameDay(notification.created_at))
+      .map((notification) => ({
+        id: `notification-${notification.id}`,
+        date: notification.created_at,
+        action: "Notification",
+        details: notification.title,
+        status: notification.is_read ? "Lue" : "Nouvelle",
+        statusClass: notification.is_read ? "badge-termine" : "badge-genere",
+      }));
+
+    const attendanceActivities = activitiesData.attendance
+      .filter((item) => isSameDay(item.date))
+      .flatMap((item) => {
+        const result = [];
+        if (item.check_in_time) {
+          result.push({
+            id: `attendance-in-${item.date}`,
+            date: item.date,
+            action: "Pointage",
+            details: `Entrée à ${item.check_in_time.slice(0, 5)}`,
+            status: "Validé",
+            statusClass: "badge-termine",
+          });
+        }
+        if (item.check_out_time) {
+          result.push({
+            id: `attendance-out-${item.date}`,
+            date: item.date,
+            action: "Pointage",
+            details: `Sortie à ${item.check_out_time.slice(0, 5)}`,
+            status: "Validé",
+            statusClass: "badge-termine",
+          });
+        }
+        return result;
+      });
+
+    const profileActivities =
+      profileActivity && isSameDay(profileActivity.date)
+        ? [
+            {
+              id: `profile-${profileActivity.date}`,
+              date: profileActivity.date,
+              action: "Profil mis à jour",
+              details: profileActivity.details || "Informations personnelles modifiées",
+              status: "Terminé",
+              statusClass: "badge-termine",
+            },
+          ]
+        : [];
+
+    return [
+      ...profileActivities,
+      ...leaveActivities,
+      ...taskActivities,
+      ...notificationActivities,
+      ...attendanceActivities,
+    ]
+      .sort((left, right) => new Date(right.date) - new Date(left.date))
+      .slice(0, 10);
+  }, [activitiesData, profileData.email]);
 
   const openEditModal = () => {
     setFormData({
@@ -173,6 +349,21 @@ export default function Profile() {
           confirm_password: formData.confirm_password,
         });
       }
+
+      const changedFields = [];
+      if (formData.fullName !== profileData.fullName) changedFields.push("nom");
+      if (formData.phone !== profileData.phone) changedFields.push("téléphone");
+      if (formData.address !== profileData.address) changedFields.push("adresse");
+      if (selectedPhoto) changedFields.push("photo");
+      if (hasPasswordInput) changedFields.push("mot de passe");
+
+      saveProfileActivity(profileData.email || formData.email, {
+        date: new Date().toISOString(),
+        details:
+          changedFields.length > 0
+            ? `Champs modifiés : ${changedFields.join(", ")}`
+            : "Informations personnelles modifiées",
+      });
 
       await fetchProfile();
       closeEditModal();
@@ -278,7 +469,7 @@ export default function Profile() {
                   <div className="nom-status">
                     <h3>{profileData.fullName}</h3>
                     <div className="status">
-                      {profileData.is_online === true ? "actif" : " Inactif"}
+                      {profileData.is_online === true ? "actif" : "Inactif"}
                     </div>
                   </div>
                   <p>
@@ -297,7 +488,7 @@ export default function Profile() {
               <div className="info-per">
                 <div className="top">
                   <h3 className="title">Informations personnelles</h3>
-                  <p className="desc">Données visibles par l’utilisateur</p>
+                  <p className="desc">Données visibles par l'utilisateur</p>
                 </div>
                 <div>
                   <p className="desc">Nom complet</p>
@@ -343,7 +534,7 @@ export default function Profile() {
             <div className="activite-recente">
               <div className="activite-top">
                 <h3 className="activite-title">Activité récente</h3>
-                <p className="activite-subtitle">Historique (exemple)</p>
+                <p className="activite-subtitle">Activités du jour</p>
               </div>
               <table className="activite-table">
                 <thead>
@@ -355,30 +546,24 @@ export default function Profile() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>22/02/2026</td>
-                    <td>Demande de congé</td>
-                    <td>Annuel (3 jours)</td>
-                    <td>
-                      <span className="badge badge-attente">En attente</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>10/02/2026</td>
-                    <td>Profil mis à jour</td>
-                    <td>Téléphone modifié</td>
-                    <td>
-                      <span className="badge badge-termine">Terminé</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>05/02/2026</td>
-                    <td>Bulletin paie</td>
-                    <td>Février 2026</td>
-                    <td>
-                      <span className="badge badge-genere">Généré</span>
-                    </td>
-                  </tr>
+                  {todayActivities.length > 0 ? (
+                    todayActivities.map((activity) => (
+                      <tr key={activity.id}>
+                        <td>{formatDate(activity.date)}</td>
+                        <td>{activity.action}</td>
+                        <td>{activity.details}</td>
+                        <td>
+                          <span className={`badge ${activity.statusClass}`}>
+                            {activity.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4">Aucune activité pour aujourd&apos;hui.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -123,6 +123,7 @@ def my_leaves(request):
 			'chef_comment': l.chef_comment,
 			'decided_by': l.decided_by.email if l.decided_by else None,
 			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
+			'created_at': l.created_at.isoformat() if l.created_at else None,
 			'workflow': _serialize_workflow(l),
 		}
 		for l in qs

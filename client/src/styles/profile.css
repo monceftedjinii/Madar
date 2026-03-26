@@ -63,7 +63,11 @@
   width: 90%; /* Slight adjustment for better focus when centered */
 }
 .yasar {
-  line-height: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
 }
 .yamin {
   display: flex;
@@ -74,10 +78,14 @@
   font-weight: lighter;
   font-size: 19px;
   font-family: sans-serif;
+  margin: 0;
+  line-height: 1.2;
 }
 .morinfo {
   font-size: 15px;
   color: rgb(172, 180, 193);
+  margin: 0;
+  line-height: 1.35;
 }
 
 .profile-content > div:first-child {
