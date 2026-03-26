@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
+import DonutLargeOutlinedIcon from "@mui/icons-material/DonutLargeOutlined";
+import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
+import RadarOutlinedIcon from "@mui/icons-material/RadarOutlined";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
-import "../../styles/profile.css";
+import ActivityPanels from "../../components/dashboard/ActivityPanels";
+import DashboardHeader from "../../components/dashboard/DashboardHeader";
+import EmployeeSummaryCard from "../../components/dashboard/EmployeeSummaryCard";
+import MonthlyScoreCard from "../../components/dashboard/MonthlyScoreCard";
+import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
+import ProgressLineChart from "../../components/dashboard/ProgressLineChart";
+import SkillsRadarChart from "../../components/dashboard/SkillsRadarChart";
+import StatsCards from "../../components/dashboard/StatsCards";
+import TasksDoughnutChart from "../../components/dashboard/TasksDoughnutChart";
+import TasksTable from "../../components/dashboard/TasksTable";
 
 const emptyDashboard = {
   profile: {
@@ -15,10 +28,10 @@ const emptyDashboard = {
     overallProgress: 0,
     finalScore: 0,
     topSkill: "",
-    statusLabel: "A ameliorer",
+    statusLabel: "À améliorer",
   },
   header: {
-    department: "Non renseigne",
+    department: "Non renseigné",
     monthLabel: "",
   },
   stats: [],
@@ -47,77 +60,53 @@ const emptyDashboard = {
   },
 };
 
-const scoreLabelMap = {
-  Excellent: "Excellent",
-  Bon: "Bon",
-  Moyen: "Moyen",
-  "A ameliorer": "A ameliorer",
-  "À améliorer": "A ameliorer",
+const statusOrder = {
+  Terminée: 0,
+  "En cours": 1,
+  "En attente": 2,
+  "En retard": 3,
 };
-
-function formatDate(value) {
-  if (!value || value === "-") return "-";
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("fr-FR");
-}
-
-function getStatusBadgeClass(status) {
-  if (status === "Terminée") return "badge-termine";
-  if (status === "En retard") return "badge-refuse";
-  return "badge-attente";
-}
-
-function getPlanningDotClass(item) {
-  if (item?.title?.toLowerCase().includes("pointage")) {
-    return "dashboard-planning-dot work";
-  }
-  if (item?.subtitle?.toLowerCase().includes("priorite haute")) {
-    return "dashboard-planning-dot deadline";
-  }
-  if (item?.title?.toLowerCase().includes("presence")) {
-    return "dashboard-planning-dot work";
-  }
-  return "dashboard-planning-dot task";
-}
 
 export default function Dashboard() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
+  const [searchValue, setSearchValue] = useState("");
   const [dashboardData, setDashboardData] = useState(emptyDashboard);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        setLoading(true);
-        setError("");
         const response = await axios.get("/api/dashboard/employee/");
-        setDashboardData({ ...emptyDashboard, ...response.data });
-      } catch (requestError) {
-        console.error("Erreur chargement dashboard employe:", requestError);
-        setError(
-          requestError?.response?.data?.detail ||
-            requestError?.response?.data?.error ||
-            "Impossible de charger le dashboard depuis le backend.",
-        );
-      } finally {
-        setLoading(false);
+        setDashboardData({
+          ...emptyDashboard,
+          ...response.data,
+        });
+      } catch (error) {
+        console.error("Error fetching employee dashboard:", error);
       }
     };
 
     fetchDashboardData();
   }, []);
 
-  const scoreRingStyle = useMemo(() => {
-    const ratio = Math.max(0, Math.min(100, (dashboardData.profile.finalScore / 20) * 100));
-    return {
-      background: `conic-gradient(#2563eb 0 ${ratio}%, #dbe5f2 ${ratio}% 100%)`,
-    };
-  }, [dashboardData.profile.finalScore]);
+  const filteredTasks = useMemo(() => {
+    const search = searchValue.trim().toLowerCase();
+    if (!search) return dashboardData.tasks;
+    return dashboardData.tasks.filter(
+      (task) =>
+        task.name.toLowerCase().includes(search) ||
+        task.priority.toLowerCase().includes(search) ||
+        task.status.toLowerCase().includes(search),
+    );
+  }, [dashboardData.tasks, searchValue]);
 
-  const scoreLabel = scoreLabelMap[dashboardData.profile.statusLabel] || "A ameliorer";
+  const orderedTasks = useMemo(
+    () =>
+      [...filteredTasks].sort(
+        (left, right) => statusOrder[left.status] - statusOrder[right.status],
+      ),
+    [filteredTasks],
+  );
 
   return (
     <div
@@ -140,304 +129,143 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="profile-content">
-        <div style={{ borderBottom: "1px solid rgba(0, 0, 0, 0.1)" }}>
-          <div className="profile-naaav">
-            <div className="yasar">
-              <h3 className="monprofile">Dashboard</h3>
-              <p className="morinfo">
-                Tableau de bord employe relie au backend Django
+      <div className="profile-content !h-auto min-h-screen bg-transparent">
+        <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+          <div className="mx-auto flex w-[96%] flex-wrap items-center justify-between gap-4 py-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Espace RH moderne
               </p>
+              <h2 className="text-xl font-bold text-slate-900">
+                Tableau de bord employé
+              </h2>
             </div>
-            <div className="yamin">
+
+            <div className="flex flex-wrap gap-3">
               <button
-                className="nav-toggle"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 onClick={() => setIsNavOpen((prev) => !prev)}
                 type="button"
               >
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
               <button
-                className="mode"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 onClick={() => setDark((prev) => !prev)}
                 type="button"
               >
-                {dark ? " mode clair" : " mode sombre"}
+                {dark ? "Mode clair" : "Mode sombre"}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="profile-infos dashboard-shell">
-          <div className="quelques-infos">
-            <div className="gauche">
-              <img
-                src={dashboardData.profile.avatar}
-                alt="Profile"
-                className="profile-pic"
-              />
-              <div className="infooos">
-                <div className="nom-status">
-                  <h3>{dashboardData.profile.fullName || "Employe"}</h3>
-                  <div className="status">{scoreLabel}</div>
-                </div>
-                <p>
-                  Poste : {dashboardData.profile.role || "-"} • Departement :{" "}
-                  {dashboardData.profile.department || "-"}
-                </p>
+        <main className="mx-auto flex w-[96%] flex-col gap-6 py-6">
+          <DashboardHeader
+            department={dashboardData.header.department}
+            monthLabel={dashboardData.header.monthLabel}
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+          />
+          <StatsCards items={dashboardData.stats} />
+
+          <section className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
+            <EmployeeSummaryCard employee={dashboardData.profile} />
+            <MonthlyScoreCard
+              achievement={dashboardData.scoreInsights.achievement}
+              improvement={dashboardData.scoreInsights.improvement}
+              score={dashboardData.profile.finalScore}
+            />
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-2">
+            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <div>{dashboardData.profile.email || "-"}</div>
-                  <div>{dashboardData.header.monthLabel || "-"}</div>
-                  <div>Top skill : {dashboardData.profile.topSkill || "-"}</div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Performance hebdomadaire
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Vue de votre performance semaine par semaine.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
+                  <BarChartOutlinedIcon fontSize="small" />
                 </div>
               </div>
-            </div>
-          </div>
+              <div className="h-80">
+                <PerformanceBarChart values={dashboardData.charts.weeklyPerformance} />
+              </div>
+            </article>
 
-          {error && <div className="dashboard-inline-alert">{error}</div>}
-
-          <section className="dashboard-hero-saas">
-            <div className="dashboard-hero-copy">
-              <div className="dashboard-chip">Connecte au backend</div>
-              <h1>Suivi personnel, performance et activite RH</h1>
-              <p>
-                Cette page utilise directement les donnees du backend pour vos
-                taches, votre presence, vos demandes RH, vos notifications et
-                votre score mensuel.
-              </p>
-              <div className="dashboard-hero-actions">
-                <div className="dashboard-soft-stat">
-                  <span>Mois</span>
-                  <strong>{dashboardData.header.monthLabel || "-"}</strong>
+            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Progression mensuelle
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Suivez l'évolution de votre progression sur le mois.
+                  </p>
                 </div>
-                <div className="dashboard-soft-stat">
-                  <span>Departement</span>
-                  <strong>{dashboardData.header.department || "-"}</strong>
-                </div>
-                <div className="dashboard-soft-stat">
-                  <span>Taches</span>
-                  <strong>{dashboardData.tasks.length}</strong>
+                <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
+                  <InsightsOutlinedIcon fontSize="small" />
                 </div>
               </div>
-            </div>
-
-            <div className="dashboard-score-card">
-              <div className="dashboard-score-ring modern" style={scoreRingStyle}>
-                <div className="dashboard-score-ring-inner">
-                  <strong>{dashboardData.profile.finalScore.toFixed(1)}</strong>
-                  <span>/20</span>
-                </div>
+              <div className="h-80">
+                <ProgressLineChart values={dashboardData.charts.monthlyProgress} />
               </div>
-              <div className="dashboard-score-text">
-                <h4>Note mensuelle</h4>
-                <p>{scoreLabel}</p>
-              </div>
-            </div>
+            </article>
           </section>
 
-          <section className="dashboard-kpi-grid modern">
-            {dashboardData.stats.map((item) => (
-              <article key={item.id} className="dashboard-kpi-card modern">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.helper}</small>
-              </article>
-            ))}
+          <section className="grid gap-6 xl:grid-cols-2">
+            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Répartition des tâches
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Répartition entre tâches terminées, en attente et en retard.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+                  <DonutLargeOutlinedIcon fontSize="small" />
+                </div>
+              </div>
+              <div className="h-80">
+                <TasksDoughnutChart values={dashboardData.charts.taskBreakdown} />
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Radar des compétences
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Principales compétences observées sur le mois.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-violet-50 p-3 text-violet-600">
+                  <RadarOutlinedIcon fontSize="small" />
+                </div>
+              </div>
+              <div className="h-80">
+                <SkillsRadarChart values={dashboardData.charts.skills} />
+              </div>
+            </article>
           </section>
 
-          <section className="dashboard-main-grid">
-            <div className="dashboard-main-column">
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Progression hebdomadaire</h3>
-                    <p>Evolution de vos performances sur les semaines du mois.</p>
-                  </div>
-                </div>
-                <div className="dashboard-progress-chart">
-                  {(dashboardData.charts.weeklyPerformance || []).map((value, index) => (
-                    <div key={`weekly-${index}`} className="dashboard-progress-row">
-                      <div className="dashboard-progress-head">
-                        <span>Semaine {index + 1}</span>
-                        <span>{value}%</span>
-                      </div>
-                      <div className="dashboard-progress-track">
-                        <div
-                          className="dashboard-progress-fill"
-                          style={{ width: `${value}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Taches assignees</h3>
-                    <p>Ancienne vue dashboard, maintenant alimentee par le backend.</p>
-                  </div>
-                </div>
-                <div className="dashboard-task-list">
-                  {loading ? (
-                    <p className="dashboard-empty-text">Chargement des taches...</p>
-                  ) : dashboardData.tasks.length === 0 ? (
-                    <p className="dashboard-empty-text">Aucune tache disponible.</p>
-                  ) : (
-                    dashboardData.tasks.slice(0, 5).map((task) => (
-                      <div key={task.id} className="dashboard-task-item">
-                        <div className="dashboard-task-top">
-                          <div>
-                            <h4>{task.name}</h4>
-                            <p>Echeance : {formatDate(task.deadline)}</p>
-                          </div>
-                          <span className={`badge ${getStatusBadgeClass(task.status)}`}>
-                            {task.status}
-                          </span>
-                        </div>
-                        <div className="dashboard-task-meta">
-                          <span>Priorite : {task.priority}</span>
-                          <span>Progression : {task.progress}%</span>
-                        </div>
-                        <div className="dashboard-progress-track slim">
-                          <div
-                            className="dashboard-progress-fill"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </article>
-
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Repartition des taches</h3>
-                    <p>Synthese backend des taches terminees, en attente et en retard.</p>
-                  </div>
-                </div>
-                <div className="dashboard-mini-stats">
-                  <div>
-                    <span>Terminees</span>
-                    <strong>{dashboardData.charts.taskBreakdown.completed}</strong>
-                  </div>
-                  <div>
-                    <span>En attente</span>
-                    <strong>{dashboardData.charts.taskBreakdown.pending}</strong>
-                  </div>
-                  <div>
-                    <span>En retard</span>
-                    <strong>{dashboardData.charts.taskBreakdown.late}</strong>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            <div className="dashboard-side-column">
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Planning</h3>
-                    <p>Elements du jour remontes par le backend.</p>
-                  </div>
-                </div>
-                <div className="dashboard-planning-list">
-                  {dashboardData.panels.planning.length === 0 ? (
-                    <p className="dashboard-empty-text">Aucun planning disponible.</p>
-                  ) : (
-                    dashboardData.panels.planning.map((item) => (
-                      <div key={item.id} className="dashboard-planning-item">
-                        <i className={getPlanningDotClass(item)} />
-                        <div>
-                          <strong>{item.title}</strong>
-                          <p>{item.subtitle}</p>
-                        </div>
-                        <span>{item.time}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </article>
-
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Demandes RH</h3>
-                    <p>Suivi direct des demandes de conge cote backend.</p>
-                  </div>
-                </div>
-                <div className="dashboard-rh-list">
-                  {dashboardData.panels.hrRequests.length === 0 ? (
-                    <p className="dashboard-empty-text">Aucune demande RH.</p>
-                  ) : (
-                    dashboardData.panels.hrRequests.map((item) => (
-                      <div key={item.id} className="dashboard-rh-item">
-                        <i className="dashboard-planning-dot hr" />
-                        <div>
-                          <strong>{item.label}</strong>
-                          <p>Suivi personnel</p>
-                        </div>
-                        <span className="badge badge-attente">{item.status}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </article>
-
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Notifications et messages</h3>
-                    <p>Resume backend de votre communication interne.</p>
-                  </div>
-                </div>
-                <div className="dashboard-feed-list compact">
-                  {dashboardData.panels.notifications.map((item) => (
-                    <div key={item.id} className="dashboard-feed-item modern">
-                      <strong>{item.title}</strong>
-                      <p>{item.message}</p>
-                      <span>{item.level}</span>
-                    </div>
-                  ))}
-                  {dashboardData.panels.quickMessages.map((item) => (
-                    <div key={item.id} className="dashboard-message-item">
-                      <strong>{item.sender}</strong>
-                      <p>{item.subject}</p>
-                    </div>
-                  ))}
-                  {dashboardData.panels.notifications.length === 0 &&
-                    dashboardData.panels.quickMessages.length === 0 && (
-                      <p className="dashboard-empty-text">
-                        Aucune notification ni message.
-                      </p>
-                    )}
-                </div>
-              </article>
-
-              <article className="dashboard-panel modern">
-                <div className="dashboard-panel-header">
-                  <div>
-                    <h3>Note et axes d'amelioration</h3>
-                    <p>Commentaires calcules cote backend.</p>
-                  </div>
-                </div>
-                <div className="dashboard-feed-list">
-                  <div className="dashboard-feed-item modern">
-                    <strong>Point fort</strong>
-                    <p>{dashboardData.scoreInsights.achievement || "-"}</p>
-                  </div>
-                  <div className="dashboard-feed-item modern">
-                    <strong>Point a ameliorer</strong>
-                    <p>{dashboardData.scoreInsights.improvement || "-"}</p>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </section>
-        </div>
+          <TasksTable rows={orderedTasks} />
+          <ActivityPanels
+            hrRequests={dashboardData.panels.hrRequests}
+            notifications={dashboardData.panels.notifications}
+            planning={dashboardData.panels.planning}
+            quickMessages={dashboardData.panels.quickMessages}
+          />
+        </main>
       </div>
     </div>
   );
