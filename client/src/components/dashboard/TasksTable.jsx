@@ -1,23 +1,23 @@
 const statusStyles = {
-  Completed: "bg-emerald-100 text-emerald-700",
-  "In Progress": "bg-blue-100 text-blue-700",
-  Late: "bg-rose-100 text-rose-700",
-  Pending: "bg-amber-100 text-amber-700",
+  Terminée: "bg-emerald-100 text-emerald-700",
+  "En cours": "bg-blue-100 text-blue-700",
+  "En retard": "bg-rose-100 text-rose-700",
+  "En attente": "bg-amber-100 text-amber-700",
 };
 
 const priorityStyles = {
-  High: "text-rose-600",
-  Medium: "text-amber-600",
-  Low: "text-emerald-600",
+  Haute: "text-rose-600",
+  Moyenne: "text-amber-600",
+  Basse: "text-emerald-600",
 };
 
 export default function TasksTable({ rows }) {
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5">
-        <h3 className="text-lg font-bold text-slate-900">Assigned Tasks</h3>
+        <h3 className="text-lg font-bold text-slate-900">Tâches assignées</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Track task status, priority and progress at a glance.
+          Suivez rapidement le statut, la priorité et l'avancement de vos tâches.
         </p>
       </div>
 
@@ -25,11 +25,11 @@ export default function TasksTable({ rows }) {
         <table className="min-w-full border-separate border-spacing-y-3">
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <th className="px-3">Task Name</th>
-              <th className="px-3">Priority</th>
-              <th className="px-3">Deadline</th>
-              <th className="px-3">Status</th>
-              <th className="px-3">Progress</th>
+              <th className="px-3">Tâche</th>
+              <th className="px-3">Priorité</th>
+              <th className="px-3">Échéance</th>
+              <th className="px-3">Statut</th>
+              <th className="px-3">Progression</th>
             </tr>
           </thead>
           <tbody>

@@ -7,9 +7,9 @@ export default function ActivityPanels({
   return (
     <div className="grid gap-6 xl:grid-cols-3">
       <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-900">Planning / Calendar</h3>
+        <h3 className="text-lg font-bold text-slate-900">Planning / Calendrier</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Working hours, meetings and deadlines.
+          Horaires, réunions et échéances à venir.
         </p>
         <div className="mt-5 space-y-4">
           {planning.map((item) => (
@@ -27,7 +27,7 @@ export default function ActivityPanels({
       <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-bold text-slate-900">Notifications</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Internal alerts and important updates.
+          Alertes internes et informations importantes.
         </p>
         <div className="mt-5 space-y-4">
           {notifications.map((item) => (
@@ -51,9 +51,9 @@ export default function ActivityPanels({
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-900">RH & Quick Communication</h3>
+        <h3 className="text-lg font-bold text-slate-900">RH et communication rapide</h3>
         <p className="mt-1 text-sm text-slate-500">
-          HR requests and quick team messages.
+          Suivi RH et messages rapides de l'équipe.
         </p>
         <div className="mt-5 space-y-4">
           <div className="space-y-3">
@@ -65,7 +65,7 @@ export default function ActivityPanels({
             ))}
           </div>
           <div className="rounded-2xl border border-dashed border-slate-200 p-4">
-            <p className="mb-3 text-sm font-semibold text-slate-700">Quick Messages</p>
+            <p className="mb-3 text-sm font-semibold text-slate-700">Messages rapides</p>
             <div className="space-y-3">
               {quickMessages.map((item) => (
                 <div key={item.id}>

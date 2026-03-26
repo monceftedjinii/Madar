@@ -1,8 +1,8 @@
 const badgeStyles = {
   Excellent: "bg-emerald-100 text-emerald-700",
-  Good: "bg-blue-100 text-blue-700",
-  Average: "bg-amber-100 text-amber-700",
-  "Needs Improvement": "bg-rose-100 text-rose-700",
+  Bon: "bg-blue-100 text-blue-700",
+  Moyen: "bg-amber-100 text-amber-700",
+  "À améliorer": "bg-rose-100 text-rose-700",
 };
 
 export default function EmployeeSummaryCard({ employee }) {
@@ -33,19 +33,19 @@ export default function EmployeeSummaryCard({ employee }) {
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Attendance Rate
+            Taux de présence
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">{employee.attendanceRate}%</p>
         </div>
         <div className="rounded-2xl bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Overall Progress
+            Progression globale
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">{employee.overallProgress}%</p>
         </div>
         <div className="rounded-2xl bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Final Score
+            Note finale
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">
             {employee.finalScore.toFixed(1)}/20
