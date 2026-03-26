@@ -24,7 +24,8 @@ from madar_app.services import (
     Dashboard,
     Graph,
     ExportService,
-    ExportFile
+    ExportFile,
+    EmployeeDashboardService,
 )
 from madar_app.models import (
     User,
@@ -36,12 +37,29 @@ from madar_app.models import (
     Message,
     Announcement,
 )
+from ..permissions import IsEmployee
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsEmployee])
 def get_employee_dashboard(request):
-    """Return a complete employee dashboard payload fully prepared by the backend."""
+    """Return a complete employee dashboard payload for a standard employee."""
+    try:
+        return Response(
+            EmployeeDashboardService(
+                request.user,
+                request=request,
+                month=request.query_params.get("month"),
+            ).build()
+        )
+    except ValueError as e:
+        return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to load employee dashboard: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
     try:
         today = timezone.localdate()
         month_start = today.replace(day=1)

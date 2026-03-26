@@ -4,15 +4,15 @@ import { baseChartOptions } from "./chartConfig";
 export default function SkillsRadarChart({ values }) {
   const data = {
     labels: [
-      "Punctuality",
-      "Productivity",
-      "Teamwork",
+      "Ponctualité",
+      "Productivité",
+      "Esprit d'équipe",
       "Discipline",
-      "Quality of Work",
+      "Qualité du travail",
     ],
     datasets: [
       {
-        label: "Skill Score",
+        label: "Score de compétence",
         data: [
           values.punctuality,
           values.productivity,

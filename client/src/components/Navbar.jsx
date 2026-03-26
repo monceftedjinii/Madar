@@ -50,6 +50,8 @@ export default function Navbar(props) {
     { to: "/profile", label: "Mon Profil" },
     { to: "/conge", label: "Conges" },
     { to: "/attendance", label: "Presence" },
+    { to: "/tasks", label: "Mes taches" },
+    { to: "/notifications", label: "Notifications" },
     { to: "/messagerie", label: "Messagerie" },
   ];
 

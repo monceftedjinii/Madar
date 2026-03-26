@@ -7,6 +7,8 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import Attendance from "../pages/Attendance";
 import Messagrie from "../pages/Messagrie";
 import Conge from "../pages/conges/Conge";
+import Notifications from "../pages/Notifications";
+import Tasks from "../pages/Tasks";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -24,6 +26,8 @@ export default function Routers() {
           <Route path="/home" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/attendance" element={<Attendance />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />
         </Route>

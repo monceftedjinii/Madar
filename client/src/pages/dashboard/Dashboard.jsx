@@ -17,6 +17,21 @@ import StatsCards from "../../components/dashboard/StatsCards";
 import TasksDoughnutChart from "../../components/dashboard/TasksDoughnutChart";
 import TasksTable from "../../components/dashboard/TasksTable";
 
+const MONTH_LABELS = [
+  "Janvier",
+  "Fevrier",
+  "Mars",
+  "Avril",
+  "Mai",
+  "Juin",
+  "Juillet",
+  "Aout",
+  "Septembre",
+  "Octobre",
+  "Novembre",
+  "Decembre",
+];
+
 const emptyDashboard = {
   profile: {
     fullName: "",
@@ -33,6 +48,7 @@ const emptyDashboard = {
   header: {
     department: "Non renseigné",
     monthLabel: "",
+    monthValue: "",
   },
   stats: [],
   charts: {
@@ -70,13 +86,19 @@ const statusOrder = {
 export default function Dashboard() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
-  const [searchValue, setSearchValue] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${now.getFullYear()}-${month}`;
+  });
   const [dashboardData, setDashboardData] = useState(emptyDashboard);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await axios.get("/api/dashboard/employee/");
+        const response = await axios.get("/api/dashboard/employee/", {
+          params: { month: selectedMonth },
+        });
         setDashboardData({
           ...emptyDashboard,
           ...response.data,
@@ -87,25 +109,31 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [selectedMonth]);
 
-  const filteredTasks = useMemo(() => {
-    const search = searchValue.trim().toLowerCase();
-    if (!search) return dashboardData.tasks;
-    return dashboardData.tasks.filter(
-      (task) =>
-        task.name.toLowerCase().includes(search) ||
-        task.priority.toLowerCase().includes(search) ||
-        task.status.toLowerCase().includes(search),
-    );
-  }, [dashboardData.tasks, searchValue]);
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const current = new Date();
+    current.setDate(1);
+
+    for (let index = 0; index < 12; index += 1) {
+      const optionDate = new Date(current.getFullYear(), current.getMonth() - index, 1);
+      const month = String(optionDate.getMonth() + 1).padStart(2, "0");
+      options.push({
+        value: `${optionDate.getFullYear()}-${month}`,
+        label: `${MONTH_LABELS[optionDate.getMonth()]} ${optionDate.getFullYear()}`,
+      });
+    }
+
+    return options;
+  }, []);
 
   const orderedTasks = useMemo(
     () =>
-      [...filteredTasks].sort(
+      [...dashboardData.tasks].sort(
         (left, right) => statusOrder[left.status] - statusOrder[right.status],
       ),
-    [filteredTasks],
+    [dashboardData.tasks],
   );
 
   return (
@@ -162,10 +190,10 @@ export default function Dashboard() {
 
         <main className="mx-auto flex w-[96%] flex-col gap-6 py-6">
           <DashboardHeader
-            department={dashboardData.header.department}
             monthLabel={dashboardData.header.monthLabel}
-            searchValue={searchValue}
-            onSearchChange={setSearchValue}
+            monthValue={dashboardData.header.monthValue || selectedMonth}
+            monthOptions={monthOptions}
+            onMonthChange={setSelectedMonth}
           />
           <StatsCards items={dashboardData.stats} />
 

@@ -3,7 +3,7 @@ import { baseChartOptions } from "./chartConfig";
 
 export default function TasksDoughnutChart({ values }) {
   const data = {
-    labels: ["Completed", "Pending", "Late"],
+    labels: ["Terminées", "En attente", "En retard"],
     datasets: [
       {
         data: [values.completed, values.pending, values.late],
