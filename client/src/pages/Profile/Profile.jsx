@@ -1,11 +1,12 @@
-﻿import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { logout as logoutRequest } from "../../api/auth.api";
 import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
 import Form from "../../components/Form";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
+
 export default function Profile() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
@@ -29,7 +30,7 @@ export default function Profile() {
   const [formData, setFormData] = useState(profileData);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  let access = localStorage.getItem("access_token");
+
   const splitFullName = (value = "") => {
     const clean = value.trim().replace(/\s+/g, " ");
     if (!clean) {
@@ -48,10 +49,7 @@ export default function Profile() {
   };
 
   const fetchProfile = async () => {
-    var me = await axios.get("/api/whoami/", {
-      headers: { Authorization: `Bearer ${access}` },
-    });
-    console.log("DEBUG whoami:", me.data);
+    const me = await axios.get("/api/whoami/");
     setProfileData({
       fullName: `${me.data.first_name || ""} ${me.data.last_name || ""}`.trim(),
       email: me.data.email,
@@ -82,6 +80,7 @@ export default function Profile() {
       is_online: me.data.is_online,
     });
   };
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -128,6 +127,7 @@ export default function Profile() {
       formData.current_password ||
       formData.new_password ||
       formData.confirm_password;
+
     if (hasPasswordInput) {
       if (
         !formData.current_password ||
@@ -162,25 +162,16 @@ export default function Profile() {
 
       await axios.put("/api/profile/update/", body, {
         headers: {
-          Authorization: `Bearer ${access}`,
           "Content-Type": "multipart/form-data",
         },
       });
 
       if (hasPasswordInput) {
-        await axios.post(
-          "/api/profile/change-password/",
-          {
-            current_password: formData.current_password,
-            new_password: formData.new_password,
-            confirm_password: formData.confirm_password,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${access}`,
-            },
-          },
-        );
+        await axios.post("/api/profile/change-password/", {
+          current_password: formData.current_password,
+          new_password: formData.new_password,
+          confirm_password: formData.confirm_password,
+        });
       }
 
       await fetchProfile();
@@ -196,12 +187,14 @@ export default function Profile() {
       setIsSaving(false);
     }
   };
+
   const navigate = useNavigate();
 
-  const logout = () => {
-    localStorage.removeItem("access_token");
+  const logout = async () => {
+    await logoutRequest();
     navigate("/login");
   };
+
   return (
     <>
       <div
@@ -347,7 +340,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Activité récente */}
             <div className="activite-recente">
               <div className="activite-top">
                 <h3 className="activite-title">Activité récente</h3>

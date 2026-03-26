@@ -3,6 +3,7 @@ import TextField from "@mui/material/TextField";
 import "../../styles/login.css";
 import logo from "../../assets/logo.jfif";
 import login from "../../api/auth.api";
+import { setSessionTokens } from "../../app/auth";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
@@ -30,10 +31,12 @@ export default function Login() {
     try {
       setIsLoading(true);
       let response = await login("/api/auth/token/", form);
-      const token = response.access;
-      localStorage.setItem("access_token", token);
+      setSessionTokens({
+        access: response.access,
+        refresh: response.refresh,
+      });
       setErrorMessage("");
-      navigate("/profile");
+      navigate("/home");
       // console.log(status);
     } catch (error) {
       console.error("Login failed", error);

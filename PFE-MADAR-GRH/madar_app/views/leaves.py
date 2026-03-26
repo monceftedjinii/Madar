@@ -289,6 +289,34 @@ def leave_types_list(request):
 	return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_leave_balances(request):
+	"""Return the current employee's leave balances."""
+	from datetime import date
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response([], status=status.HTTP_200_OK)
+
+	current_year = date.today().year
+	balances = SoldeConge.get_employee_balances(emp, current_year)
+	data = [
+		{
+			'id': b.id,
+			'type_code': b.leaveType.code,
+			'type_label': b.leaveType.libelle,
+			'joursAcquis': str(b.joursAcquis),
+			'joursPris': str(b.joursPris),
+			'joursReportes': str(b.joursReportes),
+			'joursRestants': str(b.joursRestants),
+			'annee': b.annee,
+		}
+		for b in balances
+	]
+	return Response(data)
+
+
 def _role_matches(expected_role, user_role):
 	if expected_role == RoleChoices.RH_SIMPLE:
 		return user_role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR}

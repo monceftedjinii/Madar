@@ -3,6 +3,7 @@ import axios from "axios";
 import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
+import { isAuthenticated } from "../app/auth";
 
 export default function Navbar(props) {
   const { fullName, post, image, email } = props;
@@ -15,14 +16,11 @@ export default function Navbar(props) {
   });
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("access_token");
-    if (!accessToken) return;
+    if (!isAuthenticated()) return;
 
     const fetchNavbarProfile = async () => {
       try {
-        const me = await axios.get("/api/whoami/", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const me = await axios.get("/api/whoami/");
 
         setFetchedProfile({
           fullName: `${me.data?.first_name || ""} ${me.data?.last_name || ""}`.trim(),

@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/attendance/me/', madar_views.attendance_me, name='api-att-me'),
     path('api/leaves/', madar_views.create_leave, name='api-leaves-create'),
     path('api/leave-types/', madar_views.leave_types_list, name='api-leave-types-list'),
+    path('api/leaves/balances/', madar_views.my_leave_balances, name='api-leaves-balances'),
     path('api/leaves/me/', madar_views.my_leaves, name='api-leaves-me'),
     path('api/leaves/department/', madar_views.department_pending_leaves, name='api-leaves-department'),
     path('api/leaves/<int:pk>/approve/', madar_views.approve_leave, name='api-leaves-approve'),

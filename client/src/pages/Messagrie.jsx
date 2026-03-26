@@ -11,6 +11,7 @@ const INITIAL_COMPOSE_FORM = {
   recipientId: "",
   subject: "",
   message: "",
+  forwardMessageId: null,
 };
 
 const getInitials = (value = "") => {
@@ -124,20 +125,10 @@ export default function Messagrie() {
   const [pageError, setPageError] = useState("");
   const [composeError, setComposeError] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const access = localStorage.getItem("access_token");
-
-  const authHeaders = useMemo(
-    () => ({
-      headers: {
-        Authorization: `Bearer ${access}`,
-      },
-    }),
-    [access],
-  );
 
   const loadRecipients = useCallback(async () => {
     try {
-      const response = await axios.get("/api/employees/?for_messaging=true", authHeaders);
+      const response = await axios.get("/api/employees/?for_messaging=true");
       const validRecipients = (response.data || []).filter(
         (recipient) => recipient.user_id !== undefined && recipient.user_id !== null,
       );
@@ -145,7 +136,7 @@ export default function Messagrie() {
     } catch (error) {
       console.error("Erreur chargement destinataires:", error);
     }
-  }, [authHeaders]);
+  }, []);
 
   const loadBox = useCallback(async (targetBox = boxType) => {
     try {
@@ -153,19 +144,19 @@ export default function Messagrie() {
       setPageError("");
 
       if (targetBox === "sent") {
-        const response = await axios.get("/api/messages/sent/?page=1", authHeaders);
+        const response = await axios.get("/api/messages/sent/?page=1");
         const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "sent"));
         setEmails(data);
       } else if (targetBox === "trash") {
-        const response = await axios.get("/api/messages/trash/?page=1", authHeaders);
+        const response = await axios.get("/api/messages/trash/?page=1");
         const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "trash"));
         setEmails(data);
       } else if (targetBox === "drafts") {
-        const response = await axios.get("/api/messages/drafts/", authHeaders);
+        const response = await axios.get("/api/messages/drafts/");
         const data = (response.data?.drafts || []).map((mail) => toUiMail(mail, "drafts"));
         setEmails(data);
       } else {
-        const response = await axios.get("/api/messages/inbox/?page=1", authHeaders);
+        const response = await axios.get("/api/messages/inbox/?page=1");
         const data = (response.data?.messages || []).map((mail) => toUiMail(mail, "inbox"));
         setEmails(data);
       }
@@ -183,7 +174,7 @@ export default function Messagrie() {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders, boxType]);
+  }, [boxType]);
 
   useEffect(() => {
     loadRecipients();
@@ -233,6 +224,20 @@ export default function Messagrie() {
     setIsComposeOpen(true);
   };
 
+  const openForwardCompose = () => {
+    if (!selectedEmail || selectedEmail.isDraft) return;
+
+    setComposeError("");
+    setComposeForm({
+      draftId: null,
+      recipientId: "",
+      subject: selectedEmail.subject ? `TR: ${selectedEmail.subject}` : "",
+      message: selectedEmail.body || "",
+      forwardMessageId: selectedEmail.id,
+    });
+    setIsComposeOpen(true);
+  };
+
   const closeCompose = () => {
     setIsComposeOpen(false);
     setComposeError("");
@@ -260,12 +265,17 @@ export default function Messagrie() {
 
     try {
       setSaving(true);
-      const formData = new FormData();
-      formData.append("recipient_id", composeForm.recipientId);
-      formData.append("subject", composeForm.subject.trim());
-      formData.append("body", composeForm.message.trim());
-
-      await axios.post("/api/messages/send/", formData, authHeaders);
+      if (composeForm.forwardMessageId) {
+        await axios.post(`/api/messages/${composeForm.forwardMessageId}/forward/`, {
+          recipient_id: composeForm.recipientId,
+        });
+      } else {
+        const formData = new FormData();
+        formData.append("recipient_id", composeForm.recipientId);
+        formData.append("subject", composeForm.subject.trim());
+        formData.append("body", composeForm.message.trim());
+        await axios.post("/api/messages/send/", formData);
+      }
       closeCompose();
       setComposeForm(INITIAL_COMPOSE_FORM);
       if (boxType !== "sent") {
@@ -299,7 +309,6 @@ export default function Messagrie() {
           subject: composeForm.subject.trim(),
           body: composeForm.message.trim(),
         },
-        authHeaders,
       );
       closeCompose();
       setComposeForm(INITIAL_COMPOSE_FORM);
@@ -325,7 +334,7 @@ export default function Messagrie() {
     if (!current || current.is_read) return;
 
     try {
-      const response = await axios.get(`/api/messages/${mailId}/`, authHeaders);
+      const response = await axios.get(`/api/messages/${mailId}/`);
       const refreshed = toUiMail(response.data, "inbox");
       setEmails((prev) => prev.map((item) => (item.id === mailId ? refreshed : item)));
     } catch (error) {
@@ -340,7 +349,7 @@ export default function Messagrie() {
       setSaving(true);
       const formData = new FormData();
       formData.append("body", replyText.trim());
-      await axios.post(`/api/messages/${selectedEmail.id}/reply/`, formData, authHeaders);
+      await axios.post(`/api/messages/${selectedEmail.id}/reply/`, formData);
       setReplyText("");
       if (boxType !== "sent") {
         setBoxType("sent");
@@ -389,9 +398,9 @@ export default function Messagrie() {
     try {
       setSaving(true);
       if (boxType === "drafts") {
-        await axios.delete(`/api/messages/drafts/${selectedEmail.id}/delete/`, authHeaders);
+        await axios.delete(`/api/messages/drafts/${selectedEmail.id}/delete/`);
       } else {
-        await axios.delete(`/api/messages/${selectedEmail.id}/delete/`, authHeaders);
+        await axios.delete(`/api/messages/${selectedEmail.id}/delete/`);
       }
       setFeedbackMessage(boxType === "drafts" ? "Brouillon supprime." : "Message supprime.");
       setSelectedId(null);
@@ -411,6 +420,7 @@ export default function Messagrie() {
       recipientId: selectedEmail.recipientId ? String(selectedEmail.recipientId) : "",
       subject: selectedEmail.subject || "",
       message: selectedEmail.body || "",
+      forwardMessageId: null,
     });
     setComposeError("");
     setIsComposeOpen(true);
@@ -613,7 +623,7 @@ export default function Messagrie() {
                           <button
                             type="button"
                             className="action-btn action-forward"
-                            onClick={openCompose}
+                            onClick={openForwardCompose}
                           >
                             Transferer
                           </button>

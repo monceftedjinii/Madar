@@ -6,7 +6,7 @@ from .employees import employees_list, services_list, positions_list, create_emp
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, mark_task_done
 from .attendance import attendance_check_in, attendance_check_out, attendance_me
-from .leaves import create_leave, my_leaves, department_pending_leaves, approve_leave, reject_leave, leave_types_list
+from .leaves import create_leave, my_leaves, department_pending_leaves, approve_leave, reject_leave, leave_types_list, my_leave_balances
 from .absences import absences_yesterday, create_warning, discipline_flags
 from .notifications import list_notifications, mark_notification_read
 from .formation import (
@@ -76,7 +76,7 @@ __all__ = [
 	# attendance
 	'attendance_check_in', 'attendance_check_out', 'attendance_me',
 	# leaves
-	'create_leave', 'my_leaves', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list',
+	'create_leave', 'my_leaves', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list', 'my_leave_balances',
 	# absences & discipline
 	'absences_yesterday', 'create_warning', 'discipline_flags',
 	# notifications
