@@ -930,11 +930,19 @@ class SoldeConge(models.Model):
 
     @classmethod
     def get_employee_balances(cls, employee, annee=None):
-        """Get all leave balances for an employee for a specific year"""
+        """Get all leave balances for an employee for a specific year.
+
+        Missing balances are initialized automatically from the configured
+        leave types so the frontend always receives a complete set.
+        """
         from datetime import date
         if annee is None:
             annee = date.today().year
-        
+
+        leave_types = LeaveType.objects.order_by('code')
+        for leave_type in leave_types:
+            cls.get_or_create_balance(employee, leave_type, annee)
+
         return cls.objects.filter(employee=employee, annee=annee).select_related('leaveType')
 
 

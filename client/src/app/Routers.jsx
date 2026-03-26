@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Auth/Login";
 import Profile from "../pages/Profile/Profile";
 import Home from "../pages/Home";
+import Dashboard from "../pages/dashboard/Dashboard";
 import Attendance from "../pages/Attendance";
 import Messagrie from "../pages/Messagrie";
 import Conge from "../pages/conges/Conge";
@@ -14,13 +15,13 @@ export default function Routers() {
     <>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>
+          <Route path="/home" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/messagerie" element={<Messagrie />} />
