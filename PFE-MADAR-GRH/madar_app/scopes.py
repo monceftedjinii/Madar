@@ -20,7 +20,7 @@ def employee_queryset_for(user):
             chef_emp = Employee.objects.get(email=user.email)
         except Employee.DoesNotExist:
             return Employee.objects.none()
-        return Employee.objects.filter(service=chef_emp.service)
+        return Employee.objects.filter(service=chef_emp.service).exclude(email=user.email)
 
     if role == RoleChoices.EMPLOYEE:
         return Employee.objects.filter(email=user.email)

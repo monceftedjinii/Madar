@@ -5,13 +5,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from ..models import Employee, Attendance
-from ..permissions import IsEmployee
+from ..permissions import IsEmployeeOrChef
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated, IsEmployeeOrChef])
 def attendance_check_in(request):
-	"""Employee checks in for today using their 4-digit PIN."""
+	"""Employee or chef checks in for today using their 4-digit PIN."""
 	pin = request.data.get('pin')
 	if not pin:
 		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -44,9 +44,9 @@ def attendance_check_in(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated, IsEmployeeOrChef])
 def attendance_check_out(request):
-	"""Employee checks out for today using their 4-digit PIN."""
+	"""Employee or chef checks out for today using their 4-digit PIN."""
 	pin = request.data.get('pin')
 	if not pin:
 		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,9 +82,9 @@ def attendance_check_out(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated, IsEmployeeOrChef])
 def attendance_me(request):
-	"""Return attendance records for the current employee in a date range."""
+	"""Return attendance records for the current employee or chef in a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
 	today = timezone.localdate()

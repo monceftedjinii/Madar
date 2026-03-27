@@ -45,18 +45,31 @@ export default function DashboardHeader({
               Mois
             </p>
             <select
-              className={`mt-1 w-full bg-transparent text-sm font-medium outline-none ${
-                dark ? "text-slate-100" : "text-slate-700"
+              className={`mt-1 w-full rounded-xl border-none text-sm font-medium outline-none ${
+                dark
+                  ? "bg-slate-900 text-slate-100 [color-scheme:dark]"
+                  : "bg-white text-slate-700 [color-scheme:light]"
               }`}
               value={monthValue}
               onChange={(event) => onMonthChange?.(event.target.value)}
             >
               {monthOptions.map((option) => (
-                <option key={option.value} value={option.value}>
+                <option
+                  key={option.value}
+                  value={option.value}
+                  className={dark ? "bg-slate-900 text-slate-100" : "bg-white text-slate-900"}
+                >
                   {option.label}
                 </option>
               ))}
-              {!monthOptions.length && <option value="">{monthLabel}</option>}
+              {!monthOptions.length && (
+                <option
+                  value=""
+                  className={dark ? "bg-slate-900 text-slate-100" : "bg-white text-slate-900"}
+                >
+                  {monthLabel}
+                </option>
+              )}
             </select>
           </div>
         </label>

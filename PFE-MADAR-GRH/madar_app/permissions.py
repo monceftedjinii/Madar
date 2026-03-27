@@ -41,6 +41,10 @@ class IsEmployee(HasRole):
     allowed_roles = [RoleChoices.EMPLOYEE]
 
 
+class IsEmployeeOrChef(HasRole):
+    allowed_roles = [RoleChoices.EMPLOYEE, RoleChoices.CHEF]
+
+
 class IsRHSimple(HasRole):
     allowed_roles = [RoleChoices.RH_SIMPLE]
 

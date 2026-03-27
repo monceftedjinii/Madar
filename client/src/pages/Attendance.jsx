@@ -57,6 +57,42 @@ const formatDate = (value) => {
   }
 };
 
+const mapAttendanceError = (requestError, role) => {
+  const detail =
+    requestError?.response?.data?.detail ||
+    requestError?.response?.data?.error ||
+    "";
+
+  if (detail === "You do not have permission to perform this action.") {
+    return role && !["EMPLOYEE", "CHEF"].includes(role)
+      ? "Le pointage est reserve aux comptes employe et chef de service."
+      : "Vous n'avez pas la permission d'effectuer cette action.";
+  }
+
+  if (detail === "pin is required") return "Le code PIN est obligatoire.";
+  if (detail === "pin must be exactly 4 digits") {
+    return "Le code PIN doit contenir exactement 4 chiffres.";
+  }
+  if (detail === "employee record not found") {
+    return "Aucun dossier employe n'est lie a ce compte.";
+  }
+  if (detail === "pin not set") {
+    return "Aucun code PIN n'est configure pour ce compte.";
+  }
+  if (detail === "Invalid PIN") return "Code PIN invalide.";
+  if (detail === "already checked in") {
+    return "L'entree a deja ete enregistree aujourd'hui.";
+  }
+  if (detail === "already checked out") {
+    return "La sortie a deja ete enregistree aujourd'hui.";
+  }
+  if (detail === "no check-in found for today") {
+    return "Aucune entree n'a ete enregistree pour aujourd'hui.";
+  }
+
+  return detail || "Erreur lors du pointage.";
+};
+
 export default function Attendance() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
@@ -71,6 +107,7 @@ export default function Attendance() {
   const [pendingAction, setPendingAction] = useState("");
   const [pinValue, setPinValue] = useState("");
   const [pinError, setPinError] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState("");
 
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [fromDate, setFromDate] = useState(defaultRange.from);
@@ -129,6 +166,29 @@ export default function Attendance() {
     fetchAttendance(defaultRange.from, defaultRange.to);
     fetchTodayAttendance();
   }, [defaultRange, fetchAttendance, fetchTodayAttendance]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await axios.get("/api/whoami/", authConfig);
+        if (isMounted) {
+          setCurrentUserRole(response.data?.role || "");
+        }
+      } catch {
+        if (isMounted) {
+          setCurrentUserRole("");
+        }
+      }
+    };
+
+    fetchCurrentUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authConfig]);
 
   useEffect(() => {
     const onEscape = (event) => {
@@ -194,8 +254,13 @@ export default function Attendance() {
       ? "Présence en cours"
       : "Pas encore pointé";
 
-  const canCheckIn = !todayRecord?.check_in_time && !actionInProgress;
+  const canUseAttendance =
+    !currentUserRole || ["EMPLOYEE", "CHEF"].includes(currentUserRole);
+
+  const canCheckIn =
+    canUseAttendance && !todayRecord?.check_in_time && !actionInProgress;
   const canCheckOut =
+    canUseAttendance &&
     !!todayRecord?.check_in_time &&
     !todayRecord?.check_out_time &&
     !actionInProgress;
@@ -268,6 +333,13 @@ export default function Attendance() {
   };
 
   const handlePinConfirm = async () => {
+    if (currentUserRole && !["EMPLOYEE", "CHEF"].includes(currentUserRole)) {
+      setPinError(
+        "Le pointage est reserve aux comptes employe et chef de service.",
+      );
+      return;
+    }
+
     if (pinValue.length !== 4) {
       setPinError("Le code PIN doit contenir 4 chiffres.");
       return;
@@ -347,11 +419,7 @@ export default function Attendance() {
         fetchTodayAttendance(),
       ]);
     } catch (requestError) {
-      setPinError(
-        requestError?.response?.data?.detail ||
-          requestError?.response?.data?.error ||
-          "Erreur lors du pointage.",
-      );
+      setPinError(mapAttendanceError(requestError, currentUserRole));
     } finally {
       setActionInProgress(null);
     }
@@ -419,6 +487,12 @@ export default function Attendance() {
                   Utilisez votre PIN à 4 chiffres pour enregistrer votre
                   présence.
                 </p>
+                {!canUseAttendance && (
+                  <p style={{ color: "#dc2626", fontWeight: 600 }}>
+                    Ce compte n'a pas acces au pointage. Utilisez un compte
+                    employe ou chef de service pour pointer l'entree et la sortie.
+                  </p>
+                )}
                 <div>
                   <div>Entrée: {formatTime(todayRecord?.check_in_time)}</div>
                   <div>Sortie: {formatTime(todayRecord?.check_out_time)}</div>

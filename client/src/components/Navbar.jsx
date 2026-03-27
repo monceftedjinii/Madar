@@ -14,6 +14,7 @@ export default function Navbar(props) {
     post: "",
     image: "",
     email: "",
+    role: "",
   });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
@@ -32,6 +33,7 @@ export default function Navbar(props) {
           post: me.data?.position || me.data?.employee_info?.position || "",
           image: me.data?.profile_picture || "",
           email: me.data?.email || "",
+          role: me.data?.role || "",
         });
 
         const items = Array.isArray(notifications.data) ? notifications.data : [];
@@ -60,6 +62,7 @@ export default function Navbar(props) {
   const resolvedPost = post || fetchedProfile.post || "Poste non renseigne";
   const resolvedImage = image || fetchedProfile.image;
   const resolvedEmail = email || fetchedProfile.email;
+  const resolvedRole = fetchedProfile.role || "";
 
   const avatarSrc = resolvedImage
     ? resolvedImage
@@ -70,6 +73,7 @@ export default function Navbar(props) {
     { to: "/profile", label: "Mon Profil" },
     { to: "/conge", label: "Conges" },
     { to: "/attendance", label: "Presence" },
+    ...(resolvedRole === "CHEF" ? [{ to: "/team", label: "Mon equipe" }] : []),
     { to: "/tasks", label: "Mes taches" },
     { to: "/notifications", label: "Notifications" },
     { to: "/messagerie", label: "Messagerie" },
