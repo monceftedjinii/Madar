@@ -19,6 +19,7 @@ export default function TeamEmployees() {
   const [serviceName, setServiceName] = useState("");
   const [error, setError] = useState("");
   const [currentRole, setCurrentRole] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const fetchEmployees = async () => {
     try {
@@ -56,6 +57,18 @@ export default function TeamEmployees() {
     const offline = Math.max(total - online, 0);
     return { total, online, offline };
   }, [employees]);
+
+  const modalCardStyle = {
+    width: "min(92vw, 760px)",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    borderRadius: 18,
+    padding: 24,
+    background: dark ? "#111827" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#111827",
+    boxShadow: "0 18px 48px rgba(15, 23, 42, 0.28)",
+    border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+  };
 
   return (
     <div
@@ -209,7 +222,11 @@ export default function TeamEmployees() {
                     const fullName = `${employee.first_name || ""} ${employee.last_name || ""}`.trim();
 
                     return (
-                      <tr key={employee.id}>
+                      <tr
+                        key={employee.id}
+                        onClick={() => setSelectedEmployee(employee)}
+                        style={{ cursor: "pointer" }}
+                      >
                         <td>{fullName || employee.email || "-"}</td>
                         <td>{employee.position || "-"}</td>
                         <td>{employee.email || "-"}</td>
@@ -232,6 +249,105 @@ export default function TeamEmployees() {
           </div>
         </section>
       </div>
+
+      {selectedEmployee && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 500,
+            padding: 16,
+          }}
+          onClick={() => setSelectedEmployee(null)}
+        >
+          <div style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 16,
+                marginBottom: 18,
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0 }}>
+                  {`${selectedEmployee.first_name || ""} ${selectedEmployee.last_name || ""}`.trim() ||
+                    selectedEmployee.email ||
+                    "Employe"}
+                </h2>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: dark ? "#94a3b8" : "#64748b",
+                  }}
+                >
+                  Consultation des informations personnelles et professionnelles.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="mode"
+                onClick={() => setSelectedEmployee(null)}
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 18,
+              }}
+            >
+              <section
+                style={{
+                  borderRadius: 16,
+                  padding: 18,
+                  background: dark ? "#0f172a" : "#f8fafc",
+                  border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Informations personnelles</h3>
+                <p><strong>Nom:</strong> {selectedEmployee.last_name || "-"}</p>
+                <p><strong>Prenom:</strong> {selectedEmployee.first_name || "-"}</p>
+                <p><strong>Email:</strong> {selectedEmployee.email || "-"}</p>
+                <p><strong>Telephone:</strong> {selectedEmployee.phone_number || "-"}</p>
+                <p><strong>Adresse:</strong> {selectedEmployee.address || "-"}</p>
+              </section>
+
+              <section
+                style={{
+                  borderRadius: 16,
+                  padding: 18,
+                  background: dark ? "#0f172a" : "#f8fafc",
+                  border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Informations professionnelles</h3>
+                <p><strong>Poste:</strong> {selectedEmployee.position || "-"}</p>
+                <p><strong>Service:</strong> {selectedEmployee.service?.nomService || "-"}</p>
+                <p><strong>Code service:</strong> {selectedEmployee.service?.code || "-"}</p>
+                <p><strong>Contrat:</strong> {selectedEmployee.contract_type || "-"}</p>
+                <p><strong>Date d'entree:</strong> {formatDate(selectedEmployee.hired_at)}</p>
+                <p>
+                  <strong>Statut en ligne:</strong>{" "}
+                  <span
+                    className={`badge ${selectedEmployee.is_online ? "badge-termine" : "badge-refuse"}`}
+                  >
+                    {selectedEmployee.is_online ? "En ligne" : "Hors ligne"}
+                  </span>
+                </p>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
