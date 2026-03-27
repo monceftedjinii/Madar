@@ -38,7 +38,7 @@ const emptyDashboard = {
     role: "",
     department: "",
     email: "",
-    avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+    avatar: "",
     attendanceRate: 0,
     overallProgress: 0,
     finalScore: 0,

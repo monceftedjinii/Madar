@@ -10,6 +10,8 @@ import Conge from "../pages/conges/Conge";
 import Notifications from "../pages/Notifications";
 import Tasks from "../pages/Tasks";
 import TeamEmployees from "../pages/TeamEmployees";
+import ChefTasks from "../pages/ChefTasks";
+import ChefLeaves from "../pages/ChefLeaves";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -29,6 +31,8 @@ export default function Routers() {
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/team" element={<TeamEmployees />} />
+          <Route path="/chef/tasks" element={<ChefTasks />} />
+          <Route path="/chef/leaves" element={<ChefLeaves />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />

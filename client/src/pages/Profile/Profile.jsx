@@ -7,6 +7,18 @@ import Navbar from "../../components/Navbar";
 import Form from "../../components/Form";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
 
+function getAccountInitials(fullName) {
+  const parts = (fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+}
+
 export default function Profile() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = useState(true);
@@ -448,23 +460,25 @@ export default function Profile() {
           <div className="profile-infos">
             <div className="quelques-infos">
               <div className="gauche">
-                <img
-                  src={
-                    profileData.photoName
-                      ? profileData.photoName
-                      : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                  }
-                  alt="Profile-pic"
-                  className="profile-pic"
-                  style={{
-                    width: 50,
-                    height: 50,
-                    minWidth: 50,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
+                {profileData.photoName ? (
+                  <img
+                    src={profileData.photoName}
+                    alt="Profile-pic"
+                    className="profile-pic"
+                    style={{
+                      width: 50,
+                      height: 50,
+                      minWidth: 50,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  <div className="profile-pic profile-pic-fallback">
+                    {getAccountInitials(profileData.fullName)}
+                  </div>
+                )}
                 <div className="infooos">
                   <div className="nom-status">
                     <h3>{profileData.fullName}</h3>

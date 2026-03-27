@@ -257,7 +257,7 @@ def get_employee_dashboard(request):
                 'role': role,
                 'department': department,
                 'email': request.user.email,
-                'avatar': avatar or 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+                'avatar': avatar or '',
                 'attendanceRate': attendance_rate,
                 'overallProgress': overall_progress,
                 'finalScore': final_score,

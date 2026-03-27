@@ -188,6 +188,18 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   object-fit: cover;
 }
+
+.profile-pic-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1f9d55, #0f766e);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .nom-status {
   display: flex;
   flex-direction: row;

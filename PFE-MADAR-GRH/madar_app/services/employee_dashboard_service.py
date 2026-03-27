@@ -202,9 +202,7 @@ class EmployeeDashboardService:
             if self.employee.service
             else "Non renseigne",
             "email": self.user.email,
-            "avatar": request_user_picture
-            or employee_picture
-            or "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            "avatar": request_user_picture or employee_picture or "",
             "attendanceRate": attendance_rate,
             "overallProgress": overall_progress,
             "finalScore": final_score,

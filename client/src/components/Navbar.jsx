@@ -5,6 +5,18 @@ import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 import { isAuthenticated } from "../app/auth";
 
+function getAccountInitials(fullName) {
+  const parts = (fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+}
+
 export default function Navbar(props) {
   const { fullName, post, image, email } = props;
   const navigate = useNavigate();
@@ -63,17 +75,18 @@ export default function Navbar(props) {
   const resolvedImage = image || fetchedProfile.image;
   const resolvedEmail = email || fetchedProfile.email;
   const resolvedRole = fetchedProfile.role || "";
+  const initials = getAccountInitials(resolvedName);
 
-  const avatarSrc = resolvedImage
-    ? resolvedImage
-    : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  const isChef = resolvedRole === "CHEF";
 
   const navItems = [
     { to: "/home", label: "Dashboard" },
     { to: "/profile", label: "Mon Profil" },
     { to: "/conge", label: "Conges" },
     { to: "/attendance", label: "Presence" },
-    ...(resolvedRole === "CHEF" ? [{ to: "/team", label: "Mon equipe" }] : []),
+    ...(isChef ? [{ to: "/team", label: "Mon equipe" }] : []),
+    ...(isChef ? [{ to: "/chef/tasks", label: "Taches equipe" }] : []),
+    ...(isChef ? [{ to: "/chef/leaves", label: "Validation conges" }] : []),
     { to: "/tasks", label: "Mes taches" },
     { to: "/notifications", label: "Notifications" },
     { to: "/messagerie", label: "Messagerie" },
@@ -121,21 +134,27 @@ export default function Navbar(props) {
         }}
         style={{ cursor: "pointer" }}
       >
-        <div
-          className="profile-img"
-          role="img"
-          aria-label="Profile"
-          style={{
-            width: 48,
-            height: 48,
-            minWidth: 48,
-            borderRadius: "50%",
-            backgroundImage: `url(${avatarSrc})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        />
+        {resolvedImage ? (
+          <div
+            className="profile-img"
+            role="img"
+            aria-label="Profile"
+            style={{
+              width: 48,
+              height: 48,
+              minWidth: 48,
+              borderRadius: "50%",
+              backgroundImage: `url(${resolvedImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+        ) : (
+          <div className="profile-img profile-img-fallback" aria-hidden="true">
+            {initials}
+          </div>
+        )}
         <div className="profile-name">
           <h4>{resolvedName}</h4>
           <p className="text-nav account-role">{resolvedPost}</p>

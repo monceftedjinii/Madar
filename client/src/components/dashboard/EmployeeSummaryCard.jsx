@@ -2,10 +2,20 @@ const badgeStyles = {
   Excellent: "bg-emerald-100 text-emerald-700",
   Bon: "bg-blue-100 text-blue-700",
   Moyen: "bg-amber-100 text-amber-700",
-  "À améliorer": "bg-rose-100 text-rose-700",
   "A ameliorer": "bg-rose-100 text-rose-700",
-  "Ã€ amÃ©liorer": "bg-rose-100 text-rose-700",
 };
+
+function getAccountInitials(fullName) {
+  const parts = (fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+}
 
 export default function EmployeeSummaryCard({ employee, dark = false }) {
   const cardClass = dark
@@ -17,11 +27,17 @@ export default function EmployeeSummaryCard({ employee, dark = false }) {
   return (
     <article className={cardClass}>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        <img
-          alt={employee.fullName}
-          className="h-24 w-24 rounded-2xl object-cover shadow-md"
-          src={employee.avatar}
-        />
+        {employee.avatar ? (
+          <img
+            alt={employee.fullName}
+            className="h-24 w-24 rounded-2xl object-cover shadow-md"
+            src={employee.avatar}
+          />
+        ) : (
+          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-2xl font-extrabold uppercase tracking-[0.12em] text-white shadow-md">
+            {getAccountInitials(employee.fullName)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className={`text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
@@ -47,7 +63,7 @@ export default function EmployeeSummaryCard({ employee, dark = false }) {
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className={statBoxClass}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Taux de présence
+            Taux de presence
           </p>
           <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
             {employee.attendanceRate}%
