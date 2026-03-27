@@ -21,30 +21,30 @@ def create_task(request):
 	title = data.get('title')
 	if not title:
 		logger.warning('create_task: title is required')
-		return Response({'detail': 'title is required'}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({'detail': 'Le titre est obligatoire.'}, status=status.HTTP_400_BAD_REQUEST)
 
 	assigned_to_id = data.get('assigned_to')
 	if not assigned_to_id:
 		logger.warning('create_task: assigned_to is required')
-		return Response({'detail': 'assigned_to is required'}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({'detail': "L'employe cible est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
 
 	try:
 		emp = Employee.objects.get(id=assigned_to_id)
 		logger.info(f'create_task: found employee {emp.email}')
 	except Employee.DoesNotExist:
 		logger.warning(f'create_task: employee {assigned_to_id} not found')
-		return Response({'detail': 'assigned_to not found'}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({'detail': "Employe introuvable."}, status=status.HTTP_400_BAD_REQUEST)
 
 	try:
 		chef_emp = Employee.objects.get(email=request.user.email)
 		logger.info(f'create_task: chef {chef_emp.email} found in service {chef_emp.service.nomService}')
 	except Employee.DoesNotExist:
 		logger.warning(f'create_task: chef {request.user.email} has no employee record')
-		return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({'detail': "Aucune fiche employe n'est liee a ce chef."}, status=status.HTTP_400_BAD_REQUEST)
 
 	if emp.service_id != chef_emp.service_id:
 		logger.warning(f'create_task: chef service {chef_emp.service_id} != employee service {emp.service_id}')
-		return Response({'detail': 'cannot assign outside your service'}, status=status.HTTP_403_FORBIDDEN)
+		return Response({'detail': "Vous ne pouvez affecter une tache qu'aux employes de votre service."}, status=status.HTTP_403_FORBIDDEN)
 
 	task = Task.objects.create(
 		title=title,
@@ -59,8 +59,8 @@ def create_task(request):
 		chef_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
 		notify(
 			assigned_user,
-			title='New task assigned',
-			message=f"{chef_name} assigned you a task: {title}",
+			title='Nouvelle tache assignee',
+			message=f"{chef_name} vous a assigne la tache : {title}",
 			link='/tasks'
 		)
 	except User.DoesNotExist:
@@ -140,10 +140,10 @@ def mark_task_done(request, pk):
 	try:
 		task = Task.objects.get(id=pk)
 	except Task.DoesNotExist:
-		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+		return Response({'detail': 'Tache introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
 	if task.assigned_to.email != request.user.email:
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+		return Response({'detail': "Vous n'avez pas le droit de modifier cette tache."}, status=status.HTTP_403_FORBIDDEN)
 
 	task.status = Task.Status.DONE
 	task.completed_at = timezone.now()
@@ -153,9 +153,9 @@ def mark_task_done(request, pk):
 		emp = task.assigned_to
 		notify(
 			task.assigned_by,
-			title='Task Completed',
-			message=f"{emp.first_name} {emp.last_name} marked '{task.title}' as done",
-			link='/tasks'
+			title='Tache terminee',
+			message=f"{emp.first_name} {emp.last_name} a marque la tache '{task.title}' comme terminee",
+			link='/chef/tasks'
 		)
 		logger.info(f'mark_task_done: notified chef {task.assigned_by.email} that task {task.id} was completed')
 

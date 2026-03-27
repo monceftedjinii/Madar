@@ -326,9 +326,14 @@ def _chef_decide_common(request, pk, accept=True):
 
 		emp_user = User.objects.filter(email=lr.employee.email).first()
 		if emp_user:
-			notify(emp_user, 'Leave approved', f'Your leave request from {lr.start_date} to {lr.end_date} has been approved.', link='/leaves')
+			notify(
+				emp_user,
+				'Conge approuve',
+				f'Votre demande de conge du {lr.start_date} au {lr.end_date} a ete approuvee.',
+				link='/conge'
+			)
 
-		return Response({'id': lr.id, 'status': lr.status, 'detail': 'leave fully approved'})
+		return Response({'id': lr.id, 'status': lr.status, 'detail': 'Demande de conge approuvee avec succes.'})
 
 	current_step.reject(request.user, comment)
 	ValidationWorkflow.objects.filter(leave_request=lr, decision=ValidationWorkflow.Decision.PENDING).update(is_active=False)
@@ -340,15 +345,14 @@ def _chef_decide_common(request, pk, accept=True):
 
 	emp_user = User.objects.filter(email=lr.employee.email).first()
 	if emp_user:
-		status_label = 'approved' if accept else 'rejected'
 		notify(
 			emp_user,
-			f'Leave {status_label}',
-			f'Your leave request from {lr.start_date} to {lr.end_date} has been {status_label}.',
-			link='/leaves'
+			'Conge refuse',
+			f'Votre demande de conge du {lr.start_date} au {lr.end_date} a ete refusee.',
+			link='/conge'
 		)
 
-	return Response({'id': lr.id, 'status': lr.status})
+	return Response({'id': lr.id, 'status': lr.status, 'detail': 'Demande de conge refusee.'})
 
 
 @api_view(['POST'])
@@ -474,7 +478,7 @@ def _notify_step_validators(leave_request, step):
 	for validator_user in validators:
 		notify(
 			validator_user,
-			'Leave approval required',
-			f'{leave_request.employee.first_name} {leave_request.employee.last_name} leave request needs your validation (step {step.validation_order}).',
-			link='/leaves/department'
+			'Validation de conge requise',
+			f"La demande de conge de {leave_request.employee.first_name} {leave_request.employee.last_name} attend votre validation a l'etape {step.validation_order}.",
+			link='/chef/leaves' if step.validator_role == RoleChoices.CHEF else '/notifications'
 		)

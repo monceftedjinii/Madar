@@ -8,7 +8,7 @@ def notify(user, title, message, link=''):
 
 def _display_name(user):
 	if not user:
-		return 'Someone'
+		return 'Utilisateur'
 	name = f"{user.first_name} {user.last_name}".strip()
 	return name or user.email
 
