@@ -61,7 +61,7 @@ export default function ChefReports() {
       const response = await axios.get(`/api/reports/${type}/export/`, {
         params: {
           ...filters,
-          format,
+          file_format: format,
         },
         responseType: "blob",
       });

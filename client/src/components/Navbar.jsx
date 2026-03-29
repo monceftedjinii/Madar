@@ -79,23 +79,42 @@ export default function Navbar(props) {
 
   const isChef = resolvedRole === "CHEF";
 
-  const navItems = [
-    { to: "/home", label: "Dashboard" },
-    { to: "/profile", label: "Mon Profil" },
-    { to: "/conge", label: "Conges" },
-    { to: "/attendance", label: "Presence" },
-    { to: "/evaluations", label: "Evaluations" },
-    ...(isChef ? [{ to: "/team", label: "Mon equipe" }] : []),
-    ...(isChef ? [{ to: "/chef/attendance", label: "Presence equipe" }] : []),
-    ...(isChef ? [{ to: "/chef/tasks", label: "Taches equipe" }] : []),
-    ...(isChef ? [{ to: "/chef/leaves", label: "Validation conges" }] : []),
-    ...(isChef ? [{ to: "/chef/evaluations", label: "Evaluer equipe" }] : []),
-    ...(isChef ? [{ to: "/chef/documents", label: "Documents" }] : []),
-    ...(isChef ? [{ to: "/chef/formations", label: "Formations" }] : []),
-    ...(isChef ? [{ to: "/chef/reports", label: "Rapports" }] : []),
-    { to: "/tasks", label: "Mes taches" },
-    { to: "/notifications", label: "Notifications" },
-    { to: "/messagerie", label: "Messagerie" },
+  const navSections = [
+    {
+      title: "Principal",
+      items: [
+        { to: "/home", label: "Dashboard" },
+        { to: "/profile", label: "Mon Profil" },
+        { to: "/conge", label: "Conges" },
+        { to: "/attendance", label: "Presence" },
+        { to: "/evaluations", label: "Evaluations" },
+        { to: "/tasks", label: "Mes taches" },
+      ],
+    },
+    ...(isChef
+      ? [
+          {
+            title: "Espace Chef",
+            items: [
+              { to: "/team", label: "Mon equipe" },
+              { to: "/chef/attendance", label: "Presence equipe" },
+              { to: "/chef/tasks", label: "Taches equipe" },
+              { to: "/chef/leaves", label: "Validation conges" },
+              { to: "/chef/evaluations", label: "Evaluer equipe" },
+              { to: "/chef/documents", label: "Documents" },
+              { to: "/chef/formations", label: "Formations" },
+              { to: "/chef/reports", label: "Rapports" },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: "Communication",
+      items: [
+        { to: "/notifications", label: "Notifications" },
+        { to: "/messagerie", label: "Messagerie" },
+      ],
+    },
   ];
 
   return (
@@ -111,19 +130,26 @@ export default function Navbar(props) {
       </div>
 
       <div className="nav-menu">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `pvv nav-link ${isActive ? "active-nav" : ""}`
-            }
-          >
-            <span>{item.label}</span>
-            {item.to === "/notifications" && unreadNotifications > 0 && (
-              <span className="nav-badge">{unreadNotifications}</span>
-            )}
-          </NavLink>
+        {navSections.map((section) => (
+          <div className="nav-section" key={section.title}>
+            <p className="nav-section-title">{section.title}</p>
+            <div className="nav-section-links">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `pvv nav-link ${isActive ? "active-nav" : ""}`
+                  }
+                >
+                  <span>{item.label}</span>
+                  {item.to === "/notifications" && unreadNotifications > 0 && (
+                    <span className="nav-badge">{unreadNotifications}</span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
