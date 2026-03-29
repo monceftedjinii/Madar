@@ -26,6 +26,7 @@ from madar_app.services import (
     ExportService,
     ExportFile,
     EmployeeDashboardService,
+    ChefDashboardService,
 )
 from madar_app.models import (
     User,
@@ -37,7 +38,7 @@ from madar_app.models import (
     Message,
     Announcement,
 )
-from ..permissions import IsEmployee
+from ..permissions import IsChef, IsEmployee
 
 
 @api_view(['GET'])
@@ -57,6 +58,26 @@ def get_employee_dashboard(request):
     except Exception as e:
         return Response(
             {'error': f'Failed to load employee dashboard: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsChef])
+def get_chef_dashboard(request):
+    """Return a complete dashboard payload for a chef de service."""
+    try:
+        return Response(
+            ChefDashboardService(
+                request.user,
+                request=request,
+                month=request.query_params.get("month"),
+            ).build()
+        )
+    except ValueError as e:
+        return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response(
+            {'error': f'Echec du chargement du dashboard chef: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

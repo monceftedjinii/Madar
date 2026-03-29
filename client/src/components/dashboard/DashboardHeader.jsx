@@ -1,4 +1,7 @@
 export default function DashboardHeader({
+  eyebrow = "Espace Employe",
+  title = "Tableau de bord employe",
+  description = "Suivez votre performance, votre productivite et votre note mensuelle dans un tableau de bord RH clair et moderne.",
   monthLabel = "Ce mois",
   monthValue = "",
   monthOptions = [],
@@ -13,22 +16,21 @@ export default function DashboardHeader({
             dark ? "text-blue-400" : "text-blue-600"
           }`}
         >
-          Espace Employe
+          {eyebrow}
         </p>
         <h1
           className={`text-3xl font-bold tracking-tight md:text-4xl ${
             dark ? "text-slate-50" : "text-slate-900"
           }`}
         >
-          Tableau de bord employe
+          {title}
         </h1>
         <p
           className={`mt-2 max-w-2xl text-sm md:text-base ${
             dark ? "text-slate-300" : "text-slate-500"
           }`}
         >
-          Suivez votre performance, votre productivite et votre note mensuelle
-          dans un tableau de bord RH clair et moderne.
+          {description}
         </p>
       </div>
 

@@ -1,5 +1,7 @@
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import AssignmentLateOutlinedIcon from "@mui/icons-material/AssignmentLateOutlined";
+import Groups2OutlinedIcon from "@mui/icons-material/Groups2Outlined";
+import MarkEmailReadOutlinedIcon from "@mui/icons-material/MarkEmailReadOutlined";
 import PendingActionsOutlinedIcon from "@mui/icons-material/PendingActionsOutlined";
 import QueryStatsOutlinedIcon from "@mui/icons-material/QueryStatsOutlined";
 import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
@@ -14,6 +16,12 @@ const iconMap = {
   attendance: TimerOutlinedIcon,
   performance: QueryStatsOutlinedIcon,
   score: SpeedOutlinedIcon,
+  team: Groups2OutlinedIcon,
+  online: MarkEmailReadOutlinedIcon,
+  tasks: TaskAltOutlinedIcon,
+  submitted: AssignmentTurnedInOutlinedIcon,
+  revision: PendingActionsOutlinedIcon,
+  leaves: AssignmentLateOutlinedIcon,
 };
 
 const colorMap = {
@@ -24,6 +32,12 @@ const colorMap = {
   attendance: "bg-sky-50 text-sky-600",
   performance: "bg-indigo-50 text-indigo-600",
   score: "bg-violet-50 text-violet-600",
+  team: "bg-cyan-50 text-cyan-600",
+  online: "bg-emerald-50 text-emerald-600",
+  tasks: "bg-blue-50 text-blue-600",
+  submitted: "bg-sky-50 text-sky-600",
+  revision: "bg-amber-50 text-amber-600",
+  leaves: "bg-rose-50 text-rose-600",
 };
 
 function StatCard({ item, dark = false }) {

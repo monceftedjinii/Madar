@@ -33,6 +33,8 @@ function formatDateTime(value) {
 
 function getStatusLabel(task) {
   if (task.status === "DONE") return "Terminee";
+  if (task.status === "SUBMITTED") return "Travail remis";
+  if (task.status === "REVISION") return "Correction demandee";
   if (task.due_date) {
     const dueDate = new Date(`${task.due_date}T00:00:00`);
     const today = new Date();
@@ -46,6 +48,8 @@ function getStatusLabel(task) {
 
 function getStatusClass(label) {
   if (label === "Terminee") return "badge-termine";
+  if (label === "Travail remis") return "badge-genere";
+  if (label === "Correction demandee") return "badge-attente";
   if (label === "En retard") return "badge-refuse";
   return "badge-attente";
 }
@@ -60,6 +64,10 @@ export default function ChefTasks() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [reviewTask, setReviewTask] = useState(null);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewAction, setReviewAction] = useState("approve");
+  const [actionId, setActionId] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -96,11 +104,14 @@ export default function ChefTasks() {
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((task) => task.status === "DONE").length;
+    const submitted = tasks.filter((task) => task.status === "SUBMITTED").length;
+    const revision = tasks.filter((task) => task.status === "REVISION").length;
     const late = tasks.filter((task) => getStatusLabel(task) === "En retard").length;
     return {
       total,
       completed,
-      inProgress: Math.max(total - completed - late, 0),
+      submitted,
+      revision,
       late,
     };
   }, [tasks]);
@@ -146,6 +157,44 @@ export default function ChefTasks() {
     }
   };
 
+  const openReview = (task) => {
+    setReviewTask(task);
+    setReviewComment(task.review_comment || "");
+    setReviewAction("approve");
+    setFeedback("");
+    setErrorMessage("");
+  };
+
+  const submitReview = async (event) => {
+    event.preventDefault();
+    if (!reviewTask) return;
+
+    try {
+      setActionId(reviewTask.id);
+      setErrorMessage("");
+      setFeedback("");
+      await axios.post(`/api/tasks/${reviewTask.id}/review/`, {
+        action: reviewAction,
+        comment: reviewComment.trim(),
+      });
+      setFeedback(
+        reviewAction === "approve"
+          ? "Travail valide avec succes."
+          : "Retour de correction envoye a l'employe.",
+      );
+      setReviewTask(null);
+      setReviewComment("");
+      await fetchData();
+    } catch (requestError) {
+      console.error("Erreur revue tache:", requestError);
+      setErrorMessage(
+        requestError?.response?.data?.detail || "Impossible de traiter cette remise.",
+      );
+    } finally {
+      setActionId(null);
+    }
+  };
+
   return (
     <div
       className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}
@@ -174,7 +223,7 @@ export default function ChefTasks() {
             <div className="yasar">
               <h1 className="monprofile">Taches equipe</h1>
               <p className="morinfo">
-                Assignez des taches aux employes de votre service et suivez leur avancement.
+                Assignez des taches, suivez les remises de travail et validez les livrables.
               </p>
             </div>
             <div className="yamin">
@@ -203,30 +252,29 @@ export default function ChefTasks() {
               <h3>{stats.total}</h3>
             </div>
             <div>
-              <p className="desc">Terminees</p>
-              <h3>{stats.completed}</h3>
+              <p className="desc">Travaux remis</p>
+              <h3>{stats.submitted}</h3>
             </div>
             <div>
-              <p className="desc">En cours</p>
-              <h3>{stats.inProgress}</h3>
-            </div>
-            <div>
-              <p className="desc">En retard</p>
-              <h3>{stats.late}</h3>
+              <p className="desc">Corrections</p>
+              <h3>{stats.revision}</h3>
             </div>
           </section>
 
           <section className="info-pro">
             <div className="top">
-              <h2 className="title">Affectation</h2>
-              <p className="desc">Nombre d'employes disponibles pour recevoir une tache.</p>
+              <h2 className="title">Execution</h2>
+              <p className="desc">Validation des travaux et controle des delais.</p>
             </div>
             <div>
-              <p className="desc">Employes du service</p>
-              <h3>{employees.length}</h3>
+              <p className="desc">Terminees</p>
+              <h3>{stats.completed}</h3>
             </div>
             <div>
-              <p className="desc">Mise a jour</p>
+              <p className="desc">En retard</p>
+              <h3>{stats.late}</h3>
+            </div>
+            <div>
               <button className="modifier" onClick={fetchData} type="button">
                 Actualiser
               </button>
@@ -335,11 +383,11 @@ export default function ChefTasks() {
                 <tr>
                   <th>Tache</th>
                   <th>Employe</th>
-                  <th>Description</th>
                   <th>Echeance</th>
-                  <th>Creee le</th>
-                  <th>Terminee le</th>
                   <th>Statut</th>
+                  <th>Remise employe</th>
+                  <th>Fichier</th>
+                  <th>Action chef</th>
                 </tr>
               </thead>
               <tbody>
@@ -361,16 +409,52 @@ export default function ChefTasks() {
 
                     return (
                       <tr key={task.id}>
-                        <td>{task.title || "-"}</td>
+                        <td>
+                          <div>{task.title || "-"}</div>
+                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{task.description || "-"}</div>
+                        </td>
                         <td>{employeeName}</td>
-                        <td>{task.description || "-"}</td>
                         <td>{formatDate(task.due_date)}</td>
-                        <td>{formatDateTime(task.created_at)}</td>
-                        <td>{formatDateTime(task.completed_at)}</td>
                         <td>
                           <span className={`badge ${getStatusClass(statusLabel)}`}>
                             {statusLabel}
                           </span>
+                        </td>
+                        <td>
+                          <div>{task.submission_note || "-"}</div>
+                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{formatDateTime(task.submitted_at)}</div>
+                          {task.review_comment && (
+                            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+                              Retour: {task.review_comment}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {task.submission_attachment ? (
+                            <a
+                              href={task.submission_attachment}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: "#2563eb", fontWeight: 600 }}
+                            >
+                              Ouvrir
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td>
+                          {task.can_review ? (
+                            <button className="modifier" onClick={() => openReview(task)} type="button">
+                              Traiter
+                            </button>
+                          ) : task.status === "DONE" ? (
+                            <span className="badge badge-termine">Validee</span>
+                          ) : task.status === "REVISION" ? (
+                            <span className="badge badge-attente">En correction</span>
+                          ) : (
+                            <span className="badge badge-genere">Suivi en cours</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -381,6 +465,80 @@ export default function ChefTasks() {
           </div>
         </section>
       </div>
+
+      {reviewTask && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 500,
+            padding: 16,
+          }}
+          onClick={() => setReviewTask(null)}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(92vw, 720px)",
+              borderRadius: 18,
+              padding: 24,
+              background: dark ? "#111827" : "#ffffff",
+              color: dark ? "#e2e8f0" : "#111827",
+              boxShadow: "0 18px 48px rgba(15, 23, 42, 0.28)",
+              border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Traiter la remise</h2>
+            <p style={{ color: dark ? "#94a3b8" : "#64748b" }}>
+              Validez le travail ou renvoyez-le en correction avec un commentaire.
+            </p>
+
+            <form onSubmit={submitReview}>
+              <div style={{ marginTop: 16 }}>
+                <p className="desc">Decision</p>
+                <select
+                  value={reviewAction}
+                  onChange={(event) => setReviewAction(event.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                >
+                  <option value="approve">Valider</option>
+                  <option value="reject">Demander une correction</option>
+                </select>
+              </div>
+
+              <div style={{ marginTop: 16 }}>
+                <p className="desc">Commentaire chef</p>
+                <textarea
+                  rows={4}
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  placeholder="Expliquez la validation ou les corrections attendues."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    border: "1px solid #cbd5e1",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+                <button className="mode" onClick={() => setReviewTask(null)} type="button">
+                  Annuler
+                </button>
+                <button className="modifier" disabled={actionId === reviewTask.id} type="submit">
+                  {actionId === reviewTask.id ? "Traitement..." : "Confirmer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

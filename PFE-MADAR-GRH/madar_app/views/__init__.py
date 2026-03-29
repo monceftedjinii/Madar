@@ -5,7 +5,7 @@ from .auth import ping, rbac_test, whoami, token_obtain_pair, logout
 from .employees import employees_list, services_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, submit_task_work, review_task_submission, mark_task_done
-from .attendance import attendance_check_in, attendance_check_out, attendance_me
+from .attendance import attendance_check_in, attendance_check_out, attendance_me, attendance_team
 from .leaves import create_leave, my_leaves, update_my_leave, cancel_my_leave, department_pending_leaves, approve_leave, reject_leave, leave_types_list, my_leave_balances
 from .absences import absences_yesterday, create_warning, discipline_flags
 from .notifications import list_notifications, mark_notification_read
@@ -74,7 +74,7 @@ __all__ = [
 	# tasks
 	'create_task', 'my_tasks', 'chef_tasks', 'submit_task_work', 'review_task_submission', 'mark_task_done',
 	# attendance
-	'attendance_check_in', 'attendance_check_out', 'attendance_me',
+	'attendance_check_in', 'attendance_check_out', 'attendance_me', 'attendance_team',
 	# leaves
 	'create_leave', 'my_leaves', 'update_my_leave', 'cancel_my_leave', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list', 'my_leave_balances',
 	# absences & discipline

@@ -1,15 +1,21 @@
 import { Bar } from "react-chartjs-2";
 import { baseChartOptions } from "./chartConfig";
 
-export default function PerformanceBarChart({ values }) {
+export default function PerformanceBarChart({
+  values,
+  labels = ["Semaine 1", "Semaine 2", "Semaine 3", "Semaine 4"],
+  datasetLabel = "Performance hebdomadaire",
+  max = 100,
+  colors = ["#bfdbfe", "#93c5fd", "#60a5fa", "#2563eb"],
+}) {
   const data = {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+    labels,
     datasets: [
       {
-        label: "Weekly Performance",
+        label: datasetLabel,
         data: values,
         borderRadius: 10,
-        backgroundColor: ["#bfdbfe", "#93c5fd", "#60a5fa", "#2563eb"],
+        backgroundColor: colors,
       },
     ],
   };
@@ -23,7 +29,7 @@ export default function PerformanceBarChart({ values }) {
       },
       y: {
         beginAtZero: true,
-        max: 100,
+        max,
         ticks: { color: "#64748b" },
         grid: { color: "#e2e8f0" },
       },

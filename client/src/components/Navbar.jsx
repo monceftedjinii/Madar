@@ -85,6 +85,7 @@ export default function Navbar(props) {
     { to: "/conge", label: "Conges" },
     { to: "/attendance", label: "Presence" },
     ...(isChef ? [{ to: "/team", label: "Mon equipe" }] : []),
+    ...(isChef ? [{ to: "/chef/attendance", label: "Presence equipe" }] : []),
     ...(isChef ? [{ to: "/chef/tasks", label: "Taches equipe" }] : []),
     ...(isChef ? [{ to: "/chef/leaves", label: "Validation conges" }] : []),
     { to: "/tasks", label: "Mes taches" },

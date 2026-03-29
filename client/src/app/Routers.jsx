@@ -3,7 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Auth/Login";
 import Profile from "../pages/Profile/Profile";
 import Home from "../pages/Home";
-import Dashboard from "../pages/dashboard/Dashboard";
+import RoleDashboard from "../pages/dashboard/RoleDashboard";
 import Attendance from "../pages/Attendance";
 import Messagrie from "../pages/Messagrie";
 import Conge from "../pages/conges/Conge";
@@ -11,6 +11,7 @@ import Notifications from "../pages/Notifications";
 import Tasks from "../pages/Tasks";
 import TeamEmployees from "../pages/TeamEmployees";
 import ChefTasks from "../pages/ChefTasks";
+import ChefAttendance from "../pages/ChefAttendance";
 import ChefLeaves from "../pages/ChefLeaves";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
@@ -26,12 +27,13 @@ export default function Routers() {
         </Route>
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/home" element={<Dashboard />} />
+          <Route path="/home" element={<RoleDashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/team" element={<TeamEmployees />} />
           <Route path="/chef/tasks" element={<ChefTasks />} />
+          <Route path="/chef/attendance" element={<ChefAttendance />} />
           <Route path="/chef/leaves" element={<ChefLeaves />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />

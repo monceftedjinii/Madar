@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/attendance/check-in/', madar_views.attendance_check_in, name='api-att-check-in'),
     path('api/attendance/check-out/', madar_views.attendance_check_out, name='api-att-check-out'),
     path('api/attendance/me/', madar_views.attendance_me, name='api-att-me'),
+    path('api/attendance/team/', madar_views.attendance_team, name='api-att-team'),
     path('api/leaves/', madar_views.create_leave, name='api-leaves-create'),
     path('api/leave-types/', madar_views.leave_types_list, name='api-leave-types-list'),
     path('api/leaves/balances/', madar_views.my_leave_balances, name='api-leaves-balances'),
@@ -138,6 +139,7 @@ urlpatterns = [
     # Dashboard endpoints
     path('api/dashboard/', madar_views.dashboard.get_dashboard, name='api-dashboard'),
     path('api/dashboard/employee/', madar_views.dashboard.get_employee_dashboard, name='api-dashboard-employee'),
+    path('api/dashboard/chef/', madar_views.dashboard.get_chef_dashboard, name='api-dashboard-chef'),
     path('api/dashboard/refresh/', madar_views.dashboard.refresh_dashboard, name='api-dashboard-refresh'),
     path('api/dashboard/customize/', madar_views.dashboard.customize_dashboard, name='api-dashboard-customize'),
     path('api/dashboard/widgets/', madar_views.dashboard.get_dashboard_widgets, name='api-dashboard-widgets'),
