@@ -9,6 +9,7 @@ const initialForm = {
   description: "",
   dueDate: "",
   assignedTo: "",
+  requiresSubmissionFile: false,
 };
 
 function formatDate(value) {
@@ -140,6 +141,7 @@ export default function ChefTasks() {
         description: form.description.trim(),
         due_date: form.dueDate || null,
         assigned_to: Number(form.assignedTo),
+        requires_submission_file: form.requiresSubmissionFile,
       });
       setFeedback("Tache assignee avec succes.");
       setForm({
@@ -360,6 +362,32 @@ export default function ChefTasks() {
                   resize: "vertical",
                 }}
               />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontWeight: 600,
+                  color: dark ? "#e2e8f0" : "#0f172a",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.requiresSubmissionFile}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      requiresSubmissionFile: event.target.checked,
+                    }))
+                  }
+                />
+                Cette tache demande un fichier de remise
+              </label>
+              <p className="desc" style={{ marginTop: 8 }}>
+                Cochez cette option seulement si l'employe doit renvoyer un document, une capture ou un livrable.
+              </p>
             </div>
             <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
               <button className="modifier" disabled={submitting} type="submit">

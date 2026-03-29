@@ -22,6 +22,7 @@ def _serialize_task(task, request=None):
         "due_date": task.due_date,
         "created_at": task.created_at,
         "completed_at": task.completed_at,
+        "requires_submission_file": task.requires_submission_file,
         "submission_note": task.submission_note,
         "submission_attachment": (
             request.build_absolute_uri(task.submission_attachment.url)
@@ -99,6 +100,7 @@ def create_task(request):
         title=title,
         description=data.get("description", ""),
         due_date=data.get("due_date") or None,
+        requires_submission_file=str(data.get("requires_submission_file", "")).lower() in {"true", "1", "yes", "on"},
         assigned_to=employee,
         assigned_by=request.user,
     )
@@ -159,12 +161,19 @@ def submit_task_work(request, pk):
     if task.status == Task.Status.DONE:
         return Response({"detail": "Cette tache est deja terminee."}, status=status.HTTP_400_BAD_REQUEST)
 
-    submission_note = (request.data.get("submission_note") or "").strip()
-    submission_attachment = request.FILES.get("submission_attachment")
+    submission_note = (
+        request.data.get("submission_note")
+        or request.data.get("note")
+        or ""
+    ).strip()
+    submission_attachment = (
+        request.FILES.get("submission_attachment")
+        or request.FILES.get("attachment")
+    )
 
-    if not submission_note and not submission_attachment:
+    if task.requires_submission_file and not submission_attachment:
         return Response(
-            {"detail": "Ajoutez un commentaire ou un fichier avant de remettre le travail."},
+            {"detail": "Cette tache exige un fichier de remise."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

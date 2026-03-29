@@ -115,9 +115,9 @@ export default function Tasks() {
       setFeedback("");
 
       const payload = new FormData();
-      payload.append("note", submissionNote.trim());
+      payload.append("submission_note", submissionNote.trim());
       if (submissionFile) {
-        payload.append("attachment", submissionFile);
+        payload.append("submission_attachment", submissionFile);
       }
 
       await axios.post(`/api/tasks/${submissionTask.id}/submit/`, payload, {
@@ -362,14 +362,26 @@ export default function Tasks() {
                 />
               </div>
 
-              <div style={{ marginTop: 16 }}>
-                <p className="desc">Fichier de remise</p>
-                <input
-                  type="file"
-                  onChange={(event) => setSubmissionFile(event.target.files?.[0] || null)}
-                  style={{ width: "100%" }}
-                />
-              </div>
+              {submissionTask.requires_submission_file ? (
+                <div style={{ marginTop: 16 }}>
+                  <p className="desc">Fichier de remise</p>
+                  <input
+                    type="file"
+                    onChange={(event) => setSubmissionFile(event.target.files?.[0] || null)}
+                    style={{ width: "100%" }}
+                  />
+                  <p className="desc" style={{ marginTop: 8 }}>
+                    Cette tache exige un fichier de retour.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ marginTop: 16 }}>
+                  <p className="desc">Fichier de remise</p>
+                  <p style={{ color: dark ? "#94a3b8" : "#64748b" }}>
+                    Aucun fichier n'est obligatoire pour cette tache. Vous pouvez envoyer la remise sans piece jointe.
+                  </p>
+                </div>
+              )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
                 <button className="mode" onClick={() => setSubmissionTask(null)} type="button">

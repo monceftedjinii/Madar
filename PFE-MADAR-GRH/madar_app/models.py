@@ -505,6 +505,7 @@ class Task(models.Model):
     description = models.TextField(blank=True)
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.TODO)
+    requires_submission_file = models.BooleanField(default=False)
     assigned_to = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='tasks')
     assigned_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='assigned_tasks')
     created_at = models.DateTimeField(auto_now_add=True)
