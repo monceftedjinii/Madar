@@ -497,6 +497,8 @@ class Affectation(models.Model):
 class Task(models.Model):
     class Status(models.TextChoices):
         TODO = 'TODO', 'To Do'
+        SUBMITTED = 'SUBMITTED', 'Submitted'
+        REVISION = 'REVISION', 'Needs Revision'
         DONE = 'DONE', 'Done'
 
     title = models.CharField(max_length=255)
@@ -506,6 +508,12 @@ class Task(models.Model):
     assigned_to = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='tasks')
     assigned_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='assigned_tasks')
     created_at = models.DateTimeField(auto_now_add=True)
+    submission_note = models.TextField(blank=True, default='')
+    submission_attachment = models.FileField(upload_to='task_submissions/', null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    review_comment = models.TextField(blank=True, default='')
+    reviewed_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_tasks')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

@@ -187,13 +187,15 @@ export default function Notifications() {
                       <td>{item.title || "Notification"}</td>
                       <td>{item.message || "-"}</td>
                       <td>
-                        <span className={item.is_read ? "badge-termine" : "badge-attente"}>
+                        <span
+                          className={`badge ${item.is_read ? "badge-termine" : "badge-attente"}`}
+                        >
                           {item.is_read ? "Lue" : "Non lue"}
                         </span>
                       </td>
                       <td>
                         {item.is_read ? (
-                          <span style={{ color: "#64748b", fontWeight: 600 }}>Deja traitee</span>
+                          <span className="badge badge-genere">Deja traitee</span>
                         ) : (
                           <button
                             className="modifier"
