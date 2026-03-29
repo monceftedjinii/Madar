@@ -304,6 +304,7 @@ export default function ChefDashboard() {
                   datasetLabel="Presence equipe"
                   max={attendanceChartMax}
                   colors={["#38bdf8", "#f87171", "#22c55e"]}
+                  dark={dark}
                 />
               </div>
             </article>
@@ -329,6 +330,7 @@ export default function ChefDashboard() {
                   datasetLabel="Taches equipe"
                   max={taskChartMax}
                   colors={["#60a5fa", "#38bdf8", "#f59e0b", "#10b981"]}
+                  dark={dark}
                 />
               </div>
             </article>

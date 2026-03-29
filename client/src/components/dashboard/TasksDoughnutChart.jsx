@@ -1,7 +1,7 @@
 import { Doughnut } from "react-chartjs-2";
-import { baseChartOptions } from "./chartConfig";
+import { getBaseChartOptions } from "./chartConfig";
 
-export default function TasksDoughnutChart({ values }) {
+export default function TasksDoughnutChart({ values, dark = false }) {
   const data = {
     labels: ["Terminées", "En attente", "En retard"],
     datasets: [
@@ -14,7 +14,7 @@ export default function TasksDoughnutChart({ values }) {
   };
 
   const options = {
-    ...baseChartOptions,
+    ...getBaseChartOptions(dark),
     cutout: "72%",
   };
 

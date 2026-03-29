@@ -3,6 +3,7 @@ const badgeStyles = {
   Bon: "bg-blue-100 text-blue-700",
   Moyen: "bg-amber-100 text-amber-700",
   "A ameliorer": "bg-rose-100 text-rose-700",
+  "À améliorer": "bg-rose-100 text-rose-700",
 };
 
 function getAccountInitials(fullName) {
@@ -54,16 +55,14 @@ export default function EmployeeSummaryCard({ employee, dark = false }) {
           <p className={`mt-1 text-sm font-medium ${dark ? "text-slate-300" : "text-slate-500"}`}>
             {employee.role} • {employee.department}
           </p>
-          <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-400"}`}>
-            {employee.email}
-          </p>
+          <p className="mt-1 text-sm text-slate-400">{employee.email}</p>
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className={statBoxClass}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Taux de presence
+            Taux de présence
           </p>
           <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
             {employee.attendanceRate}%

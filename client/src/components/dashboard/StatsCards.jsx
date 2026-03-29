@@ -40,6 +40,22 @@ const colorMap = {
   leaves: "bg-rose-50 text-rose-600",
 };
 
+const darkColorMap = {
+  total: "bg-blue-500/15 text-blue-300",
+  completed: "bg-emerald-500/15 text-emerald-300",
+  pending: "bg-amber-500/15 text-amber-300",
+  late: "bg-rose-500/15 text-rose-300",
+  attendance: "bg-sky-500/15 text-sky-300",
+  performance: "bg-indigo-500/15 text-indigo-300",
+  score: "bg-violet-500/15 text-violet-300",
+  team: "bg-cyan-500/15 text-cyan-300",
+  online: "bg-emerald-500/15 text-emerald-300",
+  tasks: "bg-blue-500/15 text-blue-300",
+  submitted: "bg-sky-500/15 text-sky-300",
+  revision: "bg-amber-500/15 text-amber-300",
+  leaves: "bg-rose-500/15 text-rose-300",
+};
+
 function StatCard({ item, dark = false }) {
   const Icon = iconMap[item.id];
   const cardClass = dark
@@ -59,7 +75,9 @@ function StatCard({ item, dark = false }) {
           <p className="mt-2 text-xs text-slate-400">{item.helper}</p>
         </div>
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${colorMap[item.id]}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+            dark ? darkColorMap[item.id] : colorMap[item.id]
+          }`}
         >
           <Icon fontSize="small" />
         </div>

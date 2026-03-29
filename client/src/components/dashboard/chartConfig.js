@@ -25,19 +25,21 @@ ChartJS.register(
   Tooltip,
 );
 
-export const baseChartOptions = {
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      labels: {
-        boxWidth: 12,
-        boxHeight: 12,
-        color: "#475569",
-        font: {
-          size: 12,
-          weight: "600",
+export function getBaseChartOptions(dark = false) {
+  return {
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          boxWidth: 12,
+          boxHeight: 12,
+          color: dark ? "#cbd5e1" : "#475569",
+          font: {
+            size: 12,
+            weight: "600",
+          },
         },
       },
     },
-  },
-};
+  };
+}

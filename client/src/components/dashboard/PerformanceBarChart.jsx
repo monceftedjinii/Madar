@@ -1,5 +1,5 @@
 import { Bar } from "react-chartjs-2";
-import { baseChartOptions } from "./chartConfig";
+import { getBaseChartOptions } from "./chartConfig";
 
 export default function PerformanceBarChart({
   values,
@@ -7,6 +7,7 @@ export default function PerformanceBarChart({
   datasetLabel = "Performance hebdomadaire",
   max = 100,
   colors = ["#bfdbfe", "#93c5fd", "#60a5fa", "#2563eb"],
+  dark = false,
 }) {
   const data = {
     labels,
@@ -21,17 +22,17 @@ export default function PerformanceBarChart({
   };
 
   const options = {
-    ...baseChartOptions,
+    ...getBaseChartOptions(dark),
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: "#64748b" },
+        ticks: { color: dark ? "#cbd5e1" : "#64748b" },
       },
       y: {
         beginAtZero: true,
         max,
-        ticks: { color: "#64748b" },
-        grid: { color: "#e2e8f0" },
+        ticks: { color: dark ? "#cbd5e1" : "#64748b" },
+        grid: { color: dark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0" },
       },
     },
   };

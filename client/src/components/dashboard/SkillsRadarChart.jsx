@@ -1,7 +1,7 @@
 import { Radar } from "react-chartjs-2";
-import { baseChartOptions } from "./chartConfig";
+import { getBaseChartOptions } from "./chartConfig";
 
-export default function SkillsRadarChart({ values }) {
+export default function SkillsRadarChart({ values, dark = false }) {
   const data = {
     labels: [
       "Ponctualité",
@@ -28,22 +28,22 @@ export default function SkillsRadarChart({ values }) {
   };
 
   const options = {
-    ...baseChartOptions,
+    ...getBaseChartOptions(dark),
     scales: {
       r: {
         suggestedMin: 0,
         suggestedMax: 20,
-        angleLines: { color: "#dbeafe" },
-        grid: { color: "#e2e8f0" },
+        angleLines: { color: dark ? "rgba(148, 163, 184, 0.22)" : "#dbeafe" },
+        grid: { color: dark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0" },
         pointLabels: {
-          color: "#475569",
+          color: dark ? "#cbd5e1" : "#475569",
           font: {
             size: 12,
             weight: "600",
           },
         },
         ticks: {
-          color: "#94a3b8",
+          color: dark ? "#94a3b8" : "#94a3b8",
           backdropColor: "transparent",
         },
       },

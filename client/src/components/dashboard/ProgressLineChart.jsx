@@ -1,12 +1,12 @@
 import { Line } from "react-chartjs-2";
-import { baseChartOptions } from "./chartConfig";
+import { getBaseChartOptions } from "./chartConfig";
 
-export default function ProgressLineChart({ values }) {
+export default function ProgressLineChart({ values, dark = false }) {
   const data = {
-    labels: ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+    labels: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"],
     datasets: [
       {
-        label: "Monthly Progress",
+        label: "Progression mensuelle",
         data: values,
         borderColor: "#2563eb",
         backgroundColor: "rgba(37, 99, 235, 0.15)",
@@ -19,17 +19,17 @@ export default function ProgressLineChart({ values }) {
   };
 
   const options = {
-    ...baseChartOptions,
+    ...getBaseChartOptions(dark),
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: "#64748b" },
+        ticks: { color: dark ? "#cbd5e1" : "#64748b" },
       },
       y: {
         beginAtZero: true,
         max: 100,
-        ticks: { color: "#64748b" },
-        grid: { color: "#e2e8f0" },
+        ticks: { color: dark ? "#cbd5e1" : "#64748b" },
+        grid: { color: dark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0" },
       },
     },
   };

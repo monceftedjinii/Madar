@@ -239,7 +239,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="h-80">
-                <PerformanceBarChart values={dashboardData.charts.weeklyPerformance} />
+                <PerformanceBarChart values={dashboardData.charts.weeklyPerformance} dark={dark} />
               </div>
             </article>
 
@@ -256,7 +256,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="h-80">
-                <ProgressLineChart values={dashboardData.charts.monthlyProgress} />
+                <ProgressLineChart values={dashboardData.charts.monthlyProgress} dark={dark} />
               </div>
             </article>
           </section>
@@ -275,7 +275,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="h-80">
-                <TasksDoughnutChart values={dashboardData.charts.taskBreakdown} />
+                <TasksDoughnutChart values={dashboardData.charts.taskBreakdown} dark={dark} />
               </div>
             </article>
 
@@ -292,7 +292,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="h-80">
-                <SkillsRadarChart values={dashboardData.charts.skills} />
+                <SkillsRadarChart values={dashboardData.charts.skills} dark={dark} />
               </div>
             </article>
           </section>
