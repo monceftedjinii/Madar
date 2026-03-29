@@ -1776,6 +1776,83 @@ class MessagingSettings(models.Model):
         return 'Messaging Settings'
 
 
+class EvaluationCampaign(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = 'DRAFT', 'Brouillon'
+        OPEN = 'OPEN', 'Ouverte'
+        CLOSED = 'CLOSED', 'Cloturee'
+
+    title = models.CharField(max_length=255)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class EvaluationCriteria(models.Model):
+    label = models.CharField(max_length=150, unique=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, default=1)
+    note_min = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    note_max = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return self.label
+
+
+class Evaluation(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = 'DRAFT', 'Brouillon'
+        COMPLETED = 'COMPLETED', 'Completee'
+
+    class Recommendation(models.TextChoices):
+        EXCELLENT = 'EXCELLENT', 'Excellent'
+        GOOD = 'GOOD', 'Bon'
+        AVERAGE = 'AVERAGE', 'Moyen'
+        IMPROVEMENT = 'IMPROVEMENT', 'A ameliorer'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='evaluations')
+    evaluator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='evaluations_given')
+    campaign = models.ForeignKey(EvaluationCampaign, on_delete=models.SET_NULL, null=True, blank=True, related_name='evaluations')
+    year = models.IntegerField()
+    period = models.CharField(max_length=50, default='Annuel')
+    evaluation_date = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.COMPLETED)
+    global_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    recommendation = models.CharField(max_length=20, choices=Recommendation.choices, default=Recommendation.AVERAGE)
+    overall_comment = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-evaluation_date', '-created_at']
+
+    def __str__(self):
+        return f"Evaluation {self.employee} - {self.year}"
+
+
+class EvaluationScore(models.Model):
+    evaluation = models.ForeignKey(Evaluation, on_delete=models.CASCADE, related_name='scores')
+    criterion = models.ForeignKey(EvaluationCriteria, on_delete=models.CASCADE, related_name='scores')
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+    comment = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['criterion_id']
+
+    def __str__(self):
+        return f"{self.evaluation_id} - {self.criterion.label}"
+
+
 class FormationRequest(models.Model):
     """Formation/Training request from Chef."""
     class Status(models.TextChoices):

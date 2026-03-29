@@ -9,6 +9,7 @@ import Messagrie from "../pages/Messagrie";
 import Conge from "../pages/conges/Conge";
 import Notifications from "../pages/Notifications";
 import Tasks from "../pages/Tasks";
+import Evaluations from "../pages/Evaluations";
 import TeamEmployees from "../pages/TeamEmployees";
 import ChefTasks from "../pages/ChefTasks";
 import ChefAttendance from "../pages/ChefAttendance";
@@ -16,6 +17,7 @@ import ChefLeaves from "../pages/ChefLeaves";
 import ChefDocuments from "../pages/ChefDocuments";
 import ChefFormations from "../pages/ChefFormations";
 import ChefReports from "../pages/ChefReports";
+import ChefEvaluations from "../pages/ChefEvaluations";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -34,6 +36,7 @@ export default function Routers() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/evaluations" element={<Evaluations />} />
           <Route path="/team" element={<TeamEmployees />} />
           <Route path="/chef/tasks" element={<ChefTasks />} />
           <Route path="/chef/attendance" element={<ChefAttendance />} />
@@ -41,6 +44,7 @@ export default function Routers() {
           <Route path="/chef/documents" element={<ChefDocuments />} />
           <Route path="/chef/formations" element={<ChefFormations />} />
           <Route path="/chef/reports" element={<ChefReports />} />
+          <Route path="/chef/evaluations" element={<ChefEvaluations />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />
