@@ -4,6 +4,7 @@ import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import ChecklistRtlOutlinedIcon from "@mui/icons-material/ChecklistRtlOutlined";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
+import usePersistentNavState from "../../hooks/usePersistentNavState";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import StatsCards from "../../components/dashboard/StatsCards";
 import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
@@ -87,7 +88,7 @@ function getTaskBadgeClass(status) {
 
 export default function ChefDashboard() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, "0");

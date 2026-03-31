@@ -234,7 +234,8 @@ def send_document(request, pk):
 	if doc.status != Document.Status.DRAFT:
 		return Response({'detail': 'can only send DRAFT documents'}, status=status.HTTP_400_BAD_REQUEST)
 	if not doc.target_service_id:
-		return Response({'detail': 'target_service is required to send'}, status=status.HTTP_400_BAD_REQUEST)
+		doc.target_service = doc.source_service
+		doc.save(update_fields=['target_service'])
 
 	is_creator = doc.created_by_id == request.user.id
 	is_chef_of_service = False
@@ -532,6 +533,7 @@ def validate_document(request, pk):
 			doc.validated_by = request.user
 			doc.validated_at = timezone.now()
 			doc.save(update_fields=['status', 'validated_by', 'validated_at'])
+			_create_doc_history(doc, DocumentHistory.Action.VALIDATED, request.user, note='Direct validation approval')
 		return Response({'id': doc.id, 'status': doc.status, 'detail': 'workflow already completed'})
 
 	if not active_step.validator or active_step.validator.email != request.user.email:

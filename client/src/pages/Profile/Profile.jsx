@@ -6,6 +6,7 @@ import "../../styles/profile.css";
 import Navbar from "../../components/Navbar";
 import Form from "../../components/Form";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
+import usePersistentNavState from "../../hooks/usePersistentNavState";
 
 function getAccountInitials(fullName) {
   const parts = (fullName || "")
@@ -21,7 +22,7 @@ function getAccountInitials(fullName) {
 
 export default function Profile() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [profileData, setProfileData] = useState({
     fullName: "",
@@ -422,9 +423,11 @@ export default function Profile() {
         )}
         <div className="profile-content">
           <div
-            style={{
-              borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-            }}
+            className={`sticky top-0 z-40 backdrop-blur ${
+              dark
+                ? "border-b border-slate-800 bg-slate-950/90"
+                : "border-b border-slate-200/80 bg-white/90"
+            }`}
           >
             <div className="profile-naaav">
               <div className="yasar">
@@ -442,7 +445,7 @@ export default function Profile() {
                   {isNavOpen ? "Masquer menu" : "Afficher menu"}
                 </button>
                 <button className="mode" onClick={() => setDark(!dark)}>
-                  {dark ? " mode clair" : " mode sombre"}
+                  {dark ? "mode clair" : "mode sombre"}
                 </button>
                 <button className="btn-logout" onClick={logout}>
                   déconnecter

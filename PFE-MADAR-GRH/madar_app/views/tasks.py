@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def _serialize_task(task, request=None):
+    service_payload = (
+        {
+            "code": task.assigned_to.service.code,
+            "nomService": task.assigned_to.service.nomService,
+        }
+        if task.assigned_to.service
+        else None
+    )
     return {
         "id": task.id,
         "title": task.title,
@@ -45,11 +53,12 @@ def _serialize_task(task, request=None):
             "email": task.assigned_to.email,
             "first_name": task.assigned_to.first_name,
             "last_name": task.assigned_to.last_name,
-            "service": {
-                "code": task.assigned_to.service.code,
-                "nomService": task.assigned_to.service.nomService,
+            "service": service_payload,
+            "department": {
+                "code": service_payload["code"],
+                "name": service_payload["nomService"],
             }
-            if task.assigned_to.service
+            if service_payload
             else None,
         },
         "assigned_by": {
@@ -74,11 +83,20 @@ def create_task(request):
 
     title = data.get("title")
     if not title:
-        return Response({"detail": "Le titre est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"detail": "Le titre est obligatoire.", "title": ["Le titre est obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     assigned_to_id = data.get("assigned_to")
     if not assigned_to_id:
-        return Response({"detail": "L'employe cible est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "detail": "L'employe cible est obligatoire.",
+                "assigned_to": ["L'employe cible est obligatoire."],
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     try:
         employee = Employee.objects.get(id=assigned_to_id)
@@ -144,6 +162,103 @@ def chef_tasks(request):
         .order_by("-created_at")
     )
     return Response([_serialize_task(task, request=request) for task in tasks])
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsChef])
+def update_chef_task(request, pk):
+    """Chef updates a task he created."""
+    try:
+        task = Task.objects.select_related("assigned_to__service", "assigned_by").get(id=pk)
+    except Task.DoesNotExist:
+        return Response({"detail": "Tache introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if task.assigned_by_id != request.user.id:
+        return Response({"detail": "Vous ne pouvez modifier que vos propres taches."}, status=status.HTTP_403_FORBIDDEN)
+
+    if task.status == Task.Status.DONE:
+        return Response({"detail": "Une tache terminee ne peut plus etre modifiee."}, status=status.HTTP_400_BAD_REQUEST)
+
+    data = request.data
+
+    if "title" in data:
+        title = (data.get("title") or "").strip()
+        if not title:
+            return Response({"detail": "Le titre est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+        task.title = title
+
+    if "description" in data:
+        task.description = (data.get("description") or "").strip()
+
+    if "due_date" in data:
+        task.due_date = data.get("due_date") or None
+
+    if "requires_submission_file" in data:
+        task.requires_submission_file = str(data.get("requires_submission_file", "")).lower() in {
+            "true",
+            "1",
+            "yes",
+            "on",
+        }
+
+    if "assigned_to" in data:
+        assigned_to_id = data.get("assigned_to")
+        if not assigned_to_id:
+            return Response({"detail": "L'employe cible est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            employee = Employee.objects.get(id=assigned_to_id)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Employe introuvable."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            chef_emp = Employee.objects.get(email=request.user.email)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Aucune fiche employe n'est liee a ce chef."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if employee.service_id != chef_emp.service_id:
+            return Response(
+                {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if task.assigned_to_id != employee.id:
+            if task.submission_attachment:
+                task.submission_attachment.delete(save=False)
+            task.assigned_to = employee
+            task.status = Task.Status.TODO
+            task.submission_note = ""
+            task.submission_attachment = None
+            task.submitted_at = None
+            task.review_comment = ""
+            task.reviewed_by = None
+            task.reviewed_at = None
+            task.completed_at = None
+
+    task.save()
+    return Response(_serialize_task(task, request=request))
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsChef])
+def delete_chef_task(request, pk):
+    """Chef deletes a task he created, as long as it is not already completed."""
+    try:
+        task = Task.objects.get(id=pk)
+    except Task.DoesNotExist:
+        return Response({"detail": "Tache introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+    if task.assigned_by_id != request.user.id:
+        return Response({"detail": "Vous ne pouvez supprimer que vos propres taches."}, status=status.HTTP_403_FORBIDDEN)
+
+    if task.status == Task.Status.DONE:
+        return Response({"detail": "Une tache terminee ne peut pas etre supprimee."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if task.submission_attachment:
+        task.submission_attachment.delete(save=False)
+
+    task.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST"])

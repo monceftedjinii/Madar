@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 const parseISODate = (value) => {
@@ -95,7 +96,7 @@ const mapAttendanceError = (requestError, role) => {
 
 export default function Attendance() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [records, setRecords] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -441,7 +442,13 @@ export default function Attendance() {
       )}
 
       <div className="profile-content">
-        <div style={{ borderBottom: "1px solid rgba(0, 0, 0, 0.1)" }}>
+        <div
+          className={`sticky top-0 z-40 backdrop-blur ${
+            dark
+              ? "border-b border-slate-800 bg-slate-950/90"
+              : "border-b border-slate-200/80 bg-white/90"
+          }`}
+        >
           <div className="profile-naaav">
             <div className="yasar">
               <h3 className="monprofile">Gestion de présence</h3>
@@ -457,13 +464,13 @@ export default function Attendance() {
               >
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
-              <button
-                className="mode"
-                onClick={() => setDark((prev) => !prev)}
-                type="button"
-              >
-                {dark ? " mode clair" : " mode sombre"}
-              </button>
+                <button
+                  className="mode"
+                  onClick={() => setDark((prev) => !prev)}
+                  type="button"
+                >
+                  {dark ? "mode clair" : "mode sombre"}
+                </button>
             </div>
           </div>
         </div>
@@ -528,14 +535,10 @@ export default function Attendance() {
 
           {(error || actionMessage) && (
             <div
+              className={`page-feedback ${error ? "error" : ""}`}
               style={{
                 width: "calc(100% - 40px)",
                 margin: "14px auto 0",
-                padding: "12px 16px",
-                borderRadius: 12,
-                border: `1px solid ${error ? "#f5a9a9" : "#a9d8a9"}`,
-                background: error ? "#ffe6e6" : "#e6f7e6",
-                color: error ? "#b91c1c" : "#166534",
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 12,

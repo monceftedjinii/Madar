@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function formatDate(value) {
@@ -20,7 +21,7 @@ function getBadgeClass(label) {
 
 export default function Evaluations() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -96,7 +97,7 @@ export default function Evaluations() {
         </div>
 
         {errorMessage && (
-          <div style={{ width: "96%", margin: "0 auto 16px", padding: "12px 16px", borderRadius: 12, background: "#ffe6e6", color: "#b91c1c", border: "1px solid #fecaca" }}>
+          <div className="page-feedback error">
             {errorMessage}
           </div>
         )}

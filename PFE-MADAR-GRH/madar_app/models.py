@@ -631,6 +631,15 @@ class LeaveRequest(models.Model):
         return f"LeaveRequest {self.employee} {self.start_date}..{self.end_date} ({self.status})"
 
 
+class _LegacyLeaveTypeCodes:
+    ANNUAL = 'CA'
+    SICK = 'CM'
+    OTHER = 'AUTRE'
+
+
+LeaveRequest.LeaveType = _LegacyLeaveTypeCodes
+
+
 class ValidationWorkflow(models.Model):
     class Decision(models.TextChoices):
         PENDING = 'PENDING', 'Pending'

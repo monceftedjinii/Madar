@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 const initialForm = {
@@ -12,7 +13,7 @@ const initialForm = {
 
 export default function ChefFormations() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [requests, setRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedParticipants, setSelectedParticipants] = useState({});
@@ -22,6 +23,16 @@ export default function ChefFormations() {
   const [actionId, setActionId] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
+    background: dark ? "#0f172a" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#0f172a",
+    boxSizing: "border-box",
+  };
 
   const fetchData = async () => {
     try {
@@ -175,17 +186,7 @@ export default function ChefFormations() {
         </div>
 
         {(feedback || errorMessage) && (
-          <div
-            style={{
-              width: "96%",
-              margin: "0 auto 16px",
-              padding: "12px 16px",
-              borderRadius: 12,
-              background: errorMessage ? "#ffe6e6" : "#e6f7e6",
-              color: errorMessage ? "#b91c1c" : "#166534",
-              border: `1px solid ${errorMessage ? "#fecaca" : "#bbf7d0"}`,
-            }}
-          >
+          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
             {errorMessage || feedback}
           </div>
         )}
@@ -202,15 +203,15 @@ export default function ChefFormations() {
           >
             <div>
               <p className="desc">Nom de la formation</p>
-              <input name="nom" value={form.nom} onChange={(e) => setForm((p) => ({ ...p, nom: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }} />
+              <input name="nom" value={form.nom} onChange={(e) => setForm((p) => ({ ...p, nom: e.target.value }))} style={fieldStyle} />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <p className="desc">Description</p>
-              <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1", resize: "vertical" }} />
+              <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <p className="desc">Raisons</p>
-              <textarea rows={3} value={form.reasons} onChange={(e) => setForm((p) => ({ ...p, reasons: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1", resize: "vertical" }} />
+              <textarea rows={3} value={form.reasons} onChange={(e) => setForm((p) => ({ ...p, reasons: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
             </div>
             <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
               <button className="modifier" disabled={submitting} type="submit">
@@ -265,7 +266,7 @@ export default function ChefFormations() {
                           ) : canAddParticipants ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                               {employees.map((employee) => (
-                                <label key={employee.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <label key={employee.id} style={{ display: "flex", gap: 8, alignItems: "center", color: dark ? "#e2e8f0" : "#0f172a" }}>
                                   <input
                                     type="checkbox"
                                     checked={selected.includes(employee.id)}

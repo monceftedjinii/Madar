@@ -1,9 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 import { isAuthenticated } from "../app/auth";
+
+const NAVBAR_CACHE_KEY = "madar_navbar_cache";
+const NAVBAR_SCROLL_KEY = "madar_navbar_scroll";
+const NAVBAR_CACHE_TTL_MS = 60 * 1000;
+
+function readNavbarCache() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(NAVBAR_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeNavbarCache(payload) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(NAVBAR_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore cache write errors and keep the navbar functional.
+  }
+}
 
 function getAccountInitials(fullName) {
   const parts = (fullName || "")
@@ -20,15 +45,17 @@ function getAccountInitials(fullName) {
 export default function Navbar(props) {
   const { fullName, post, image, email } = props;
   const navigate = useNavigate();
-  const location = useLocation();
+  const navMenuRef = useRef(null);
   const [fetchedProfile, setFetchedProfile] = useState({
-    fullName: "",
-    post: "",
-    image: "",
-    email: "",
-    role: "",
+    fullName: readNavbarCache()?.profile?.fullName || "",
+    post: readNavbarCache()?.profile?.post || "",
+    image: readNavbarCache()?.profile?.image || "",
+    email: readNavbarCache()?.profile?.email || "",
+    role: readNavbarCache()?.profile?.role || "",
   });
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(
+    readNavbarCache()?.unreadNotifications || 0,
+  );
 
   useEffect(() => {
     if (!isAuthenticated()) return;
@@ -40,22 +67,37 @@ export default function Navbar(props) {
           axios.get("/api/notifications/"),
         ]);
 
-        setFetchedProfile({
+        const nextProfile = {
           fullName: `${me.data?.first_name || ""} ${me.data?.last_name || ""}`.trim(),
           post: me.data?.position || me.data?.employee_info?.position || "",
           image: me.data?.profile_picture || "",
           email: me.data?.email || "",
           role: me.data?.role || "",
-        });
+        };
 
         const items = Array.isArray(notifications.data) ? notifications.data : [];
-        setUnreadNotifications(items.filter((item) => !item.is_read).length);
+        const nextUnreadNotifications = items.filter((item) => !item.is_read).length;
+
+        setFetchedProfile(nextProfile);
+        setUnreadNotifications(nextUnreadNotifications);
+        writeNavbarCache({
+          profile: nextProfile,
+          unreadNotifications: nextUnreadNotifications,
+          timestamp: Date.now(),
+        });
       } catch (error) {
         console.error("Erreur chargement navbar:", error);
       }
     };
 
-    fetchNavbarData();
+    const cachedNavbarData = readNavbarCache();
+    const cacheAge = cachedNavbarData?.timestamp
+      ? Date.now() - cachedNavbarData.timestamp
+      : Number.POSITIVE_INFINITY;
+
+    if (!cachedNavbarData || cacheAge > NAVBAR_CACHE_TTL_MS) {
+      fetchNavbarData();
+    }
 
     const handleNotificationsUpdated = () => {
       fetchNavbarData();
@@ -68,7 +110,25 @@ export default function Navbar(props) {
       window.removeEventListener("focus", fetchNavbarData);
       window.removeEventListener("notifications-updated", handleNotificationsUpdated);
     };
-  }, [location.pathname]);
+  }, []);
+
+  useEffect(() => {
+    const navMenu = navMenuRef.current;
+    if (!navMenu || typeof window === "undefined") return;
+
+    const savedScrollTop = Number(window.sessionStorage.getItem(NAVBAR_SCROLL_KEY) || 0);
+    navMenu.scrollTop = Number.isFinite(savedScrollTop) ? savedScrollTop : 0;
+
+    const handleScroll = () => {
+      window.sessionStorage.setItem(NAVBAR_SCROLL_KEY, String(navMenu.scrollTop));
+    };
+
+    navMenu.addEventListener("scroll", handleScroll);
+
+    return () => {
+      navMenu.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const resolvedName = fullName || fetchedProfile.fullName || "Utilisateur";
   const resolvedPost = post || fetchedProfile.post || "Poste non renseigne";
@@ -129,7 +189,7 @@ export default function Navbar(props) {
         </div>
       </div>
 
-      <div className="nav-menu">
+      <div className="nav-menu" ref={navMenuRef}>
         {navSections.map((section) => (
           <div className="nav-section" key={section.title}>
             <p className="nav-section-title">{section.title}</p>

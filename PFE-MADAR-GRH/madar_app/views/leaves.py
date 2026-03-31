@@ -11,6 +11,19 @@ from ..permissions import IsEmployee
 from .helpers import notify
 
 
+LEGACY_LEAVE_TYPE_MAP = {
+	'ANNUAL': LeaveRequest.LeaveType.ANNUAL,
+	'SICK': LeaveRequest.LeaveType.SICK,
+	'OTHER': LeaveRequest.LeaveType.OTHER,
+}
+
+
+def _normalize_leave_type_code(value):
+	if not value:
+		return value
+	return LEGACY_LEAVE_TYPE_MAP.get(str(value).upper(), value)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_leave(request):
@@ -21,7 +34,7 @@ def create_leave(request):
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee record not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-	ltype_code = data.get('type')
+	ltype_code = _normalize_leave_type_code(data.get('type'))
 	start_date = data.get('start_date')
 	end_date = data.get('end_date')
 	reason = data.get('reason', '')
@@ -148,7 +161,7 @@ def update_my_leave(request, pk):
 	if leave.status != LeaveRequest.Status.PENDING:
 		return Response({'detail': 'only pending leave requests can be modified'}, status=status.HTTP_400_BAD_REQUEST)
 
-	ltype_code = request.data.get('type', leave.type.code)
+	ltype_code = _normalize_leave_type_code(request.data.get('type', leave.type.code))
 	start_date = request.data.get('start_date', leave.start_date.isoformat())
 	end_date = request.data.get('end_date', leave.end_date.isoformat())
 	reason = request.data.get('reason', leave.reason or '')

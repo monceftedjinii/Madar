@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function formatDate(value) {
@@ -28,7 +29,7 @@ function getStatusClass(status) {
 
 export default function ChefLeaves() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -181,17 +182,7 @@ export default function ChefLeaves() {
         </div>
 
         {(feedback || errorMessage) && (
-          <div
-            style={{
-              width: "96%",
-              margin: "0 auto 16px",
-              padding: "12px 16px",
-              borderRadius: 12,
-              background: errorMessage ? "#ffe6e6" : "#e6f7e6",
-              color: errorMessage ? "#b91c1c" : "#166534",
-              border: `1px solid ${errorMessage ? "#fecaca" : "#bbf7d0"}`,
-            }}
-          >
+          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
             {errorMessage || feedback}
           </div>
         )}

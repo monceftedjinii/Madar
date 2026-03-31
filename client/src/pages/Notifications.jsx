@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function formatDateTime(value) {
@@ -19,7 +20,7 @@ function formatDateTime(value) {
 
 export default function Notifications() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);

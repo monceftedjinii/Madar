@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function getCurrentMonthRange() {
@@ -15,11 +16,21 @@ function getCurrentMonthRange() {
 
 export default function ChefReports() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [filters, setFilters] = useState(getCurrentMonthRange);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
+    background: dark ? "#0f172a" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#0f172a",
+    boxSizing: "border-box",
+  };
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -78,6 +89,28 @@ export default function ChefReports() {
     }
   };
 
+  const summaryCardStyle = {
+    borderRadius: 16,
+    padding: 18,
+    background: dark ? "#1e293b" : "#f8fafc",
+    border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+  };
+
+  const summaryLabelStyle = {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 600,
+    color: dark ? "#93c5fd" : "#2563eb",
+  };
+
+  const summaryValueStyle = {
+    marginTop: 10,
+    marginBottom: 0,
+    fontSize: 30,
+    fontWeight: 700,
+    color: dark ? "#f8fafc" : "#0f172a",
+  };
+
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
@@ -116,11 +149,11 @@ export default function ChefReports() {
             </div>
             <div>
               <p className="desc">Du</p>
-              <input type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }} />
+              <input type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} style={fieldStyle} />
             </div>
             <div>
               <p className="desc">Au</p>
-              <input type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }} />
+              <input type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} style={fieldStyle} />
             </div>
           </section>
 
@@ -139,17 +172,7 @@ export default function ChefReports() {
         </div>
 
         {errorMessage && (
-          <div
-            style={{
-              width: "96%",
-              margin: "0 auto 16px",
-              padding: "12px 16px",
-              borderRadius: 12,
-              background: "#ffe6e6",
-              color: "#b91c1c",
-              border: "1px solid #fecaca",
-            }}
-          >
+          <div className="page-feedback error">
             {errorMessage}
           </div>
         )}
@@ -173,15 +196,10 @@ export default function ChefReports() {
               cards.map((card) => (
                 <div
                   key={card.label}
-                  style={{
-                    borderRadius: 16,
-                    padding: 18,
-                    background: dark ? "#1e293b" : "#f8fafc",
-                    border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-                  }}
+                  style={summaryCardStyle}
                 >
-                  <p className="desc">{card.label}</p>
-                  <h3 style={{ marginTop: 8 }}>{card.value}</h3>
+                  <p style={summaryLabelStyle}>{card.label}</p>
+                  <h3 style={summaryValueStyle}>{card.value}</h3>
                 </div>
               ))
             )}

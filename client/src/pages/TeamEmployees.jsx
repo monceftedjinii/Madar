@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function formatDate(value) {
@@ -13,7 +14,7 @@ function formatDate(value) {
 
 export default function TeamEmployees() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [serviceName, setServiceName] = useState("");
@@ -167,14 +168,8 @@ export default function TeamEmployees() {
 
           {currentRole && currentRole !== "CHEF" && (
             <div
-              style={{
-                margin: "0 0 16px",
-                padding: "12px 16px",
-                borderRadius: 12,
-                background: dark ? "#1e293b" : "#eef2ff",
-                color: dark ? "#cbd5e1" : "#1e3a8a",
-                border: `1px solid ${dark ? "#334155" : "#c7d2fe"}`,
-              }}
+              className="page-feedback info"
+              style={{ margin: "0 0 16px" }}
             >
               Cette page est principalement destinee au chef de service pour suivre son equipe.
             </div>
@@ -182,14 +177,8 @@ export default function TeamEmployees() {
 
           {error && (
             <div
-              style={{
-                margin: "0 0 16px",
-                padding: "12px 16px",
-                borderRadius: 12,
-                background: dark ? "#3f1d1d" : "#ffe6e6",
-                color: dark ? "#fecaca" : "#b91c1c",
-                border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
-              }}
+              className="page-feedback error"
+              style={{ margin: "0 0 16px" }}
             >
               {error}
             </div>

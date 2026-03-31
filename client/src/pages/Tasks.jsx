@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 function formatDate(value) {
@@ -55,7 +56,7 @@ function getAssignerName(assignedBy) {
 
 export default function Tasks() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -64,6 +65,16 @@ export default function Tasks() {
   const [submissionTask, setSubmissionTask] = useState(null);
   const [submissionNote, setSubmissionNote] = useState("");
   const [submissionFile, setSubmissionFile] = useState(null);
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
+    background: dark ? "#0f172a" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#0f172a",
+    boxSizing: "border-box",
+  };
 
   const fetchTasks = async () => {
     try {
@@ -221,17 +232,7 @@ export default function Tasks() {
         </div>
 
         {(feedback || errorMessage) && (
-          <div
-            style={{
-              width: "96%",
-              margin: "0 auto 16px",
-              padding: "12px 16px",
-              borderRadius: 12,
-              background: errorMessage ? "#ffe6e6" : "#e6f7e6",
-              color: errorMessage ? "#b91c1c" : "#166534",
-              border: `1px solid ${errorMessage ? "#fecaca" : "#bbf7d0"}`,
-            }}
-          >
+          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
             {errorMessage || feedback}
           </div>
         )}
@@ -353,10 +354,7 @@ export default function Tasks() {
                   onChange={(event) => setSubmissionNote(event.target.value)}
                   placeholder="Decrivez ce qui a ete fait ou les points a verifier."
                   style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid #cbd5e1",
+                    ...fieldStyle,
                     resize: "vertical",
                   }}
                 />
@@ -368,7 +366,6 @@ export default function Tasks() {
                   <input
                     type="file"
                     onChange={(event) => setSubmissionFile(event.target.files?.[0] || null)}
-                    style={{ width: "100%" }}
                   />
                   <p className="desc" style={{ marginTop: 8 }}>
                     Cette tache exige un fichier de retour.

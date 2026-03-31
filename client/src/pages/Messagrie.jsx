@@ -3,6 +3,7 @@ import axios from "axios";
 import SearchIcon from "@mui/icons-material/Search";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 import "../styles/messagrie.css";
 
@@ -110,7 +111,7 @@ const toUiMail = (mail, boxType) => {
 
 export default function Messagrie() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [boxType, setBoxType] = useState("inbox");
@@ -455,9 +456,11 @@ export default function Messagrie() {
         )}
         <div className="profile-content">
           <div
-            style={{
-              borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-            }}
+            className={`sticky top-0 z-40 backdrop-blur ${
+              dark
+                ? "border-b border-slate-800 bg-slate-950/90"
+                : "border-b border-slate-200/80 bg-white/90"
+            }`}
           >
             <div className="profile-naaav">
               <div className="yasar">
@@ -473,7 +476,7 @@ export default function Messagrie() {
                   {isNavOpen ? "Masquer menu" : "Afficher menu"}
                 </button>
                 <button className="mode" onClick={() => setDark(!dark)}>
-                  {dark ? " mode clair" : " mode sombre"}
+                  {dark ? "mode clair" : "mode sombre"}
                 </button>
 
                 <button className="modifier" type="button" onClick={openCompose}>

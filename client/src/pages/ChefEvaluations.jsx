@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 export default function ChefEvaluations() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [employees, setEmployees] = useState([]);
   const [criteria, setCriteria] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
@@ -22,6 +23,16 @@ export default function ChefEvaluations() {
     scores: {},
     comments: {},
   });
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
+    background: dark ? "#0f172a" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#0f172a",
+    boxSizing: "border-box",
+  };
 
   const fetchData = async () => {
     try {
@@ -143,7 +154,7 @@ export default function ChefEvaluations() {
         </div>
 
         {(feedback || errorMessage) && (
-          <div style={{ width: "96%", margin: "16px auto", padding: "12px 16px", borderRadius: 12, background: errorMessage ? "#ffe6e6" : "#e6f7e6", color: errorMessage ? "#b91c1c" : "#166534", border: `1px solid ${errorMessage ? "#fecaca" : "#bbf7d0"}` }}>
+          <div className={`page-feedback ${errorMessage ? "error" : ""}`} style={{ marginTop: 16 }}>
             {errorMessage || feedback}
           </div>
         )}
@@ -153,7 +164,7 @@ export default function ChefEvaluations() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               <div>
                 <p className="desc">Employe</p>
-                <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}>
+                <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
                   <option value="">Choisir un employe</option>
                   {employees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
@@ -164,17 +175,17 @@ export default function ChefEvaluations() {
               </div>
               <div>
                 <p className="desc">Periode</p>
-                <input value={form.period} onChange={(e) => setForm((p) => ({ ...p, period: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }} />
+                <input value={form.period} onChange={(e) => setForm((p) => ({ ...p, period: e.target.value }))} style={fieldStyle} />
               </div>
               <div>
                 <p className="desc">Campagne</p>
-                <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }} />
+                <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={fieldStyle} />
               </div>
             </div>
 
             {criteria.map((criterion) => (
-              <div key={criterion.id} style={{ border: "1px solid #cbd5e1", borderRadius: 14, padding: 14 }}>
-                <p style={{ fontWeight: 700, marginBottom: 8 }}>{criterion.label}</p>
+              <div key={criterion.id} style={{ border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#ffffff", borderRadius: 14, padding: 14 }}>
+                <p style={{ fontWeight: 700, marginBottom: 8, color: dark ? "#e2e8f0" : "#0f172a" }}>{criterion.label}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
                   <input
                     type="number"
@@ -184,13 +195,13 @@ export default function ChefEvaluations() {
                     value={form.scores[criterion.id] || ""}
                     onChange={(e) => updateScore(criterion.id, e.target.value)}
                     placeholder={`Note / ${criterion.note_max}`}
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                    style={fieldStyle}
                   />
                   <input
                     value={form.comments[criterion.id] || ""}
                     onChange={(e) => updateComment(criterion.id, e.target.value)}
                     placeholder="Commentaire sur ce critere"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                    style={fieldStyle}
                   />
                 </div>
               </div>
@@ -198,7 +209,7 @@ export default function ChefEvaluations() {
 
             <div>
               <p className="desc">Commentaire global</p>
-              <textarea rows={4} value={form.overallComment} onChange={(e) => setForm((p) => ({ ...p, overallComment: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1", resize: "vertical" }} />
+              <textarea rows={4} value={form.overallComment} onChange={(e) => setForm((p) => ({ ...p, overallComment: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>

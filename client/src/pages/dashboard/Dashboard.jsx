@@ -6,6 +6,7 @@ import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import RadarOutlinedIcon from "@mui/icons-material/RadarOutlined";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
+import usePersistentNavState from "../../hooks/usePersistentNavState";
 import ActivityPanels from "../../components/dashboard/ActivityPanels";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import EmployeeSummaryCard from "../../components/dashboard/EmployeeSummaryCard";
@@ -86,7 +87,7 @@ const statusOrder = {
 
 export default function Dashboard() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, "0");

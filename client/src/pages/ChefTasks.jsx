@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
+import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
 const initialForm = {
@@ -57,10 +58,11 @@ function getStatusClass(label) {
 
 export default function ChefTasks() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [employees, setEmployees] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [form, setForm] = useState(initialForm);
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -69,6 +71,16 @@ export default function ChefTasks() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewAction, setReviewAction] = useState("approve");
   const [actionId, setActionId] = useState(null);
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
+    background: dark ? "#0f172a" : "#ffffff",
+    color: dark ? "#e2e8f0" : "#0f172a",
+    boxSizing: "border-box",
+  };
 
   const fetchData = async () => {
     try {
@@ -117,11 +129,36 @@ export default function ChefTasks() {
     };
   }, [tasks]);
 
-  const onChange = (event) => {
-    const { name, value } = event.target;
+  const resetMessages = () => {
     setFeedback("");
     setErrorMessage("");
+  };
+
+  const resetForm = (nextAssignedTo = "") => {
+    setEditingTaskId(null);
+    setForm({
+      ...initialForm,
+      assignedTo: nextAssignedTo || String(employees[0]?.id || ""),
+    });
+  };
+
+  const onChange = (event) => {
+    const { name, value } = event.target;
+    resetMessages();
     setForm((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const openEditTask = (task) => {
+    setEditingTaskId(task.id);
+    setForm({
+      title: task.title || "",
+      description: task.description || "",
+      dueDate: task.due_date || "",
+      assignedTo: String(task.employee?.id || ""),
+      requiresSubmissionFile: !!task.requires_submission_file,
+    });
+    resetMessages();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const submitTask = async (event) => {
@@ -132,30 +169,60 @@ export default function ChefTasks() {
       return;
     }
 
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      due_date: form.dueDate || null,
+      assigned_to: Number(form.assignedTo),
+      requires_submission_file: form.requiresSubmissionFile,
+    };
+
     try {
       setSubmitting(true);
-      setFeedback("");
-      setErrorMessage("");
-      await axios.post("/api/tasks/", {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        due_date: form.dueDate || null,
-        assigned_to: Number(form.assignedTo),
-        requires_submission_file: form.requiresSubmissionFile,
-      });
-      setFeedback("Tache assignee avec succes.");
-      setForm({
-        ...initialForm,
-        assignedTo: String(employees[0]?.id || ""),
-      });
+      resetMessages();
+
+      if (editingTaskId) {
+        await axios.patch(`/api/tasks/${editingTaskId}/update/`, payload);
+        setFeedback("Tache modifiee avec succes.");
+      } else {
+        await axios.post("/api/tasks/", payload);
+        setFeedback("Tache assignee avec succes.");
+      }
+
+      resetForm(String(employees[0]?.id || ""));
       await fetchData();
     } catch (requestError) {
-      console.error("Erreur creation tache:", requestError);
+      console.error("Erreur sauvegarde tache:", requestError);
       setErrorMessage(
-        requestError?.response?.data?.detail || "Impossible d'assigner la tache.",
+        requestError?.response?.data?.detail || "Impossible d'enregistrer la tache.",
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const deleteTask = async (task) => {
+    const shouldDelete = window.confirm(
+      `Supprimer la tache "${task.title}" ?`,
+    );
+    if (!shouldDelete) return;
+
+    try {
+      setActionId(task.id);
+      resetMessages();
+      await axios.delete(`/api/tasks/${task.id}/delete/`);
+      if (editingTaskId === task.id) {
+        resetForm(String(employees[0]?.id || ""));
+      }
+      setFeedback("Tache supprimee avec succes.");
+      await fetchData();
+    } catch (requestError) {
+      console.error("Erreur suppression tache:", requestError);
+      setErrorMessage(
+        requestError?.response?.data?.detail || "Impossible de supprimer cette tache.",
+      );
+    } finally {
+      setActionId(null);
     }
   };
 
@@ -163,8 +230,7 @@ export default function ChefTasks() {
     setReviewTask(task);
     setReviewComment(task.review_comment || "");
     setReviewAction("approve");
-    setFeedback("");
-    setErrorMessage("");
+    resetMessages();
   };
 
   const submitReview = async (event) => {
@@ -173,8 +239,7 @@ export default function ChefTasks() {
 
     try {
       setActionId(reviewTask.id);
-      setErrorMessage("");
-      setFeedback("");
+      resetMessages();
       await axios.post(`/api/tasks/${reviewTask.id}/review/`, {
         action: reviewAction,
         comment: reviewComment.trim(),
@@ -225,7 +290,7 @@ export default function ChefTasks() {
             <div className="yasar">
               <h1 className="monprofile">Taches equipe</h1>
               <p className="morinfo">
-                Assignez des taches, suivez les remises de travail et validez les livrables.
+                Assignez des taches, ajustez les demandes et validez les livrables.
               </p>
             </div>
             <div className="yamin">
@@ -276,26 +341,21 @@ export default function ChefTasks() {
               <p className="desc">En retard</p>
               <h3>{stats.late}</h3>
             </div>
-            <div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="modifier" onClick={fetchData} type="button">
                 Actualiser
               </button>
+              {editingTaskId && (
+                <button className="mode" onClick={() => resetForm()} type="button">
+                  Annuler edition
+                </button>
+              )}
             </div>
           </section>
         </div>
 
         {(feedback || errorMessage) && (
-          <div
-            style={{
-              width: "96%",
-              margin: "0 auto 16px",
-              padding: "12px 16px",
-              borderRadius: 12,
-              background: errorMessage ? "#ffe6e6" : "#e6f7e6",
-              color: errorMessage ? "#b91c1c" : "#166534",
-              border: `1px solid ${errorMessage ? "#fecaca" : "#bbf7d0"}`,
-            }}
-          >
+          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
             {errorMessage || feedback}
           </div>
         )}
@@ -317,7 +377,7 @@ export default function ChefTasks() {
                 value={form.title}
                 onChange={onChange}
                 placeholder="Ex: Mettre a jour le rapport"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                style={fieldStyle}
               />
             </div>
             <div>
@@ -326,7 +386,7 @@ export default function ChefTasks() {
                 name="assignedTo"
                 value={form.assignedTo}
                 onChange={onChange}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                style={fieldStyle}
               >
                 <option value="">Choisir un employe</option>
                 {employees.map((employee) => (
@@ -343,7 +403,7 @@ export default function ChefTasks() {
                 name="dueDate"
                 value={form.dueDate}
                 onChange={onChange}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                style={fieldStyle}
               />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
@@ -355,10 +415,7 @@ export default function ChefTasks() {
                 rows={3}
                 placeholder="Precisez ce que l'employe doit faire."
                 style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid #cbd5e1",
+                  ...fieldStyle,
                   resize: "vertical",
                 }}
               />
@@ -389,9 +446,18 @@ export default function ChefTasks() {
                 Cochez cette option seulement si l'employe doit renvoyer un document, une capture ou un livrable.
               </p>
             </div>
-            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              {editingTaskId && (
+                <button className="mode" onClick={() => resetForm()} type="button">
+                  Annuler
+                </button>
+              )}
               <button className="modifier" disabled={submitting} type="submit">
-                {submitting ? "Envoi..." : "Assigner la tache"}
+                {submitting
+                  ? "Enregistrement..."
+                  : editingTaskId
+                    ? "Mettre a jour la tache"
+                    : "Assigner la tache"}
               </button>
             </div>
           </form>
@@ -415,7 +481,7 @@ export default function ChefTasks() {
                   <th>Statut</th>
                   <th>Remise employe</th>
                   <th>Fichier</th>
-                  <th>Action chef</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,17 +538,33 @@ export default function ChefTasks() {
                           )}
                         </td>
                         <td>
-                          {task.can_review ? (
-                            <button className="modifier" onClick={() => openReview(task)} type="button">
-                              Traiter
-                            </button>
-                          ) : task.status === "DONE" ? (
-                            <span className="badge badge-termine">Validee</span>
-                          ) : task.status === "REVISION" ? (
-                            <span className="badge badge-attente">En correction</span>
-                          ) : (
-                            <span className="badge badge-genere">Suivi en cours</span>
-                          )}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {task.can_review ? (
+                              <button className="modifier" onClick={() => openReview(task)} type="button">
+                                Traiter
+                              </button>
+                            ) : task.status === "DONE" ? (
+                              <span className="badge badge-termine">Validee</span>
+                            ) : (
+                              <span className="badge badge-genere">Suivi en cours</span>
+                            )}
+
+                            {task.status !== "DONE" && (
+                              <>
+                                <button className="mode" onClick={() => openEditTask(task)} type="button">
+                                  Modifier
+                                </button>
+                                <button
+                                  className="mode"
+                                  disabled={actionId === task.id}
+                                  onClick={() => deleteTask(task)}
+                                  type="button"
+                                >
+                                  {actionId === task.id ? "Suppression..." : "Supprimer"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -531,7 +613,7 @@ export default function ChefTasks() {
                 <select
                   value={reviewAction}
                   onChange={(event) => setReviewAction(event.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1" }}
+                  style={fieldStyle}
                 >
                   <option value="approve">Valider</option>
                   <option value="reject">Demander une correction</option>
@@ -546,10 +628,7 @@ export default function ChefTasks() {
                   onChange={(event) => setReviewComment(event.target.value)}
                   placeholder="Expliquez la validation ou les corrections attendues."
                   style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid #cbd5e1",
+                    ...fieldStyle,
                     resize: "vertical",
                   }}
                 />

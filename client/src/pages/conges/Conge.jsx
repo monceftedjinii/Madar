@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
+import usePersistentNavState from "../../hooks/usePersistentNavState";
 import "../../styles/profile.css";
 
 const initialForm = {
@@ -13,7 +14,7 @@ const initialForm = {
 
 export default function Conge() {
   const [dark, setDark] = useDarkModePreference();
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [form, setForm] = useState(initialForm);
   const [requests, setRequests] = useState([]);
   const [balances, setBalances] = useState([]);
@@ -270,7 +271,13 @@ export default function Conge() {
       )}
 
       <div className="profile-content">
-        <div style={{ borderBottom: "1px solid rgba(0, 0, 0, 0.1)" }}>
+        <div
+          className={`sticky top-0 z-40 backdrop-blur ${
+            dark
+              ? "border-b border-slate-800 bg-slate-950/90"
+              : "border-b border-slate-200/80 bg-white/90"
+          }`}
+        >
           <div className="profile-naaav">
             <div className="yasar">
               <h3 className="monprofile">Gestion des congés</h3>
@@ -286,13 +293,13 @@ export default function Conge() {
               >
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
-              <button
-                className="mode"
-                onClick={() => setDark((prev) => !prev)}
-                type="button"
-              >
-                {dark ? " mode clair" : " mode sombre"}
-              </button>
+                <button
+                  className="mode"
+                  onClick={() => setDark((prev) => !prev)}
+                  type="button"
+                >
+                  {dark ? "mode clair" : "mode sombre"}
+                </button>
             </div>
           </div>
         </div>

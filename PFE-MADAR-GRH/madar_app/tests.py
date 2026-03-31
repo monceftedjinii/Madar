@@ -1,12 +1,43 @@
 # Test suite for MADAR GRH application
 # Updated to use Service model (Department model migrated in 0030_migrate_to_service)
 
-from django.test import TestCase
+from datetime import date, timedelta
 
 from django.test import TestCase
 from rest_framework.test import APIClient, APITestCase
 from django.contrib.auth import get_user_model
 from .models import RoleChoices
+
+
+def ensure_user(email, password, role, **extra_fields):
+	User = get_user_model()
+	user, _ = User.objects.get_or_create(email=email, defaults={'role': role, **extra_fields})
+	fields_to_update = []
+	if user.role != role:
+		user.role = role
+		fields_to_update.append('role')
+	for field, value in extra_fields.items():
+		if getattr(user, field) != value:
+			setattr(user, field, value)
+			fields_to_update.append(field)
+	if password is not None:
+		user.set_password(password)
+		fields_to_update.append('password')
+	if fields_to_update:
+		user.save(update_fields=list(dict.fromkeys(fields_to_update)))
+	return user
+
+
+def initialize_leave_workflow(leave_request):
+	from .models import ValidationWorkflow
+
+	steps = ValidationWorkflow.initialize_for_leave_request(leave_request)
+	steps.update(is_active=False)
+	first_step = steps.order_by('validation_order').first()
+	if first_step:
+		first_step.is_active = True
+		first_step.save(update_fields=['is_active', 'updated_at'])
+	return steps
 
 
 class RBACTests(APITestCase):
@@ -97,7 +128,7 @@ class EmployeeScopeTests(APITestCase):
 		# regular employee user mapped to a1
 		self.emp_email = 'a1@example.com'
 		self.emp_pass = 'emppass'
-		User.objects.create_user(email=self.emp_email, password=self.emp_pass, role=RoleChoices.EMPLOYEE)
+		ensure_user(email=self.emp_email, password=self.emp_pass, role=RoleChoices.EMPLOYEE)
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -119,8 +150,8 @@ class EmployeeScopeTests(APITestCase):
 		resp = self.client.get('/api/employees/')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		# dept A has a1, a2, chef -> 3
-		self.assertEqual(len(data), 3)
+		# dept A has a1 and a2; the chef is excluded from his own team scope
+		self.assertEqual(len(data), 2)
 		names = {f"{d['first_name']} {d['last_name']}" for d in data}
 		self.assertIn('A One', names)
 		self.assertIn('A Two', names)
@@ -153,10 +184,10 @@ class TaskTests(APITestCase):
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# employee user for a1
-		self.emp = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
+		self.emp = ensure_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
 
 		# other employee user for b1
-		self.other = User.objects.create_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
+		self.other = ensure_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -521,31 +552,54 @@ class LeaveRequestTests(APITestCase):
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef3@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# users for employees
-		self.emp_user = User.objects.create_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
-		self.other_user = User.objects.create_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
+		self.emp_user = ensure_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
+		self.other_user = ensure_user(email='b1@example.com', password='otherpass', role=RoleChoices.EMPLOYEE)
 	def test_employee_blocked_if_pending_leave(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		# Create a pending leave
 		from .models import LeaveRequest
-		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-10', end_date='2026-03-12', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.PENDING)
+		LeaveRequest.objects.create(
+			employee=self.a1,
+			start_date=date.today() + timedelta(days=20),
+			end_date=date.today() + timedelta(days=22),
+			type_id=LeaveRequest.LeaveType.ANNUAL,
+			status=LeaveRequest.Status.PENDING,
+		)
 		# Try to create another leave
-		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-15', 'end_date': '2026-03-17', 'type': 'ANNUAL', 'reason': 'Blocked'}, format='json')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (date.today() + timedelta(days=30)).isoformat(),
+				'end_date': (date.today() + timedelta(days=32)).isoformat(),
+				'type': 'ANNUAL',
+				'reason': 'Blocked',
+			},
+			format='json',
+		)
 		self.assertEqual(resp.status_code, 400)
-		self.assertIn('pending request', resp.json()['detail'])
+		self.assertIn('pending request', resp.json()['detail'].lower())
 
 	def test_employee_blocked_if_ongoing_accepted_leave(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		from .models import LeaveRequest
-		from datetime import date, timedelta
 		today = date.today()
 		# Create an accepted leave ending in the future
-		LeaveRequest.objects.create(employee=self.a1, start_date=today, end_date=today + timedelta(days=2), type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		LeaveRequest.objects.create(employee=self.a1, start_date=today, end_date=today + timedelta(days=2), type_id=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
 		# Try to create another leave
-		resp = self.client.post('/api/leaves/', {'start_date': str(today + timedelta(days=5)), 'end_date': str(today + timedelta(days=7)), 'type': 'ANNUAL', 'reason': 'Blocked'}, format='json')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (today + timedelta(days=20)).isoformat(),
+				'end_date': (today + timedelta(days=22)).isoformat(),
+				'type': 'ANNUAL',
+				'reason': 'Blocked',
+			},
+			format='json',
+		)
 		self.assertEqual(resp.status_code, 400)
-		self.assertIn('ongoing approved leave', resp.json()['detail'])
+		self.assertIn('ongoing approved leave', resp.json()['detail'].lower())
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -555,7 +609,16 @@ class LeaveRequestTests(APITestCase):
 	def test_employee_create_annual_leave(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-01', 'end_date': '2026-03-05', 'type': 'ANNUAL', 'reason': 'Vacation'}, format='json')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (date.today() + timedelta(days=20)).isoformat(),
+				'end_date': (date.today() + timedelta(days=24)).isoformat(),
+				'type': 'ANNUAL',
+				'reason': 'Vacation',
+			},
+			format='json',
+		)
 		self.assertEqual(resp.status_code, 201)
 		from .models import Notification
 		notifs = Notification.objects.filter(user=self.chef)
@@ -564,31 +627,64 @@ class LeaveRequestTests(APITestCase):
 	def test_employee_create_sick_without_attachment_bad_request(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-01', 'end_date': '2026-03-03', 'type': 'SICK', 'reason': 'Fever'}, format='multipart')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (date.today() + timedelta(days=1)).isoformat(),
+				'end_date': (date.today() + timedelta(days=3)).isoformat(),
+				'type': 'SICK',
+				'reason': 'Fever',
+			},
+			format='multipart',
+		)
 		self.assertEqual(resp.status_code, 400)
 
 	def test_create_with_end_before_start_bad_request(self):
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-05', 'end_date': '2026-03-01', 'type': 'ANNUAL', 'reason': 'Backwards'}, format='json')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (date.today() + timedelta(days=25)).isoformat(),
+				'end_date': (date.today() + timedelta(days=20)).isoformat(),
+				'type': 'ANNUAL',
+				'reason': 'Backwards',
+			},
+			format='json',
+		)
 		self.assertEqual(resp.status_code, 400)
 
 	def test_create_overlaps_existing_accepted_bad_request(self):
 		from .models import LeaveRequest
 		# create an accepted leave for a1 from 2026-03-10 to 2026-03-15
-		accepted = LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-10', end_date='2026-03-15', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		LeaveRequest.objects.create(
+			employee=self.a1,
+			start_date=date.today() + timedelta(days=20),
+			end_date=date.today() + timedelta(days=25),
+			type_id=LeaveRequest.LeaveType.ANNUAL,
+			status=LeaveRequest.Status.ACCEPTED,
+		)
 		token = self.get_token('a1@example.com', 'emppass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		# attempt overlapping range
-		resp = self.client.post('/api/leaves/', {'start_date': '2026-03-12', 'end_date': '2026-03-14', 'type': 'ANNUAL', 'reason': 'Overlap'}, format='json')
+		resp = self.client.post(
+			'/api/leaves/',
+			{
+				'start_date': (date.today() + timedelta(days=22)).isoformat(),
+				'end_date': (date.today() + timedelta(days=24)).isoformat(),
+				'type': 'ANNUAL',
+				'reason': 'Overlap',
+			},
+			format='json',
+		)
 		self.assertEqual(resp.status_code, 400)
 
 	def test_chef_lists_only_his_department_leaves(self):
 		from .models import LeaveRequest
 		# create leaves in both departments
-		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type=LeaveRequest.LeaveType.ANNUAL)
-		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-05', end_date='2026-03-06', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
-		LeaveRequest.objects.create(employee=self.b1, start_date='2026-03-03', end_date='2026-03-04', type=LeaveRequest.LeaveType.ANNUAL)
+		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type_id=LeaveRequest.LeaveType.ANNUAL)
+		LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-05', end_date='2026-03-06', type_id=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		LeaveRequest.objects.create(employee=self.b1, start_date='2026-03-03', end_date='2026-03-04', type_id=LeaveRequest.LeaveType.ANNUAL)
 
 		token = self.get_token('chef3@example.com', 'chefpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
@@ -602,17 +698,22 @@ class LeaveRequestTests(APITestCase):
 
 	def test_chef_approves_request_in_dept(self):
 		from .models import LeaveRequest
-		lr = LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type=LeaveRequest.LeaveType.ANNUAL)
+		lr = LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type_id=LeaveRequest.LeaveType.ANNUAL)
+		initialize_leave_workflow(lr)
 		token = self.get_token('chef3@example.com', 'chefpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'ok'}, format='json')
 		self.assertEqual(resp.status_code, 200)
 		lr.refresh_from_db()
-		self.assertEqual(lr.status, LeaveRequest.Status.ACCEPTED)
+		self.assertEqual(lr.status, LeaveRequest.Status.PENDING)
+		current_step = lr.validation_workflow.order_by('validation_order').filter(decision='PENDING').first()
+		self.assertIsNotNone(current_step)
+		self.assertEqual(current_step.validator_role, RoleChoices.RH_SIMPLE)
 
 	def test_chef_cannot_approve_other_dept(self):
 		from .models import LeaveRequest
-		lr = LeaveRequest.objects.create(employee=self.b1, start_date='2026-03-01', end_date='2026-03-02', type=LeaveRequest.LeaveType.ANNUAL)
+		lr = LeaveRequest.objects.create(employee=self.b1, start_date='2026-03-01', end_date='2026-03-02', type_id=LeaveRequest.LeaveType.ANNUAL)
+		initialize_leave_workflow(lr)
 		token = self.get_token('chef3@example.com', 'chefpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'ok'}, format='json')
@@ -620,7 +721,7 @@ class LeaveRequestTests(APITestCase):
 
 	def test_cannot_approve_non_pending(self):
 		from .models import LeaveRequest
-		lr = LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		lr = LeaveRequest.objects.create(employee=self.a1, start_date='2026-03-01', end_date='2026-03-02', type_id=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
 		token = self.get_token('chef3@example.com', 'chefpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'ok'}, format='json')
@@ -636,7 +737,7 @@ class LeaveRequestTests(APITestCase):
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.get('/api/leaves/department/')
 		self.assertEqual(resp.status_code, 400)
-		self.assertIn('Chef has no Employee record', resp.json()['detail'])
+		self.assertIn('validator has no employee record', resp.json()['detail'].lower())
 
 
 class AbsenceDisciplineTests(APITestCase):
@@ -690,7 +791,7 @@ class AbsenceDisciplineTests(APITestCase):
 		from datetime import timedelta
 		yesterday = timezone.now().date() - timedelta(days=1)
 		from .models import LeaveRequest
-		LeaveRequest.objects.create(employee=self.emp, start_date=yesterday, end_date=yesterday, type=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
+		LeaveRequest.objects.create(employee=self.emp, start_date=yesterday, end_date=yesterday, type_id=LeaveRequest.LeaveType.ANNUAL, status=LeaveRequest.Status.ACCEPTED)
 		token = self.get_token('rhsimple@example.com', 'rhsimple')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.get('/api/absences/yesterday/')
@@ -750,6 +851,8 @@ class NotificationTests(APITestCase):
 		# chef
 		self.chef = User.objects.create_user(email='chef4@example.com', password='chefpass', role=RoleChoices.CHEF)
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef4@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
+		self.rh_simple = User.objects.create_user(email='rhsimple4@example.com', password='rhpass', role=RoleChoices.RH_SIMPLE)
+		self.grh = User.objects.create_user(email='grh4@example.com', password='grhpass', role=RoleChoices.GRH)
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -789,12 +892,25 @@ class NotificationTests(APITestCase):
 		User = get_user_model()
 		emp_user = User.objects.get(email=self.emp_email)
 		# create a leave request
-		lr = LeaveRequest.objects.create(employee=self.emp, start_date='2026-03-01', end_date='2026-03-05', type=LeaveRequest.LeaveType.ANNUAL)
+		lr = LeaveRequest.objects.create(employee=self.emp, start_date='2026-03-01', end_date='2026-03-05', type_id=LeaveRequest.LeaveType.ANNUAL)
+		initialize_leave_workflow(lr)
 		
-		# chef approves
+		# chef approves first workflow step
 		token = self.get_token('chef4@example.com', 'chefpass')
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'ok'}, format='json')
+		self.assertEqual(resp.status_code, 200)
+
+		# RH approves second workflow step
+		token = self.get_token('rhsimple4@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'rh ok'}, format='json')
+		self.assertEqual(resp.status_code, 200)
+
+		# GRH approves final workflow step
+		token = self.get_token('grh4@example.com', 'grhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(f'/api/leaves/{lr.id}/approve/', {'comment': 'grh ok'}, format='json')
 		self.assertEqual(resp.status_code, 200)
 		
 		# check notification was created for employee
@@ -802,14 +918,15 @@ class NotificationTests(APITestCase):
 		notifs = Notification.objects.filter(user=emp_user)
 		self.assertGreater(notifs.count(), 0)
 		notif = notifs.first()
-		self.assertIn('approved', notif.title.lower())
+		self.assertIn('approuv', notif.title.lower())
 
 	def test_notification_created_when_leave_rejected(self):
 		from .models import LeaveRequest
 		User = get_user_model()
 		emp_user = User.objects.get(email=self.emp_email)
 		# create a leave request
-		lr = LeaveRequest.objects.create(employee=self.emp, start_date='2026-03-01', end_date='2026-03-05', type=LeaveRequest.LeaveType.ANNUAL)
+		lr = LeaveRequest.objects.create(employee=self.emp, start_date='2026-03-01', end_date='2026-03-05', type_id=LeaveRequest.LeaveType.ANNUAL)
+		initialize_leave_workflow(lr)
 		
 		# chef rejects
 		token = self.get_token('chef4@example.com', 'chefpass')
@@ -822,7 +939,7 @@ class NotificationTests(APITestCase):
 		notifs = Notification.objects.filter(user=emp_user)
 		self.assertGreater(notifs.count(), 0)
 		notif = notifs.first()
-		self.assertIn('rejected', notif.title.lower())
+		self.assertIn('refus', notif.title.lower())
 
 	def test_notification_created_when_3rd_warning_issued(self):
 		User = get_user_model()
@@ -1028,11 +1145,7 @@ class DocumentTests(APITestCase):
 			service=self.dept2,
 			salary=35000
 		)
-		user2 = get_user_model().objects.create_user(
-			email='emp2@example.com',
-			password='pass123',
-			role='EMPLOYEE'
-		)
+		ensure_user(email='emp2@example.com', password='pass123', role='EMPLOYEE')
 		
 		# Chef from dept1 cannot upload for dept2
 		# So let's create a document in dept2 via GRH
@@ -1504,7 +1617,7 @@ class ReportsTests(APITestCase):
 			employee=self.emp_record,
 			start_date=today,
 			end_date=tomorrow,
-			type='ANNUAL',
+			type_id=LeaveRequest.LeaveType.ANNUAL,
 			status='PENDING'
 		)
 		
@@ -1513,7 +1626,7 @@ class ReportsTests(APITestCase):
 			employee=self.emp_record,
 			start_date=today,
 			end_date=tomorrow,
-			type='ANNUAL',
+			type_id=LeaveRequest.LeaveType.ANNUAL,
 			status='ACCEPTED'
 		)
 		
