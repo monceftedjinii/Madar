@@ -165,7 +165,7 @@ def _resolve_employee_scope(user):
 		except Employee.DoesNotExist:
 			return None
 		return Employee.objects.filter(service_id=chef_emp.service_id)
-	if user.role == RoleChoices.GRH:
+	if user.role in [RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR]:
 		return Employee.objects.all()
 	return None
 
@@ -401,7 +401,7 @@ def export_leaves_report(request):
 		except Employee.DoesNotExist:
 			return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
 		qs = qs.filter(employee__service_id=chef_emp.service_id)
-	elif user.role != RoleChoices.GRH:
+	elif user.role not in [RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR]:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	status_filter = request.query_params.get('status')
@@ -464,13 +464,13 @@ def export_tasks_report(request):
 		qs = qs.filter(assigned_to=emp)
 	elif user.role == RoleChoices.CHEF:
 		qs = qs.filter(assigned_by=user)
-	elif user.role != RoleChoices.GRH:
+	elif user.role not in [RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR]:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	qs = qs.filter(created_at__date__gte=from_date, created_at__date__lte=to_date)
 
 	employee_id = request.query_params.get('employee_id')
-	if employee_id and user.role in (RoleChoices.CHEF, RoleChoices.GRH):
+	if employee_id and user.role in (RoleChoices.CHEF, RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR):
 		qs = qs.filter(assigned_to_id=employee_id)
 
 	status_filter = (request.query_params.get('status') or '').lower()

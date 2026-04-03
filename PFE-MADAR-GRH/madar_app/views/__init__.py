@@ -37,7 +37,7 @@ from .documents import (
 	archive_document,
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
-from .evaluations import evaluation_criteria_list, my_evaluations, chef_evaluations
+from .evaluations import evaluation_criteria_list, my_evaluations, chef_evaluations, rh_evaluations
 from .messages import (
 	inbox,
 	sent,
@@ -94,7 +94,7 @@ __all__ = [
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# evaluations
-	'evaluation_criteria_list', 'my_evaluations', 'chef_evaluations',
+	'evaluation_criteria_list', 'my_evaluations', 'chef_evaluations', 'rh_evaluations',
 	# messages
 	'inbox', 'sent', 'trash', 'get_message', 'mark_message_read_unread', 'delete_message',
 	'search_messages', 'send_message', 'reply_message', 'forward_message',

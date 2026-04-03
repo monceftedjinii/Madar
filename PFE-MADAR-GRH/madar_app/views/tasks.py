@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Employee, Task, User
-from ..permissions import IsChef
+from ..permissions import IsServiceManager
 from .helpers import notify
 
 logger = logging.getLogger(__name__)
@@ -75,9 +75,9 @@ def _serialize_task(task, request=None):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def create_task(request):
-    """Chef assigns a task to an employee in his service only."""
+    """Service manager assigns a task to an employee in the same service only."""
     data = request.data
     logger.info("create_task request from %s with data: %s", request.user.email, data)
 
@@ -106,7 +106,7 @@ def create_task(request):
     try:
         chef_emp = Employee.objects.get(email=request.user.email)
     except Employee.DoesNotExist:
-        return Response({"detail": "Aucune fiche employe n'est liee a ce chef."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
 
     if employee.service_id != chef_emp.service_id:
         return Response(
@@ -153,9 +153,9 @@ def my_tasks(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def chef_tasks(request):
-    """Chef view of all tasks assigned by this chef."""
+    """Service manager view of all tasks assigned by this manager."""
     tasks = (
         Task.objects.filter(assigned_by=request.user)
         .select_related("assigned_to__service", "assigned_by", "reviewed_by")
@@ -165,9 +165,9 @@ def chef_tasks(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def update_chef_task(request, pk):
-    """Chef updates a task he created."""
+    """Service manager updates a task he created."""
     try:
         task = Task.objects.select_related("assigned_to__service", "assigned_by").get(id=pk)
     except Task.DoesNotExist:
@@ -214,7 +214,7 @@ def update_chef_task(request, pk):
         try:
             chef_emp = Employee.objects.get(email=request.user.email)
         except Employee.DoesNotExist:
-            return Response({"detail": "Aucune fiche employe n'est liee a ce chef."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
 
         if employee.service_id != chef_emp.service_id:
             return Response(
@@ -240,9 +240,9 @@ def update_chef_task(request, pk):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def delete_chef_task(request, pk):
-    """Chef deletes a task he created, as long as it is not already completed."""
+    """Service manager deletes a task he created, as long as it is not already completed."""
     try:
         task = Task.objects.get(id=pk)
     except Task.DoesNotExist:
@@ -321,9 +321,9 @@ def submit_task_work(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def review_task_submission(request, pk):
-    """Chef approves or requests revision for a submitted task."""
+    """Service manager approves or requests revision for a submitted task."""
     try:
         task = Task.objects.select_related("assigned_to", "assigned_by").get(id=pk)
     except Task.DoesNotExist:

@@ -138,6 +138,10 @@ export default function Navbar(props) {
   const initials = getAccountInitials(resolvedName);
 
   const isChef = resolvedRole === "CHEF";
+  const isRh = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
+  const isRhSeniorManager = resolvedRole === "RH_SENIOR";
+  const canManageRhEmployees = resolvedRole === "GRH";
+  const canUseRhFormations = ["RH_AGENT", "GRH"].includes(resolvedRole);
 
   const navSections = [
     {
@@ -151,19 +155,39 @@ export default function Navbar(props) {
         { to: "/tasks", label: "Mes taches" },
       ],
     },
-    ...(isChef
+    ...(isChef || isRhSeniorManager
       ? [
           {
-            title: "Espace Chef",
+            title: isRhSeniorManager ? "Equipe RH" : "Espace Chef",
             items: [
               { to: "/team", label: "Mon equipe" },
               { to: "/chef/attendance", label: "Presence equipe" },
               { to: "/chef/tasks", label: "Taches equipe" },
-              { to: "/chef/leaves", label: "Validation conges" },
-              { to: "/chef/evaluations", label: "Evaluer equipe" },
-              { to: "/chef/documents", label: "Documents" },
-              { to: "/chef/formations", label: "Formations" },
-              { to: "/chef/reports", label: "Rapports" },
+              ...(isChef
+                ? [
+                    { to: "/chef/leaves", label: "Validation conges" },
+                    { to: "/chef/evaluations", label: "Evaluer equipe" },
+                    { to: "/chef/documents", label: "Documents" },
+                    { to: "/chef/formations", label: "Formations" },
+                    { to: "/chef/reports", label: "Rapports" },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
+    ...(isRh
+      ? [
+          {
+            title: "Espace RH",
+            items: [
+              { to: "/rh/leaves", label: "Validation RH" },
+              { to: "/rh/absences", label: "Absences RH" },
+              { to: "/rh/documents", label: "Documents RH" },
+              ...(canUseRhFormations ? [{ to: "/rh/formations", label: "Formations RH" }] : []),
+              { to: "/rh/evaluations", label: "Evaluations RH" },
+              { to: "/rh/reports", label: "Rapports RH" },
+              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Employes RH" }] : []),
             ],
           },
         ]

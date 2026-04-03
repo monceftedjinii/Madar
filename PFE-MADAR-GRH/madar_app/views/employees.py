@@ -6,7 +6,7 @@ from django.conf import settings
 from django.utils import timezone
 from ..models import Service, Employee, Position, User, RoleChoices
 from ..permissions import IsGRH
-from ..scopes import employee_queryset_for
+from ..scopes import employee_queryset_for, employee_team_queryset_for
 import secrets
 from datetime import date as date_type
 
@@ -44,8 +44,12 @@ def employees_list(request):
 		# For messaging, return all employees so users can message anyone (except themselves)
 		qs = Employee.objects.all()
 	else:
-		# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
-		qs = employee_queryset_for(request.user)
+		scope = request.query_params.get('scope', '').lower()
+		if scope == 'team':
+			qs = employee_team_queryset_for(request.user)
+		else:
+			# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
+			qs = employee_queryset_for(request.user)
 
 	employees = list(qs.order_by('id'))
 	emails = [e.email for e in employees]

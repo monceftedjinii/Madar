@@ -37,6 +37,10 @@ class IsChef(HasRole):
     allowed_roles = [RoleChoices.CHEF]
 
 
+class IsServiceManager(HasRole):
+    allowed_roles = [RoleChoices.CHEF, RoleChoices.RH_SENIOR]
+
+
 class IsEmployee(HasRole):
     allowed_roles = [RoleChoices.EMPLOYEE]
 
@@ -45,12 +49,32 @@ class IsEmployeeOrChef(HasRole):
     allowed_roles = [RoleChoices.EMPLOYEE, RoleChoices.CHEF]
 
 
+class CanUseAttendance(HasRole):
+    allowed_roles = [
+        RoleChoices.EMPLOYEE,
+        RoleChoices.CHEF,
+        RoleChoices.RH_SIMPLE,
+        RoleChoices.RH_AGENT,
+        RoleChoices.RH_SENIOR,
+        RoleChoices.GRH,
+    ]
+
+
 class IsRHSimple(HasRole):
     allowed_roles = [RoleChoices.RH_SIMPLE]
 
 
 class IsRHSenior(HasRole):
     allowed_roles = [RoleChoices.RH_SENIOR]
+
+
+class IsRH(HasRole):
+    allowed_roles = [
+        RoleChoices.RH_SIMPLE,
+        RoleChoices.RH_AGENT,
+        RoleChoices.RH_SENIOR,
+        RoleChoices.GRH,
+    ]
 
 class CanUploadDocument(permissions.BasePermission):
     """Only EMPLOYEE, RH_SIMPLE, RH_SENIOR, CHEF, GRH can upload documents."""

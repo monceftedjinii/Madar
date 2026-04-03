@@ -5,12 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from ..models import Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag, User, RoleChoices
-from ..permissions import IsRHSimple, IsRHSenior
+from ..permissions import IsRH
 from .helpers import notify
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsRHSimple])
+@permission_classes([IsAuthenticated, IsRH])
 def absences_yesterday(request):
 	"""List employees absent yesterday (no attendance record, no approved leave)."""
 	yesterday = timezone.now().date() - timezone.timedelta(days=1)
@@ -34,7 +34,7 @@ def absences_yesterday(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsRHSimple])
+@permission_classes([IsAuthenticated, IsRH])
 def create_warning(request):
 	"""RH issues an absence warning to an employee for a specific date."""
 	emp_id = request.data.get('employee_id')
@@ -86,7 +86,7 @@ def create_warning(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsRHSenior])
+@permission_classes([IsAuthenticated, IsRH])
 def discipline_flags(request):
 	"""Return discipline flags for the current month where warning count >= 3."""
 	today = timezone.now().date()
@@ -95,6 +95,7 @@ def discipline_flags(request):
 	data = [
 		{
 			'employee_id': f.employee.id,
+			'employee_name': f"{f.employee.first_name} {f.employee.last_name}".strip(),
 			'employee_email': f.employee.email,
 			'warning_count': f.warning_count,
 			'month': f.month.isoformat(),

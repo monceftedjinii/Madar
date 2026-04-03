@@ -29,7 +29,7 @@ export default function TeamEmployees() {
 
       const [meResponse, employeesResponse] = await Promise.all([
         axios.get("/api/whoami/"),
-        axios.get("/api/employees/"),
+        axios.get("/api/employees/", { params: { scope: "team" } }),
       ]);
       const role = meResponse.data?.role || "";
       const data = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
@@ -166,12 +166,12 @@ export default function TeamEmployees() {
             </p>
           </div>
 
-          {currentRole && currentRole !== "CHEF" && (
+          {currentRole && !["CHEF", "RH_SENIOR"].includes(currentRole) && (
             <div
               className="page-feedback info"
               style={{ margin: "0 0 16px" }}
             >
-              Cette page est principalement destinee au chef de service pour suivre son equipe.
+              Cette page est principalement destinee au chef de service et au RH senior pour suivre leur equipe.
             </div>
           )}
 

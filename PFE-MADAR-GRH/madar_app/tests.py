@@ -125,6 +125,12 @@ class EmployeeScopeTests(APITestCase):
 		self.grh_pass = 'grhpass'
 		User.objects.create_user(email=self.grh_email, password=self.grh_pass, role=RoleChoices.GRH)
 
+		# RH senior manager in service A
+		self.rh_senior_email = 'rhsenior.scope@example.com'
+		self.rh_senior_pass = 'rhseniorpass'
+		User.objects.create_user(email=self.rh_senior_email, password=self.rh_senior_pass, role=RoleChoices.RH_SENIOR)
+		Employee.objects.create(first_name='RH', last_name='Senior', email=self.rh_senior_email, hired_at='2020-01-01', service=self.d1, salary='2100')
+
 		# regular employee user mapped to a1
 		self.emp_email = 'a1@example.com'
 		self.emp_pass = 'emppass'
@@ -141,8 +147,8 @@ class EmployeeScopeTests(APITestCase):
 		resp = self.client.get('/api/employees/')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		# should see 4 employees (a1,a2,b1,chef)
-		self.assertEqual(len(data), 4)
+		# should see 5 employees (a1,a2,b1,chef,rh_senior)
+		self.assertEqual(len(data), 5)
 
 	def test_chef_sees_department(self):
 		token = self.get_token(self.chef_email, self.chef_pass)
@@ -150,11 +156,12 @@ class EmployeeScopeTests(APITestCase):
 		resp = self.client.get('/api/employees/')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		# dept A has a1 and a2; the chef is excluded from his own team scope
-		self.assertEqual(len(data), 2)
+		# dept A has a1, a2 and the RH senior in the same service; the chef is excluded from his own team scope
+		self.assertEqual(len(data), 3)
 		names = {f"{d['first_name']} {d['last_name']}" for d in data}
 		self.assertIn('A One', names)
 		self.assertIn('A Two', names)
+		self.assertIn('RH Senior', names)
 
 	def test_employee_sees_only_self(self):
 		token = self.get_token(self.emp_email, self.emp_pass)
@@ -165,6 +172,19 @@ class EmployeeScopeTests(APITestCase):
 		self.assertEqual(len(data), 1)
 		self.assertEqual(data[0]['first_name'], 'A')
 		self.assertEqual(data[0]['last_name'], 'One')
+
+	def test_rh_senior_team_scope_matches_service_without_self(self):
+		token = self.get_token(self.rh_senior_email, self.rh_senior_pass)
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/employees/?scope=team')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(len(data), 3)
+		emails = {item['email'] for item in data}
+		self.assertIn('a1@example.com', emails)
+		self.assertIn('a2@example.com', emails)
+		self.assertIn(self.chef_email, emails)
+		self.assertNotIn(self.rh_senior_email, emails)
 
 
 class TaskTests(APITestCase):
@@ -182,6 +202,10 @@ class TaskTests(APITestCase):
 		# chef in service A
 		self.chef = User.objects.create_user(email='chef2@example.com', password='chefpass', role=RoleChoices.CHEF, first_name='Chef', last_name='Guy')
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
+
+		# RH senior manager in service A
+		self.rh_senior = User.objects.create_user(email='rhsenior.task@example.com', password='rhpass', role=RoleChoices.RH_SENIOR, first_name='RH', last_name='Senior')
+		Employee.objects.create(first_name='RH', last_name='Senior', email='rhsenior.task@example.com', hired_at='2020-01-01', service=self.d1, salary='2200')
 
 		# employee user for a1
 		self.emp = ensure_user(email='a1@example.com', password='emppass', role=RoleChoices.EMPLOYEE)
@@ -207,6 +231,12 @@ class TaskTests(APITestCase):
 		# assign to b1 (other dept)
 		resp = self.client.post('/api/tasks/', {'title': 'Do Y', 'assigned_to': self.b1.id}, format='json')
 		self.assertEqual(resp.status_code, 403)
+
+	def test_rh_senior_assigns_same_service_task(self):
+		token = self.get_token('rhsenior.task@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/tasks/', {'title': 'Traiter dossier RH', 'assigned_to': self.a1.id}, format='json')
+		self.assertEqual(resp.status_code, 201)
 
 	def test_chef_assigns_with_all_fields(self):
 		# Comprehensive test: chef assigns task with title, description, due_date
@@ -455,9 +485,13 @@ class AttendanceTests(APITestCase):
 		self.password = 'attpass'
 		self.user = User.objects.create_user(email=self.email, password=self.password, role=RoleChoices.EMPLOYEE)
 		self.emp = Employee.objects.create(first_name='Att', last_name='User', email=self.email, hired_at='2020-01-01', service=self.d, salary='1000', attendance_pin='1234')
+		self.rh_email = 'rhsimple.att@example.com'
+		self.rh_password = 'rhpass123'
+		self.rh_user = User.objects.create_user(email=self.rh_email, password=self.rh_password, role=RoleChoices.RH_SIMPLE)
+		self.rh_emp = Employee.objects.create(first_name='Lina', last_name='RH', email=self.rh_email, hired_at='2020-01-01', service=self.d, salary='1500', attendance_pin='5678')
 
-	def get_token(self):
-		resp = self.client.post('/api/auth/token/', {'email': self.email, 'password': self.password}, format='json')
+	def get_token(self, email=None, password=None):
+		resp = self.client.post('/api/auth/token/', {'email': email or self.email, 'password': password or self.password}, format='json')
 		self.assertEqual(resp.status_code, 200)
 		return resp.json()['access']
 
@@ -533,6 +567,15 @@ class AttendanceTests(APITestCase):
 		# should not include other's attendance
 		for r in data:
 			self.assertNotEqual(r['date'], '2026-02-01')
+
+	def test_rh_simple_can_check_in_and_list_own_attendance(self):
+		token = self.get_token(self.rh_email, self.rh_password)
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		check_in = self.client.post('/api/attendance/check-in/', {'pin': '5678'}, format='json')
+		self.assertIn(check_in.status_code, (200, 201))
+		resp = self.client.get('/api/attendance/me/')
+		self.assertEqual(resp.status_code, 200)
+		self.assertGreaterEqual(len(resp.json()), 1)
 
 
 

@@ -5,13 +5,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from ..models import Employee, Attendance
-from ..permissions import IsChef, IsEmployeeOrChef
+from ..permissions import CanUseAttendance, IsServiceManager
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployeeOrChef])
+@permission_classes([IsAuthenticated, CanUseAttendance])
 def attendance_check_in(request):
-	"""Employee or chef checks in for today using their 4-digit PIN."""
+	"""Employee, chef or RH staff checks in for today using their 4-digit PIN."""
 	pin = request.data.get('pin')
 	if not pin:
 		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -44,9 +44,9 @@ def attendance_check_in(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployeeOrChef])
+@permission_classes([IsAuthenticated, CanUseAttendance])
 def attendance_check_out(request):
-	"""Employee or chef checks out for today using their 4-digit PIN."""
+	"""Employee, chef or RH staff checks out for today using their 4-digit PIN."""
 	pin = request.data.get('pin')
 	if not pin:
 		return Response({'detail': 'pin is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,9 +82,9 @@ def attendance_check_out(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmployeeOrChef])
+@permission_classes([IsAuthenticated, CanUseAttendance])
 def attendance_me(request):
-	"""Return attendance records for the current employee or chef in a date range."""
+	"""Return attendance records for the current employee, chef or RH staff in a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
 	today = timezone.localdate()
@@ -115,9 +115,9 @@ def attendance_me(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsChef])
+@permission_classes([IsAuthenticated, IsServiceManager])
 def attendance_team(request):
-	"""Return attendance summary for the chef's service on a date range."""
+	"""Return attendance summary for the manager's service on a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
 	today = timezone.localdate()
@@ -128,7 +128,7 @@ def attendance_team(request):
 	try:
 		chef_emp = Employee.objects.select_related('service', 'position').get(email=request.user.email)
 	except Employee.DoesNotExist:
-		return Response({'detail': "Aucune fiche employe n'est liee a ce chef."}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({'detail': "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
 
 	team = list(
 		Employee.objects.select_related('service', 'position')

@@ -18,6 +18,13 @@ import ChefDocuments from "../pages/ChefDocuments";
 import ChefFormations from "../pages/ChefFormations";
 import ChefReports from "../pages/ChefReports";
 import ChefEvaluations from "../pages/ChefEvaluations";
+import RhLeaves from "../pages/RhLeaves";
+import RhAbsences from "../pages/RhAbsences";
+import RhDocuments from "../pages/RhDocuments";
+import RhFormations from "../pages/RhFormations";
+import RhReports from "../pages/RhReports";
+import RhEmployees from "../pages/RhEmployees";
+import RhEvaluations from "../pages/RhEvaluations";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -45,6 +52,13 @@ export default function Routers() {
           <Route path="/chef/formations" element={<ChefFormations />} />
           <Route path="/chef/reports" element={<ChefReports />} />
           <Route path="/chef/evaluations" element={<ChefEvaluations />} />
+          <Route path="/rh/leaves" element={<RhLeaves />} />
+          <Route path="/rh/absences" element={<RhAbsences />} />
+          <Route path="/rh/documents" element={<RhDocuments />} />
+          <Route path="/rh/formations" element={<RhFormations />} />
+          <Route path="/rh/reports" element={<RhReports />} />
+          <Route path="/rh/employees" element={<RhEmployees />} />
+          <Route path="/rh/evaluations" element={<RhEvaluations />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />

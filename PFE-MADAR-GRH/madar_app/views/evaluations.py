@@ -117,6 +117,20 @@ def my_evaluations(request):
     return Response([_serialize_evaluation(item) for item in evaluations])
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def rh_evaluations(request):
+    if request.user.role not in {"RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"}:
+        return Response({"detail": "Acces RH requis."}, status=status.HTTP_403_FORBIDDEN)
+
+    evaluations = (
+        Evaluation.objects.select_related("employee__service", "employee__position", "evaluator", "campaign")
+        .prefetch_related("scores__criterion")
+        .order_by("-evaluation_date", "-created_at")
+    )
+    return Response([_serialize_evaluation(item) for item in evaluations])
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated, IsChef])
 def chef_evaluations(request):

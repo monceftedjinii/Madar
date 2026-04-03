@@ -1,6 +1,9 @@
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import AssignmentLateOutlinedIcon from "@mui/icons-material/AssignmentLateOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import Groups2OutlinedIcon from "@mui/icons-material/Groups2Outlined";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import MarkEmailReadOutlinedIcon from "@mui/icons-material/MarkEmailReadOutlined";
 import PendingActionsOutlinedIcon from "@mui/icons-material/PendingActionsOutlined";
 import QueryStatsOutlinedIcon from "@mui/icons-material/QueryStatsOutlined";
@@ -22,6 +25,12 @@ const iconMap = {
   submitted: AssignmentTurnedInOutlinedIcon,
   revision: PendingActionsOutlinedIcon,
   leaves: AssignmentLateOutlinedIcon,
+  employees: Groups2OutlinedIcon,
+  documents: DescriptionOutlinedIcon,
+  validations: FactCheckOutlinedIcon,
+  formations: MenuBookOutlinedIcon,
+  evaluations: QueryStatsOutlinedIcon,
+  alerts: AssignmentLateOutlinedIcon,
 };
 
 const colorMap = {
@@ -38,6 +47,12 @@ const colorMap = {
   submitted: "bg-sky-50 text-sky-600",
   revision: "bg-amber-50 text-amber-600",
   leaves: "bg-rose-50 text-rose-600",
+  employees: "bg-cyan-50 text-cyan-600",
+  documents: "bg-indigo-50 text-indigo-600",
+  validations: "bg-emerald-50 text-emerald-600",
+  formations: "bg-fuchsia-50 text-fuchsia-600",
+  evaluations: "bg-violet-50 text-violet-600",
+  alerts: "bg-rose-50 text-rose-600",
 };
 
 const darkColorMap = {
@@ -54,6 +69,12 @@ const darkColorMap = {
   submitted: "bg-sky-500/15 text-sky-300",
   revision: "bg-amber-500/15 text-amber-300",
   leaves: "bg-rose-500/15 text-rose-300",
+  employees: "bg-cyan-500/15 text-cyan-300",
+  documents: "bg-indigo-500/15 text-indigo-300",
+  validations: "bg-emerald-500/15 text-emerald-300",
+  formations: "bg-fuchsia-500/15 text-fuchsia-300",
+  evaluations: "bg-violet-500/15 text-violet-300",
+  alerts: "bg-rose-500/15 text-rose-300",
 };
 
 function StatCard({ item, dark = false }) {

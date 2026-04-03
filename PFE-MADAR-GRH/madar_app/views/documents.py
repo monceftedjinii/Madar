@@ -84,7 +84,7 @@ def _can_access_comments(user, document):
 			)
 		except Employee.DoesNotExist:
 			return False
-	if user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+	if user.role in [RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR, RoleChoices.GRH]:
 		return True
 	if user.role == RoleChoices.EMPLOYEE:
 		try:
@@ -320,6 +320,8 @@ def list_documents_scoped(request):
 			created_by=request.user,
 			doc_type__category=DocumentType.Category.RH
 		)
+	elif role == RoleChoices.RH_AGENT:
+		qs = Document.objects.all()
 	elif role == RoleChoices.CHEF:
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)

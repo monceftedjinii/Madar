@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Dashboard from "./Dashboard";
 import ChefDashboard from "./ChefDashboard";
+import RhDashboard from "./RhDashboard";
 
 export default function RoleDashboard() {
   const [role, setRole] = useState("");
@@ -33,6 +34,10 @@ export default function RoleDashboard() {
 
   if (role === "CHEF") {
     return <ChefDashboard />;
+  }
+
+  if (["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role)) {
+    return <RhDashboard />;
   }
 
   return <Dashboard />;

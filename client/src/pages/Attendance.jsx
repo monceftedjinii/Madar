@@ -65,8 +65,8 @@ const mapAttendanceError = (requestError, role) => {
     "";
 
   if (detail === "You do not have permission to perform this action.") {
-    return role && !["EMPLOYEE", "CHEF"].includes(role)
-      ? "Le pointage est reserve aux comptes employe et chef de service."
+    return role && !["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role)
+      ? "Le pointage est reserve aux comptes employe, chef et RH."
       : "Vous n'avez pas la permission d'effectuer cette action.";
   }
 
@@ -256,7 +256,8 @@ export default function Attendance() {
       : "Pas encore pointé";
 
   const canUseAttendance =
-    !currentUserRole || ["EMPLOYEE", "CHEF"].includes(currentUserRole);
+    !currentUserRole ||
+    ["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(currentUserRole);
 
   const canCheckIn =
     canUseAttendance && !todayRecord?.check_in_time && !actionInProgress;
@@ -334,9 +335,12 @@ export default function Attendance() {
   };
 
   const handlePinConfirm = async () => {
-    if (currentUserRole && !["EMPLOYEE", "CHEF"].includes(currentUserRole)) {
+    if (
+      currentUserRole &&
+      !["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(currentUserRole)
+    ) {
       setPinError(
-        "Le pointage est reserve aux comptes employe et chef de service.",
+        "Le pointage est reserve aux comptes employe, chef et RH.",
       );
       return;
     }
@@ -497,7 +501,7 @@ export default function Attendance() {
                 {!canUseAttendance && (
                   <p style={{ color: "#dc2626", fontWeight: 600 }}>
                     Ce compte n'a pas acces au pointage. Utilisez un compte
-                    employe ou chef de service pour pointer l'entree et la sortie.
+                    employe, chef ou RH pour pointer l'entree et la sortie.
                   </p>
                 )}
                 <div>

@@ -14,6 +14,11 @@ const initialForm = {
   file: null,
 };
 
+function getSelectedFileLabel(file) {
+  if (!file) return "Aucun fichier choisi";
+  return file.name || "Fichier selectionne";
+}
+
 function formatDateTime(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -114,12 +119,18 @@ export default function ChefDocuments() {
 
   const fileFieldStyle = {
     width: "100%",
-    padding: "10px 12px",
+    padding: "12px 14px",
     borderRadius: 12,
     border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
     background: dark ? "#0f172a" : "#ffffff",
     color: dark ? "#e2e8f0" : "#0f172a",
     boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    minHeight: 56,
   };
 
   const fetchData = async () => {
@@ -415,7 +426,39 @@ export default function ChefDocuments() {
             </div>
             <div>
               <p className="desc">Fichier</p>
-              <input type="file" name="file" onChange={onFieldChange} style={fileFieldStyle} />
+              <label style={fileFieldStyle}>
+                <input
+                  type="file"
+                  name="file"
+                  onChange={onFieldChange}
+                  style={{ display: "none" }}
+                />
+                <span
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    background: dark ? "#1d4ed8" : "#2563eb",
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Choisir un fichier
+                </span>
+                <span
+                  style={{
+                    color: dark ? "#cbd5e1" : "#475569",
+                    fontSize: 14,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                    minWidth: 140,
+                  }}
+                >
+                  {getSelectedFileLabel(form.file)}
+                </span>
+              </label>
             </div>
             <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
               <button className="modifier" disabled={submitting} type="submit">
@@ -563,11 +606,38 @@ export default function ChefDocuments() {
                     <section>
                       <h3 style={{ marginTop: 0 }}>Nouvelle version</h3>
                       <form onSubmit={submitNewVersion}>
-                        <input
-                          type="file"
-                          onChange={(event) => setVersionFile(event.target.files?.[0] || null)}
-                          style={fileFieldStyle}
-                        />
+                        <label style={fileFieldStyle}>
+                          <input
+                            type="file"
+                            onChange={(event) => setVersionFile(event.target.files?.[0] || null)}
+                            style={{ display: "none" }}
+                          />
+                          <span
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: 10,
+                              background: dark ? "#1d4ed8" : "#2563eb",
+                              color: "#ffffff",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Choisir un fichier
+                          </span>
+                          <span
+                            style={{
+                              color: dark ? "#cbd5e1" : "#475569",
+                              fontSize: 14,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              flex: 1,
+                              minWidth: 140,
+                            }}
+                          >
+                            {getSelectedFileLabel(versionFile)}
+                          </span>
+                        </label>
                         <textarea
                           rows={3}
                           value={versionComment}

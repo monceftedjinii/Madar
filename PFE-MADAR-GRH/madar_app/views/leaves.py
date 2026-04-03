@@ -260,6 +260,7 @@ def department_pending_leaves(request):
 				'email': l.employee.email,
 				'first_name': l.employee.first_name,
 				'last_name': l.employee.last_name,
+				'service': l.employee.service.nomService if l.employee.service else None,
 			},
 			'start_date': l.start_date.isoformat(),
 			'end_date': l.end_date.isoformat(),
