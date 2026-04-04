@@ -34,6 +34,7 @@ export default function RhEmployees() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const canManageEmployees = role === "GRH";
+  const isGrh = role === "GRH";
 
   const fieldStyle = {
     width: "100%",
@@ -182,8 +183,12 @@ export default function RhEmployees() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Gestion des employes RH</h1>
-              <p className="morinfo">Consultez l'effectif et gerez les comptes employes selon votre role RH.</p>
+              <h1 className="monprofile">{isGrh ? "Gestion globale des employes" : "Gestion des employes RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Consultez l'effectif global et pilotez les comptes employes a l'echelle GRH."
+                  : "Consultez l'effectif et gerez les comptes employes selon votre role RH."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -199,8 +204,8 @@ export default function RhEmployees() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Effectif</h2>
-              <p className="desc">Vue d'ensemble des employes visibles.</p>
+              <h2 className="title">{isGrh ? "Effectif global" : "Effectif"}</h2>
+              <p className="desc">{isGrh ? "Vue d'ensemble des employes sur le scope GRH." : "Vue d'ensemble des employes visibles."}</p>
             </div>
             <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
             <div><p className="desc">En ligne</p><h3>{stats.online}</h3></div>
@@ -210,8 +215,8 @@ export default function RhEmployees() {
 
           <section className="info-pro">
             <div className="top">
-              <h2 className="title">Role RH</h2>
-              <p className="desc">Niveau d'action sur les fiches employees.</p>
+              <h2 className="title">{isGrh ? "Role de gouvernance" : "Role RH"}</h2>
+              <p className="desc">{isGrh ? "Niveau d'action global sur les fiches employees." : "Niveau d'action sur les fiches employees."}</p>
             </div>
             <div><p className="desc">Role</p><h3>{role || "-"}</h3></div>
             <div>

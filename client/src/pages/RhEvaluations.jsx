@@ -15,6 +15,7 @@ function formatDate(value) {
 export default function RhEvaluations() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
+  const [role, setRole] = useState("");
   const [evaluations, setEvaluations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -23,7 +24,11 @@ export default function RhEvaluations() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const response = await axios.get("/api/evaluations/rh/");
+      const [meResponse, response] = await Promise.all([
+        axios.get("/api/whoami/"),
+        axios.get("/api/evaluations/rh/"),
+      ]);
+      setRole(meResponse.data?.role || "");
       setEvaluations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Erreur chargement evaluations RH:", error);
@@ -45,6 +50,8 @@ export default function RhEvaluations() {
     return { total: evaluations.length, excellent, good, average };
   }, [evaluations]);
 
+  const isGrh = role === "GRH";
+
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
@@ -61,8 +68,12 @@ export default function RhEvaluations() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Evaluations RH</h1>
-              <p className="morinfo">Suivez l'historique des evaluations employees cote RH.</p>
+              <h1 className="monprofile">{isGrh ? "Evaluations globales" : "Evaluations RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Suivez les evaluations employees sur l'ensemble du perimetre GRH."
+                  : "Suivez l'historique des evaluations employees cote RH."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -78,8 +89,12 @@ export default function RhEvaluations() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Synthese</h2>
-              <p className="desc">Vision globale des evaluations cote RH.</p>
+              <h2 className="title">{isGrh ? "Synthese globale" : "Synthese"}</h2>
+              <p className="desc">
+                {isGrh
+                  ? "Vision globale des evaluations sur le perimetre GRH."
+                  : "Vision globale des evaluations cote RH."}
+              </p>
             </div>
             <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
             <div><p className="desc">Excellent</p><h3>{stats.excellent}</h3></div>
@@ -90,7 +105,11 @@ export default function RhEvaluations() {
           <section className="info-pro">
             <div className="top">
               <h2 className="title">Actions</h2>
-              <p className="desc">Rechargez les evaluations depuis le backend RH.</p>
+              <p className="desc">
+                {isGrh
+                  ? "Rechargez les evaluations depuis le backend global GRH."
+                  : "Rechargez les evaluations depuis le backend RH."}
+              </p>
             </div>
             <div>
               <p className="desc">Actualisation</p>
@@ -103,8 +122,12 @@ export default function RhEvaluations() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Historique des evaluations</h2>
-            <p className="activite-subtitle">Evaluation, score global et recommandation RH.</p>
+            <h2 className="activite-title">{isGrh ? "Historique global des evaluations" : "Historique des evaluations"}</h2>
+            <p className="activite-subtitle">
+              {isGrh
+                ? "Evaluation, score global et recommandation sur l'ensemble du perimetre GRH."
+                : "Evaluation, score global et recommandation RH."}
+            </p>
           </div>
 
           <div className="activite-table-scroll">

@@ -10,6 +10,7 @@ import Conge from "../pages/conges/Conge";
 import Notifications from "../pages/Notifications";
 import Tasks from "../pages/Tasks";
 import Evaluations from "../pages/Evaluations";
+import Gpec from "../pages/Gpec";
 import TeamEmployees from "../pages/TeamEmployees";
 import ChefTasks from "../pages/ChefTasks";
 import ChefAttendance from "../pages/ChefAttendance";
@@ -25,6 +26,7 @@ import RhFormations from "../pages/RhFormations";
 import RhReports from "../pages/RhReports";
 import RhEmployees from "../pages/RhEmployees";
 import RhEvaluations from "../pages/RhEvaluations";
+import RhGpec from "../pages/RhGpec";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -44,6 +46,7 @@ export default function Routers() {
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/evaluations" element={<Evaluations />} />
+          <Route path="/gpec" element={<Gpec />} />
           <Route path="/team" element={<TeamEmployees />} />
           <Route path="/chef/tasks" element={<ChefTasks />} />
           <Route path="/chef/attendance" element={<ChefAttendance />} />
@@ -59,6 +62,7 @@ export default function Routers() {
           <Route path="/rh/reports" element={<RhReports />} />
           <Route path="/rh/employees" element={<RhEmployees />} />
           <Route path="/rh/evaluations" element={<RhEvaluations />} />
+          <Route path="/rh/gpec" element={<RhGpec />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />

@@ -138,6 +138,7 @@ export default function Navbar(props) {
   const initials = getAccountInitials(resolvedName);
 
   const isChef = resolvedRole === "CHEF";
+  const isGrh = resolvedRole === "GRH";
   const isRh = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
   const isRhSeniorManager = resolvedRole === "RH_SENIOR";
   const canManageRhEmployees = resolvedRole === "GRH";
@@ -152,6 +153,7 @@ export default function Navbar(props) {
         { to: "/conge", label: "Conges" },
         { to: "/attendance", label: "Presence" },
         { to: "/evaluations", label: "Evaluations" },
+        { to: "/gpec", label: "GPEC" },
         { to: "/tasks", label: "Mes taches" },
       ],
     },
@@ -179,15 +181,16 @@ export default function Navbar(props) {
     ...(isRh
       ? [
           {
-            title: "Espace RH",
+            title: isGrh ? "Espace GRH" : "Espace RH",
             items: [
-              { to: "/rh/leaves", label: "Validation RH" },
-              { to: "/rh/absences", label: "Absences RH" },
-              { to: "/rh/documents", label: "Documents RH" },
-              ...(canUseRhFormations ? [{ to: "/rh/formations", label: "Formations RH" }] : []),
-              { to: "/rh/evaluations", label: "Evaluations RH" },
-              { to: "/rh/reports", label: "Rapports RH" },
-              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Employes RH" }] : []),
+              { to: "/rh/leaves", label: isGrh ? "Validation finale" : "Validation RH" },
+              { to: "/rh/absences", label: isGrh ? "Absences globales" : "Absences RH" },
+              { to: "/rh/documents", label: isGrh ? "Documents globaux" : "Documents RH" },
+              ...(canUseRhFormations ? [{ to: "/rh/formations", label: isGrh ? "Formations globales" : "Formations RH" }] : []),
+              { to: "/rh/evaluations", label: isGrh ? "Evaluations globales" : "Evaluations RH" },
+              { to: "/rh/gpec", label: isGrh ? "GPEC global" : "GPEC RH" },
+              { to: "/rh/reports", label: isGrh ? "Pilotage et rapports" : "Rapports RH" },
+              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Gerer les employes" }] : []),
             ],
           },
         ]

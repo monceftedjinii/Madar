@@ -1681,3 +1681,94 @@ class ReportsTests(APITestCase):
 		self.assertEqual(resp.data['leaves_pending_count'], 1)
 		self.assertEqual(resp.data['leaves_accepted_count'], 1)
 		self.assertEqual(resp.data['leaves_refused_count'], 0)
+
+
+class GPECTests(APITestCase):
+	def setUp(self):
+		from .models import Competency, Employee, Service
+
+		self.service = Service.objects.create(code='GPEC', nomService='GPEC', statut='ACTIF', budget=0)
+		self.employee = Employee.objects.create(
+			first_name='Sara',
+			last_name='Dev',
+			email='sara.gpec@example.com',
+			hired_at='2022-01-01',
+			service=self.service,
+			salary='1200',
+		)
+		self.employee_user = ensure_user(
+			email='sara.gpec@example.com',
+			password='emppass',
+			role=RoleChoices.EMPLOYEE,
+			first_name='Sara',
+			last_name='Dev',
+		)
+		self.rh_user = ensure_user(
+			email='rh.gpec@example.com',
+			password='rhpass',
+			role=RoleChoices.RH_SIMPLE,
+			first_name='RH',
+			last_name='Gpec',
+		)
+		self.catalog_item = Competency.objects.create(
+			name='Python',
+			category='TECHNICAL',
+			description='Backend Python',
+			target_level=4,
+		)
+
+	def get_token(self, email, password):
+		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
+		self.assertEqual(resp.status_code, 200)
+		return resp.json()['access']
+
+	def test_employee_can_fetch_own_gpec(self):
+		token = self.get_token('sara.gpec@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/gpec/me/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(data['employee']['email'], 'sara.gpec@example.com')
+		self.assertEqual(data['competencies'], [])
+
+	def test_rh_can_create_competency_and_assign_it(self):
+		token = self.get_token('rh.gpec@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		create_resp = self.client.post('/api/gpec/competencies/', {
+			'name': 'Communication',
+			'category': 'BEHAVIORAL',
+			'description': 'Communication interne',
+			'target_level': 3,
+		}, format='json')
+		self.assertEqual(create_resp.status_code, 201)
+
+		assign_resp = self.client.post('/api/gpec/employee-competencies/', {
+			'employee_id': self.employee.id,
+			'competency_id': self.catalog_item.id,
+			'current_level': 2,
+			'target_level': 4,
+			'notes': 'Bonne base technique',
+		}, format='json')
+		self.assertEqual(assign_resp.status_code, 200)
+		self.assertEqual(assign_resp.json()['employee_id'], self.employee.id)
+
+	def test_employee_can_update_own_objective_progress(self):
+		from .models import EmployeeObjective
+
+		objective = EmployeeObjective.objects.create(
+			employee=self.employee,
+			title='Automatiser les tests',
+			description='Monter une couverture plus solide',
+			created_by=self.rh_user,
+		)
+		token = self.get_token('sara.gpec@example.com', 'emppass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.patch(
+			f'/api/gpec/objectives/{objective.id}/progress/',
+			{'progress': 80, 'status': 'IN_PROGRESS'},
+			format='json',
+		)
+		self.assertEqual(resp.status_code, 200)
+		objective.refresh_from_db()
+		self.assertEqual(objective.progress, 80)
+		self.assertEqual(objective.status, 'IN_PROGRESS')

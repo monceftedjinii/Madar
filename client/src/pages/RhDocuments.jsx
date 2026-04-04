@@ -67,6 +67,7 @@ export default function RhDocuments() {
 
   const canValidate = role === "RH_SENIOR" || role === "GRH";
   const canUpload = role === "RH_SIMPLE" || role === "RH_SENIOR" || role === "GRH";
+  const isGrh = role === "GRH";
 
   const fieldStyle = {
     width: "100%",
@@ -283,8 +284,12 @@ export default function RhDocuments() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Documents RH</h1>
-              <p className="morinfo">Suivez, commentez et validez les documents du circuit RH.</p>
+              <h1 className="monprofile">{isGrh ? "Documents globaux" : "Documents RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Supervisez, arbitrez et archivez les documents sur l'ensemble du circuit."
+                  : "Suivez, commentez et validez les documents du circuit RH."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -300,8 +305,12 @@ export default function RhDocuments() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat global des documents RH visibles.</p>
+              <h2 className="title">{isGrh ? "Pilotage documentaire" : "Vue rapide"}</h2>
+              <p className="desc">
+                {isGrh
+                  ? "Etat global des documents visibles et des arbitrages GRH."
+                  : "Etat global des documents RH visibles."}
+              </p>
             </div>
             <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
             <div><p className="desc">Brouillons</p><h3>{stats.drafts}</h3></div>
@@ -312,7 +321,11 @@ export default function RhDocuments() {
           <section className="info-pro">
             <div className="top">
               <h2 className="title">Actions</h2>
-              <p className="desc">Actualisez le circuit documentaire RH.</p>
+              <p className="desc">
+                {isGrh
+                  ? "Actualisez le circuit documentaire global et ses validations finales."
+                  : "Actualisez le circuit documentaire RH."}
+              </p>
             </div>
             <div>
               <p className="desc">Actualisation</p>
@@ -412,8 +425,12 @@ export default function RhDocuments() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Documents RH visibles</h2>
-            <p className="activite-subtitle">Liste backend des documents dans le scope RH.</p>
+            <h2 className="activite-title">{isGrh ? "Documents visibles globalement" : "Documents RH visibles"}</h2>
+            <p className="activite-subtitle">
+              {isGrh
+                ? "Liste backend des documents sur le scope global GRH."
+                : "Liste backend des documents dans le scope RH."}
+            </p>
           </div>
 
           <div className="activite-table-scroll">

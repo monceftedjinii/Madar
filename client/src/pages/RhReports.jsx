@@ -17,6 +17,7 @@ function getCurrentMonthRange() {
 export default function RhReports() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
+  const [role, setRole] = useState("");
   const [filters, setFilters] = useState(getCurrentMonthRange);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,11 @@ export default function RhReports() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const response = await axios.get("/api/reports/summary/", { params: filters });
+      const [meResponse, response] = await Promise.all([
+        axios.get("/api/whoami/"),
+        axios.get("/api/reports/summary/", { params: filters }),
+      ]);
+      setRole(meResponse.data?.role || "");
       setSummary(response.data || null);
     } catch (error) {
       console.error("Erreur chargement rapports RH:", error);
@@ -64,6 +69,8 @@ export default function RhReports() {
       { label: "Flags disciplinaires", value: summary.discipline_flags_count ?? 0 },
     ];
   }, [summary]);
+
+  const isGrh = role === "GRH";
 
   const downloadReport = async (type, format) => {
     try {
@@ -125,8 +132,12 @@ export default function RhReports() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Rapports RH</h1>
-              <p className="morinfo">Centralisez les exports RH et les indicateurs du mois.</p>
+              <h1 className="monprofile">{isGrh ? "Pilotage et rapports GRH" : "Rapports RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Centralisez les exports globaux et les indicateurs de pilotage direction RH."
+                  : "Centralisez les exports RH et les indicateurs du mois."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -142,8 +153,8 @@ export default function RhReports() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Periode</h2>
-              <p className="desc">Filtrez les exports et le resume RH.</p>
+              <h2 className="title">{isGrh ? "Periode globale" : "Periode"}</h2>
+              <p className="desc">{isGrh ? "Filtrez les exports et le resume global GRH." : "Filtrez les exports et le resume RH."}</p>
             </div>
             <div>
               <p className="desc">Du</p>
@@ -158,7 +169,7 @@ export default function RhReports() {
           <section className="info-pro">
             <div className="top">
               <h2 className="title">Exports</h2>
-              <p className="desc">Rapports backend sur tout le scope RH.</p>
+              <p className="desc">{isGrh ? "Rapports backend sur tout le scope global GRH." : "Rapports backend sur tout le scope RH."}</p>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Presence PDF</button>
@@ -173,8 +184,10 @@ export default function RhReports() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Synthese RH</h2>
-            <p className="activite-subtitle">Indicateurs backend calcules sur votre scope RH.</p>
+            <h2 className="activite-title">{isGrh ? "Synthese GRH" : "Synthese RH"}</h2>
+            <p className="activite-subtitle">
+              {isGrh ? "Indicateurs backend calcules sur votre scope global GRH." : "Indicateurs backend calcules sur votre scope RH."}
+            </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>

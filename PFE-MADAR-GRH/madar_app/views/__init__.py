@@ -38,6 +38,7 @@ from .documents import (
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
 from .evaluations import evaluation_criteria_list, my_evaluations, chef_evaluations, rh_evaluations
+from .gpec import my_gpec, rh_gpec, gpec_competencies, upsert_employee_competency, create_objective, update_objective_progress, create_development_plan
 from .messages import (
 	inbox,
 	sent,
@@ -95,6 +96,8 @@ __all__ = [
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# evaluations
 	'evaluation_criteria_list', 'my_evaluations', 'chef_evaluations', 'rh_evaluations',
+	# gpec
+	'my_gpec', 'rh_gpec', 'gpec_competencies', 'upsert_employee_competency', 'create_objective', 'update_objective_progress', 'create_development_plan',
 	# messages
 	'inbox', 'sent', 'trash', 'get_message', 'mark_message_read_unread', 'delete_message',
 	'search_messages', 'send_message', 'reply_message', 'forward_message',

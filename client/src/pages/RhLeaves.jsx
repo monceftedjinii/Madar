@@ -30,6 +30,7 @@ function getStatusClass(status) {
 export default function RhLeaves() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
+  const [role, setRole] = useState("");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -40,7 +41,11 @@ export default function RhLeaves() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const response = await axios.get("/api/leaves/department/");
+      const [meResponse, response] = await Promise.all([
+        axios.get("/api/whoami/"),
+        axios.get("/api/leaves/department/"),
+      ]);
+      setRole(meResponse.data?.role || "");
       setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Erreur chargement validation RH des conges:", error);
@@ -62,12 +67,18 @@ export default function RhLeaves() {
     return { total: requests.length, pending, accepted, refused };
   }, [requests]);
 
+  const isGrh = role === "GRH";
+
   const decideRequest = async (requestId, action) => {
     const comment =
       window.prompt(
         action === "approve"
-          ? "Commentaire RH (optionnel)"
-          : "Motif RH du refus (optionnel)",
+          ? isGrh
+            ? "Commentaire GRH (optionnel)"
+            : "Commentaire RH (optionnel)"
+          : isGrh
+            ? "Motif GRH du refus (optionnel)"
+            : "Motif RH du refus (optionnel)",
         "",
       ) ?? "";
 
@@ -78,8 +89,12 @@ export default function RhLeaves() {
       await axios.post(`/api/leaves/${requestId}/${action}/`, { comment });
       setFeedback(
         action === "approve"
-          ? "Demande RH validee avec succes."
-          : "Demande RH refusee avec succes.",
+          ? isGrh
+            ? "Demande validee finalement avec succes."
+            : "Demande RH validee avec succes."
+          : isGrh
+            ? "Demande refusee finalement avec succes."
+            : "Demande RH refusee avec succes.",
       );
       await fetchRequests();
     } catch (error) {
@@ -106,8 +121,12 @@ export default function RhLeaves() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Validation RH des conges</h1>
-              <p className="morinfo">Traitez les demandes de conges en attente cote RH.</p>
+              <h1 className="monprofile">{isGrh ? "Validation finale des conges" : "Validation RH des conges"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Arbitrez les demandes en derniere etape sur tout le circuit conges."
+                  : "Traitez les demandes de conges en attente cote RH."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -123,8 +142,12 @@ export default function RhLeaves() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Demandes RH</h2>
-              <p className="desc">Vue d'ensemble des validations de conges cote RH.</p>
+              <h2 className="title">{isGrh ? "Arbitrages conges" : "Demandes RH"}</h2>
+              <p className="desc">
+                {isGrh
+                  ? "Vue d'ensemble des validations finales de conges."
+                  : "Vue d'ensemble des validations de conges cote RH."}
+              </p>
             </div>
             <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
             <div><p className="desc">En attente</p><h3>{stats.pending}</h3></div>
@@ -135,7 +158,11 @@ export default function RhLeaves() {
           <section className="info-pro">
             <div className="top">
               <h2 className="title">Actions</h2>
-              <p className="desc">Actualisez et traitez les validations RH.</p>
+              <p className="desc">
+                {isGrh
+                  ? "Actualisez et traitez les validations finales GRH."
+                  : "Actualisez et traitez les validations RH."}
+              </p>
             </div>
             <div>
               <p className="desc">Actualisation</p>
@@ -150,8 +177,12 @@ export default function RhLeaves() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Demandes en cours</h2>
-            <p className="activite-subtitle">Flux de validation congés remonte par le backend RH.</p>
+            <h2 className="activite-title">{isGrh ? "Arbitrages en cours" : "Demandes en cours"}</h2>
+            <p className="activite-subtitle">
+              {isGrh
+                ? "Flux de validation finale des conges remonte par le backend GRH."
+                : "Flux de validation des conges remonte par le backend RH."}
+            </p>
           </div>
 
           <div className="activite-table-scroll">
@@ -171,7 +202,7 @@ export default function RhLeaves() {
                 {loading ? (
                   <tr><td colSpan="7">Chargement des demandes...</td></tr>
                 ) : requests.length === 0 ? (
-                  <tr><td colSpan="7">Aucune demande RH visible pour le moment.</td></tr>
+                  <tr><td colSpan="7">{isGrh ? "Aucun arbitrage final visible pour le moment." : "Aucune demande RH visible pour le moment."}</td></tr>
                 ) : (
                   requests.map((requestItem) => {
                     const fullName =

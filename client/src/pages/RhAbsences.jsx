@@ -31,6 +31,7 @@ export default function RhAbsences() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const canWarn = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role);
+  const isGrh = role === "GRH";
 
   const fetchData = async () => {
     try {
@@ -118,8 +119,12 @@ export default function RhAbsences() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Absences RH</h1>
-              <p className="morinfo">Suivez les absences d'hier et les avertissements disciplinaires du mois.</p>
+              <h1 className="monprofile">{isGrh ? "Absences globales" : "Absences RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Suivez les absences detectees et les avertissements disciplinaires a l'echelle globale."
+                  : "Suivez les absences d'hier et les avertissements disciplinaires du mois."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -135,8 +140,12 @@ export default function RhAbsences() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Absences</h2>
-              <p className="desc">Vue RH des absences detectees et des alertes du mois.</p>
+              <h2 className="title">{isGrh ? "Discipline globale" : "Absences"}</h2>
+              <p className="desc">
+                {isGrh
+                  ? "Vue globale des absences detectees et des alertes disciplinaires."
+                  : "Vue RH des absences detectees et des alertes du mois."}
+              </p>
             </div>
             <div><p className="desc">Absences d'hier</p><h3>{stats.absences}</h3></div>
             <div><p className="desc">Flags disciplinaires</p><h3>{stats.flags}</h3></div>
@@ -146,7 +155,11 @@ export default function RhAbsences() {
           <section className="info-pro">
             <div className="top">
               <h2 className="title">Actions</h2>
-              <p className="desc">Actualisez les donnees et emettez les avertissements necessaires.</p>
+              <p className="desc">
+                {isGrh
+                  ? "Actualisez les donnees globales et arbitrez les avertissements necessaires."
+                  : "Actualisez les donnees et emettez les avertissements necessaires."}
+              </p>
             </div>
             <div><p className="desc">Role</p><h3>{role || "-"}</h3></div>
             <div>
@@ -162,8 +175,12 @@ export default function RhAbsences() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Employes absents hier</h2>
-            <p className="activite-subtitle">Liste backend des employes sans pointage et sans conge approuve hier.</p>
+            <h2 className="activite-title">{isGrh ? "Employes absents detectes" : "Employes absents hier"}</h2>
+            <p className="activite-subtitle">
+              {isGrh
+                ? "Liste backend des employes sans pointage et sans conge approuve sur la derniere detection."
+                : "Liste backend des employes sans pointage et sans conge approuve hier."}
+            </p>
           </div>
 
           <div className="activite-table-scroll">

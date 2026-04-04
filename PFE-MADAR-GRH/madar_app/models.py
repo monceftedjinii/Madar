@@ -1862,6 +1862,92 @@ class EvaluationScore(models.Model):
         return f"{self.evaluation_id} - {self.criterion.label}"
 
 
+class Competency(models.Model):
+    class Category(models.TextChoices):
+        TECHNICAL = 'TECHNICAL', 'Technique'
+        BEHAVIORAL = 'BEHAVIORAL', 'Comportementale'
+        MANAGEMENT = 'MANAGEMENT', 'Manageriale'
+        RH = 'RH', 'RH'
+
+    name = models.CharField(max_length=150, unique=True)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.TECHNICAL)
+    description = models.TextField(blank=True, default='')
+    target_level = models.PositiveIntegerField(default=3)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class EmployeeCompetency(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='competencies')
+    competency = models.ForeignKey(Competency, on_delete=models.CASCADE, related_name='employee_links')
+    current_level = models.PositiveIntegerField(default=0)
+    target_level = models.PositiveIntegerField(default=3)
+    notes = models.TextField(blank=True, default='')
+    assessed_at = models.DateField(default=timezone.localdate)
+    updated_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_employee_competencies')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('employee', 'competency')
+        ordering = ['employee_id', 'competency__name']
+
+    def __str__(self):
+        return f"{self.employee} - {self.competency.name}"
+
+
+class EmployeeObjective(models.Model):
+    class Status(models.TextChoices):
+        TODO = 'TODO', 'A faire'
+        IN_PROGRESS = 'IN_PROGRESS', 'En cours'
+        DONE = 'DONE', 'Termine'
+        BLOCKED = 'BLOCKED', 'Bloque'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='objectives')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    due_date = models.DateField(null=True, blank=True)
+    progress = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='created_objectives')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['status', 'due_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.employee} - {self.title}"
+
+
+class DevelopmentPlan(models.Model):
+    class Status(models.TextChoices):
+        PLANNED = 'PLANNED', 'Planifie'
+        ONGOING = 'ONGOING', 'En cours'
+        COMPLETED = 'COMPLETED', 'Complete'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='development_plans')
+    title = models.CharField(max_length=255)
+    actions = models.TextField()
+    target_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='created_development_plans')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['status', 'target_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.employee} - {self.title}"
+
+
 class FormationRequest(models.Model):
     """Formation/Training request from Chef."""
     class Status(models.TextChoices):

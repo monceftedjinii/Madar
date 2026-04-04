@@ -3,6 +3,7 @@ import axios from "axios";
 import Dashboard from "./Dashboard";
 import ChefDashboard from "./ChefDashboard";
 import RhDashboard from "./RhDashboard";
+import GrhDashboard from "./GrhDashboard";
 
 export default function RoleDashboard() {
   const [role, setRole] = useState("");
@@ -36,7 +37,11 @@ export default function RoleDashboard() {
     return <ChefDashboard />;
   }
 
-  if (["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role)) {
+  if (role === "GRH") {
+    return <GrhDashboard />;
+  }
+
+  if (["RH_SIMPLE", "RH_AGENT", "RH_SENIOR"].includes(role)) {
     return <RhDashboard />;
   }
 

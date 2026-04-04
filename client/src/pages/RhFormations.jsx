@@ -30,6 +30,7 @@ export default function RhFormations() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const canManageFormations = role === "RH_AGENT" || role === "GRH";
+  const isGrh = role === "GRH";
 
   const fieldStyle = {
     width: "100%",
@@ -141,8 +142,12 @@ export default function RhFormations() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Formations RH</h1>
-              <p className="morinfo">Validez les demandes de formation et maintenez le catalogue RH.</p>
+              <h1 className="monprofile">{isGrh ? "Formations globales" : "Formations RH"}</h1>
+              <p className="morinfo">
+                {isGrh
+                  ? "Validez les demandes de formation et pilotez le catalogue global."
+                  : "Validez les demandes de formation et maintenez le catalogue RH."}
+              </p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -158,8 +163,8 @@ export default function RhFormations() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat du flux de formation cote RH.</p>
+              <h2 className="title">{isGrh ? "Pilotage formation" : "Vue rapide"}</h2>
+              <p className="desc">{isGrh ? "Etat du flux de formation sur le perimetre GRH." : "Etat du flux de formation cote RH."}</p>
             </div>
             <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
             <div><p className="desc">En attente</p><h3>{stats.pending}</h3></div>
@@ -169,8 +174,8 @@ export default function RhFormations() {
 
           <section className="info-pro">
             <div className="top">
-              <h2 className="title">Catalogue</h2>
-              <p className="desc">Formations disponibles cote RH.</p>
+              <h2 className="title">{isGrh ? "Catalogue global" : "Catalogue"}</h2>
+              <p className="desc">{isGrh ? "Formations disponibles sur le catalogue global." : "Formations disponibles cote RH."}</p>
             </div>
             <div><p className="desc">Formations</p><h3>{catalog.length}</h3></div>
             <div>
