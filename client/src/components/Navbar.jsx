@@ -138,6 +138,7 @@ export default function Navbar(props) {
   const initials = getAccountInitials(resolvedName);
 
   const isChef = resolvedRole === "CHEF";
+  const isEmployee = resolvedRole === "EMPLOYEE";
   const isGrh = resolvedRole === "GRH";
   const isRh = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
   const isRhSeniorManager = resolvedRole === "RH_SENIOR";
@@ -152,6 +153,7 @@ export default function Navbar(props) {
         { to: "/profile", label: "Mon Profil" },
         { to: "/conge", label: "Conges" },
         { to: "/attendance", label: "Presence" },
+        ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
         { to: "/evaluations", label: "Evaluations" },
         { to: "/gpec", label: "GPEC" },
         { to: "/tasks", label: "Mes taches" },

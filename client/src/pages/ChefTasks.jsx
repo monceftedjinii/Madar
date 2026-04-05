@@ -87,7 +87,7 @@ export default function ChefTasks() {
       setLoading(true);
       setErrorMessage("");
       const [employeesResponse, tasksResponse] = await Promise.all([
-        axios.get("/api/employees/"),
+        axios.get("/api/employees/", { params: { scope: "team" } }),
         axios.get("/api/tasks/chef/"),
       ]);
 

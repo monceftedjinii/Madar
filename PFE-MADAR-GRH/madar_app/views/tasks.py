@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from ..models import Employee, Task, User
 from ..permissions import IsServiceManager
+from ..scopes import service_scope_ids_for_employee
 from .helpers import notify
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ def _serialize_task(task, request=None):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsServiceManager])
 def create_task(request):
-    """Service manager assigns a task to an employee in the same service only."""
+    """Service manager assigns a task inside their managed service scope."""
     data = request.data
     logger.info("create_task request from %s with data: %s", request.user.email, data)
 
@@ -108,9 +109,9 @@ def create_task(request):
     except Employee.DoesNotExist:
         return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
 
-    if employee.service_id != chef_emp.service_id:
+    if employee.service_id not in service_scope_ids_for_employee(chef_emp):
         return Response(
-            {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service."},
+            {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service ou de ses sous-services."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -216,9 +217,9 @@ def update_chef_task(request, pk):
         except Employee.DoesNotExist:
             return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if employee.service_id != chef_emp.service_id:
+        if employee.service_id not in service_scope_ids_for_employee(chef_emp):
             return Response(
-                {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service."},
+                {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service ou de ses sous-services."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

@@ -5,6 +5,7 @@ import Profile from "../pages/Profile/Profile";
 import Home from "../pages/Home";
 import RoleDashboard from "../pages/dashboard/RoleDashboard";
 import Attendance from "../pages/Attendance";
+import Documents from "../pages/Documents";
 import Messagrie from "../pages/Messagrie";
 import Conge from "../pages/conges/Conge";
 import Notifications from "../pages/Notifications";
@@ -44,6 +45,7 @@ export default function Routers() {
           <Route path="/home" element={<RoleDashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/attendance" element={<Attendance />} />
+          <Route path="/documents" element={<Documents />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/evaluations" element={<Evaluations />} />
           <Route path="/gpec" element={<Gpec />} />

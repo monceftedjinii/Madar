@@ -106,10 +106,18 @@ class EmployeeScopeTests(APITestCase):
 		from .models import Service, Employee
 		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
 		self.d2 = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
+		self.d1_child = Service.objects.create(
+			code='DEPT_A_CHILD',
+			nomService='Dept A Child',
+			statut='ACTIF',
+			budget=0,
+			serviceParentId=self.d1,
+		)
 
 		# employees in service A
 		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
 		self.a2 = Employee.objects.create(first_name='A', last_name='Two', email='a2@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
+		self.a_child = Employee.objects.create(first_name='A', last_name='Child', email='achild@example.com', hired_at='2020-01-01', service=self.d1_child, salary='1000')
 
 		# employee in service B
 		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', service=self.d2, salary='1000')
@@ -148,7 +156,7 @@ class EmployeeScopeTests(APITestCase):
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
 		# should see 5 employees (a1,a2,b1,chef,rh_senior)
-		self.assertEqual(len(data), 5)
+		self.assertEqual(len(data), 6)
 
 	def test_chef_sees_department(self):
 		token = self.get_token(self.chef_email, self.chef_pass)
@@ -156,11 +164,12 @@ class EmployeeScopeTests(APITestCase):
 		resp = self.client.get('/api/employees/')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		# dept A has a1, a2 and the RH senior in the same service; the chef is excluded from his own team scope
-		self.assertEqual(len(data), 3)
+		# dept A has a1, a2, a_child and the RH senior in the same hierarchy; the chef is excluded from his own team scope
+		self.assertEqual(len(data), 4)
 		names = {f"{d['first_name']} {d['last_name']}" for d in data}
 		self.assertIn('A One', names)
 		self.assertIn('A Two', names)
+		self.assertIn('A Child', names)
 		self.assertIn('RH Senior', names)
 
 	def test_employee_sees_only_self(self):
@@ -179,10 +188,11 @@ class EmployeeScopeTests(APITestCase):
 		resp = self.client.get('/api/employees/?scope=team')
 		self.assertEqual(resp.status_code, 200)
 		data = resp.json()
-		self.assertEqual(len(data), 3)
+		self.assertEqual(len(data), 4)
 		emails = {item['email'] for item in data}
 		self.assertIn('a1@example.com', emails)
 		self.assertIn('a2@example.com', emails)
+		self.assertIn('achild@example.com', emails)
 		self.assertIn(self.chef_email, emails)
 		self.assertNotIn(self.rh_senior_email, emails)
 
@@ -194,9 +204,17 @@ class TaskTests(APITestCase):
 		# services
 		self.d1 = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
 		self.d2 = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
+		self.d1_child = Service.objects.create(
+			code='DEPT_A_CHILD',
+			nomService='Dept A Child',
+			statut='ACTIF',
+			budget=0,
+			serviceParentId=self.d1,
+		)
 
 		# employees
 		self.a1 = Employee.objects.create(first_name='A', last_name='One', email='a1@example.com', hired_at='2020-01-01', service=self.d1, salary='1000')
+		self.a_child = Employee.objects.create(first_name='A', last_name='Child', email='achild.task@example.com', hired_at='2020-01-01', service=self.d1_child, salary='1000')
 		self.b1 = Employee.objects.create(first_name='B', last_name='One', email='b1@example.com', hired_at='2020-01-01', service=self.d2, salary='1000')
 
 		# chef in service A
@@ -223,6 +241,12 @@ class TaskTests(APITestCase):
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		# assign to a1 (same dept)
 		resp = self.client.post('/api/tasks/', {'title': 'Do X', 'assigned_to': self.a1.id}, format='json')
+		self.assertEqual(resp.status_code, 201)
+
+	def test_chef_assigns_employee_in_child_service(self):
+		token = self.get_token('chef2@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post('/api/tasks/', {'title': 'Do Child X', 'assigned_to': self.a_child.id}, format='json')
 		self.assertEqual(resp.status_code, 201)
 
 	def test_chef_assigns_other_department_forbidden(self):

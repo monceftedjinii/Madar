@@ -1631,6 +1631,13 @@ class DocumentAccess(models.Model):
         # Document creator always has access
         if document.created_by_id == user.id:
             return {'allowed': True, 'reason': 'Document creator'}
+
+        # Employees can only access received documents when they are public.
+        if (
+            user.role == RoleChoices.EMPLOYEE
+            and document.confidentiality_level != Document.ConfidentialityLevel.PUBLIC
+        ):
+            return {'allowed': False, 'reason': 'Employees can only access public documents'}
         
         # Check if user is in the document's service
         try:

@@ -71,8 +71,19 @@ def _serialize_document(doc, request):
 	}
 
 
+def _employee_public_access_required(user, document):
+	"""Employees can only access received documents when they are public."""
+	if not user or user.role != RoleChoices.EMPLOYEE:
+		return False
+	if document.created_by_id == user.id:
+		return False
+	return document.confidentiality_level != Document.ConfidentialityLevel.PUBLIC
+
+
 def _can_access_comments(user, document):
 	"""Check whether a user can read/write comments on a document."""
+	if _employee_public_access_required(user, document):
+		return False
 	if user.id == document.created_by_id:
 		return True
 	if user.role == RoleChoices.CHEF:
@@ -281,6 +292,17 @@ def document_detail(request, pk):
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
 	ip_address = _get_client_ip(request)
+	if _employee_public_access_required(request.user, doc):
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.READ,
+			ip_address=ip_address,
+			result=False,
+			details='Employees can only view public received documents',
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
 	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.READ)
 	if not permission['allowed']:
 		DocumentAccess.log_access(
@@ -336,8 +358,11 @@ def list_documents_scoped(request):
 			emp = Employee.objects.get(email=request.user.email)
 			qs = Document.objects.filter(
 				Q(created_by=request.user) |
-				Q(target_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED]) |
-				Q(source_service_id=emp.service_id, status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED])
+				Q(
+					target_service_id=emp.service_id,
+					status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED],
+					confidentiality_level=Document.ConfidentialityLevel.PUBLIC,
+				)
 			)
 		except Employee.DoesNotExist:
 			qs = Document.objects.filter(created_by=request.user)
@@ -362,7 +387,8 @@ def documents_feed(request):
 
 	qs = Document.objects.filter(
 		target_service_id=emp.service_id,
-		status=Document.Status.SENT
+		status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED],
+		confidentiality_level=Document.ConfidentialityLevel.PUBLIC,
 	).order_by('-sent_at', '-created_at')
 
 	data = [_serialize_document(d, request) for d in qs]
@@ -641,6 +667,17 @@ def download_document(request, pk):
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
 	ip_address = _get_client_ip(request)
+	if _employee_public_access_required(request.user, doc):
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.DOWNLOAD,
+			ip_address=ip_address,
+			result=False,
+			details='Employees can only download public received documents',
+		)
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
 	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.DOWNLOAD)
 	if not permission['allowed']:
 		DocumentAccess.log_access(

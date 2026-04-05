@@ -1,6 +1,16 @@
 from .models import Employee, RoleChoices
 
 
+def service_scope_ids_for_employee(employee):
+    """Return the manager service scope including descendant services."""
+    if not employee or not employee.service_id:
+        return []
+
+    descendants = employee.service.get_all_descendants() if employee.service else []
+    service_ids = [employee.service_id, *[service.code for service in descendants]]
+    return list(dict.fromkeys(service_ids))
+
+
 def employee_queryset_for(user):
     """Return an Employee queryset scoped for the given user.
 
@@ -20,7 +30,9 @@ def employee_queryset_for(user):
             chef_emp = Employee.objects.get(email=user.email)
         except Employee.DoesNotExist:
             return Employee.objects.none()
-        return Employee.objects.filter(service=chef_emp.service).exclude(email=user.email)
+        return Employee.objects.filter(
+            service_id__in=service_scope_ids_for_employee(chef_emp)
+        ).exclude(email=user.email)
 
     if role == RoleChoices.EMPLOYEE:
         return Employee.objects.filter(email=user.email)
@@ -43,6 +55,8 @@ def employee_team_queryset_for(user):
             manager_emp = Employee.objects.get(email=user.email)
         except Employee.DoesNotExist:
             return Employee.objects.none()
-        return Employee.objects.filter(service=manager_emp.service).exclude(email=user.email)
+        return Employee.objects.filter(
+            service_id__in=service_scope_ids_for_employee(manager_emp)
+        ).exclude(email=user.email)
 
     return employee_queryset_for(user)
