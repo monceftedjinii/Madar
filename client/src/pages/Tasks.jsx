@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/main-space.css";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -193,60 +194,67 @@ export default function Tasks() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat de vos taches recues.</p>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Suivi propre de vos taches recues</h2>
+              <p className="main-hero-description">
+                Consultez les missions affectees par votre chef, envoyez vos remises et gardez une lecture claire des retours.
+              </p>
             </div>
-            <div>
-              <p className="desc">Total</p>
-              <h3>{stats.total}</h3>
-            </div>
-            <div>
-              <p className="desc">Terminees</p>
-              <h3>{stats.completed}</h3>
-            </div>
-            <div>
-              <p className="desc">Travaux remis</p>
-              <h3>{stats.submitted}</h3>
-            </div>
-          </section>
-
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Suivi</h2>
-              <p className="desc">Mettez a jour votre chef des travaux termines.</p>
-            </div>
-            <div>
-              <p className="desc">Corrections demandees</p>
-              <h3>{stats.revision}</h3>
-            </div>
-            <div>
-              <p className="desc">Mise a jour</p>
-              <button className="modifier" onClick={fetchTasks} type="button">
-                Actualiser
-              </button>
+            <div className="main-hero-kpis">
+              <article className="main-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Taches actuellement visibles dans votre espace.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Terminees</span>
+                <strong>{stats.completed}</strong>
+                <p>Taches deja validees comme terminees.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Travaux remis</span>
+                <strong>{stats.submitted}</strong>
+                <p>Remises envoyees au chef pour validation.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Corrections</span>
+                <strong>{stats.revision}</strong>
+                <p>Taches repassees en correction.</p>
+              </article>
             </div>
           </section>
-        </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
-          </div>
-        )}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Taches recues</h2>
-            <p className="activite-subtitle">
-              Taches affectees par votre chef et disponibles depuis le backend.
-            </p>
+          <div className="main-metrics-grid">
+            <article className="main-metric-card">
+              <span>Mise a jour</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchTasks} type="button">
+                  Actualiser
+                </button>
+              </p>
+            </article>
           </div>
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Taches recues</h2>
+                <p>Taches affectees par votre chef et disponibles depuis le backend.</p>
+              </div>
+              <div className="main-action-pill">Execution</div>
+            </div>
+
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Tache</th>
@@ -309,9 +317,10 @@ export default function Tasks() {
                   })
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
 
       {submissionTask && (

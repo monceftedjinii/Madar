@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/main-space.css";
 
 const parseISODate = (value) => {
   const [year, month, day] = value.split("-").map(Number);
@@ -479,75 +480,89 @@ export default function Attendance() {
           </div>
         </div>
 
-        <div className="profile-infos">
-          <div className="quelques-infos">
-            <div
-              className="gauche"
-              style={{
-                width: "100%",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-              }}
-            >
-              <div className="infooos">
-                <div className="nom-status">
-                  <h3>Statut du jour</h3>
-                  <div className="status">{todayStatus}</div>
-                </div>
-                <p>
-                  Utilisez votre PIN à 4 chiffres pour enregistrer votre
-                  présence.
-                </p>
-                {!canUseAttendance && (
-                  <p style={{ color: "#dc2626", fontWeight: 600 }}>
-                    Ce compte n'a pas acces au pointage. Utilisez un compte
-                    employe, chef ou RH pour pointer l'entree et la sortie.
-                  </p>
-                )}
-                <div>
-                  <div>Entrée: {formatTime(todayRecord?.check_in_time)}</div>
-                  <div>Sortie: {formatTime(todayRecord?.check_out_time)}</div>
-                  <div>
-                    Période: {appliedRange.from} → {appliedRange.to}
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  style={actionButtonStyle("success", !canCheckIn)}
-                  disabled={!canCheckIn}
-                  onClick={() => openPinModal("check-in")}
-                >
-                  {actionInProgress === "check-in"
-                    ? "Pointage..."
-                    : "Pointer l'entrée"}
-                </button>
-                <button
-                  type="button"
-                  style={actionButtonStyle("danger", !canCheckOut)}
-                  disabled={!canCheckOut}
-                  onClick={() => openPinModal("check-out")}
-                >
-                  {actionInProgress === "check-out"
-                    ? "Pointage..."
-                    : "Pointer la sortie"}
-                </button>
-              </div>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Pointage et historique personnel</h2>
+              <p className="main-hero-description">
+                Utilisez votre PIN pour enregistrer l'entree et la sortie, puis suivez votre presence sur la periode choisie.
+              </p>
             </div>
-          </div>
+            <div className="main-hero-kpis">
+              <article className="main-kpi-card">
+                <span>Statut du jour</span>
+                <strong>{todayStatus}</strong>
+                <p>Entree: {formatTime(todayRecord?.check_in_time)} | Sortie: {formatTime(todayRecord?.check_out_time)}</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Jours suivis</span>
+                <strong>{displayedRecords.length}</strong>
+                <p>Periode: {appliedRange.from} - {appliedRange.to}</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Complets</span>
+                <strong>{completedDays}</strong>
+                <p>Journees avec entree et sortie enregistrees.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Absences</span>
+                <strong>{absentDays}</strong>
+                <p>Jours sans pointage sur la periode chargee.</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Pointage du jour</h2>
+                <p>Utilisez votre PIN a 4 chiffres pour enregistrer votre presence.</p>
+              </div>
+              <div className="main-action-pill">Pointage</div>
+            </div>
+
+            {!canUseAttendance && (
+              <div className="page-feedback error">
+                Ce compte n'a pas acces au pointage. Utilisez un compte employe, chef ou RH pour pointer l'entree et la sortie.
+              </div>
+            )}
+
+            <div className="main-inline-grid">
+              <article className="main-note-card">
+                <h4>Resume du jour</h4>
+                <p>Entree: {formatTime(todayRecord?.check_in_time)}</p>
+                <p style={{ marginTop: 8 }}>Sortie: {formatTime(todayRecord?.check_out_time)}</p>
+                <p style={{ marginTop: 8 }}>Periode active: {appliedRange.from} - {appliedRange.to}</p>
+              </article>
+              <article className="main-note-card">
+                <h4>Actions rapides</h4>
+                <div className="main-actions-row" style={{ marginTop: 14 }}>
+                  <button
+                    type="button"
+                    style={actionButtonStyle("success", !canCheckIn)}
+                    disabled={!canCheckIn}
+                    onClick={() => openPinModal("check-in")}
+                  >
+                    {actionInProgress === "check-in" ? "Pointage..." : "Pointer l'entree"}
+                  </button>
+                  <button
+                    type="button"
+                    style={actionButtonStyle("danger", !canCheckOut)}
+                    disabled={!canCheckOut}
+                    onClick={() => openPinModal("check-out")}
+                  >
+                    {actionInProgress === "check-out" ? "Pointage..." : "Pointer la sortie"}
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
 
           {(error || actionMessage) && (
             <div
               className={`page-feedback ${error ? "error" : ""}`}
-              style={{
-                width: "calc(100% - 40px)",
-                margin: "14px auto 0",
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "center",
-              }}
+              style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}
             >
               <span>{error || actionMessage?.text}</span>
               <button
@@ -556,100 +571,72 @@ export default function Attendance() {
                   setError("");
                   setActionMessage(null);
                 }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "inherit",
-                  cursor: "pointer",
-                  fontSize: 18,
-                }}
+                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 18 }}
               >
                 ×
               </button>
             </div>
           )}
 
-          <div className="infopro-infoper">
-            <div className="info-per">
-              <div className="top">
-                <h3 className="title">Résumé</h3>
-                <p className="desc">Aperçu rapide de votre présence</p>
-              </div>
+          <section className="main-panel">
+            <div className="main-panel-head">
               <div>
-                <p className="desc">Jours sur la période</p>
-                <h3>{displayedRecords.length}</h3>
+                <h2>Filtres et resume</h2>
+                <p>Choisissez la periode a afficher puis analysez votre historique.</p>
               </div>
-              <div>
-                <p className="desc">Journées complètes</p>
-                <h3>{completedDays}</h3>
-              </div>
-              <div>
-                <p className="desc">Sorties manquantes</p>
-                <h3>{pendingCheckoutDays}</h3>
-              </div>
-              <div>
-                <p className="desc">Absences</p>
-                <h3>{absentDays}</h3>
-              </div>
+              <div className="main-action-pill">Filtres</div>
             </div>
 
-            <div className="info-pro">
-              <div className="top">
-                <h3 className="title">Filtres</h3>
-                <p className="desc">Choisissez la période à afficher</p>
+            <div className="main-inline-grid">
+              <div className="main-note-card">
+                <h4>Periode</h4>
+                <div className="main-form-grid" style={{ marginTop: 14 }}>
+                  <div className="main-field">
+                    <p className="main-label">Date de debut</p>
+                    <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} style={fieldStyle} />
+                  </div>
+                  <div className="main-field">
+                    <p className="main-label">Date de fin</p>
+                    <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} style={fieldStyle} />
+                  </div>
+                </div>
+                <div className="main-actions" style={{ marginTop: 16 }}>
+                  <button
+                    type="button"
+                    onClick={handleApplyFilters}
+                    disabled={loading}
+                    style={{
+                      ...actionButtonStyle("success", loading),
+                      background: loading ? actionButtonStyle("success", true).background : "#2563eb",
+                    }}
+                  >
+                    {loading ? "Chargement..." : "Appliquer les filtres"}
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="desc">Date de début</p>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(event) => setFromDate(event.target.value)}
-                  style={fieldStyle}
-                />
-              </div>
-              <div>
-                <p className="desc">Date de fin</p>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(event) => setToDate(event.target.value)}
-                  style={fieldStyle}
-                />
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={handleApplyFilters}
-                  disabled={loading}
-                  style={{
-                    ...actionButtonStyle("success", loading),
-                    background: loading
-                      ? actionButtonStyle("success", true).background
-                      : "#2563eb",
-                  }}
-                >
-                  {loading ? "Chargement..." : "Appliquer les filtres"}
-                </button>
+              <div className="main-note-card">
+                <h4>Resume</h4>
+                <p>Jours sur la periode: {displayedRecords.length}</p>
+                <p style={{ marginTop: 8 }}>Journees completes: {completedDays}</p>
+                <p style={{ marginTop: 8 }}>Sorties manquantes: {pendingCheckoutDays}</p>
+                <p style={{ marginTop: 8 }}>Absences: {absentDays}</p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="activite-recente">
-            <div className="activite-top">
-              <h3 className="activite-title">Historique de présence</h3>
-              <p className="activite-subtitle">
-                {displayedRecords.length} enregistrement(s) trouvés
-              </p>
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Historique de presence</h2>
+                <p>{displayedRecords.length} enregistrement(s) trouves sur la periode selectionnee.</p>
+              </div>
+              <div className="main-action-pill">Historique</div>
             </div>
 
             {loading ? (
-              <div style={{ padding: 24, color: dark ? "#cbd5e1" : "#475569" }}>
-                Chargement des données...
-              </div>
+              <div className="main-empty">Chargement des donnees...</div>
             ) : displayedRecords.length === 0 ? (
-              <div style={{ padding: 24, color: dark ? "#cbd5e1" : "#475569" }}>
-                Aucun enregistrement de présence sur cette période.
-              </div>
+              <div className="main-empty">Aucun enregistrement de presence sur cette periode.</div>
             ) : (
               <div className="activite-table-scroll">
                 <table className="activite-table">
@@ -695,7 +682,7 @@ export default function Attendance() {
                 </table>
               </div>
             )}
-          </div>
+          </section>
         </div>
       </div>
 

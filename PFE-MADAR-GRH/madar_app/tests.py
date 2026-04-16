@@ -99,6 +99,78 @@ class JWTTests(APITestCase):
 		self.assertEqual(j.get('role'), RoleChoices.EMPLOYEE)
 
 
+class FormationRhAccessTests(APITestCase):
+	def setUp(self):
+		User = get_user_model()
+		from .models import Service, Employee, FormationCatalog, FormationRequest
+
+		self.service = Service.objects.create(code='FORM', nomService='Formation', statut='ACTIF', budget=0)
+		self.chef = User.objects.create_user(email='chef.form@example.com', password='chefpass', role=RoleChoices.CHEF)
+		Employee.objects.create(first_name='Chef', last_name='Form', email='chef.form@example.com', hired_at='2020-01-01', service=self.service, salary='2000')
+		self.rh_simple = User.objects.create_user(email='rhs.form@example.com', password='rhpass', role=RoleChoices.RH_SIMPLE)
+		self.rh_senior = User.objects.create_user(email='rhsenior.form@example.com', password='rhpass', role=RoleChoices.RH_SENIOR)
+		self.rh_agent = User.objects.create_user(email='rhagent.form@example.com', password='rhpass', role=RoleChoices.RH_AGENT)
+		self.grh = User.objects.create_user(email='grh.form@example.com', password='grhpass', role=RoleChoices.GRH)
+
+		self.catalog = FormationCatalog.objects.create(
+			name='Leadership',
+			company_name='Acme Training',
+			duration_hours=12,
+			people_required=3,
+			company_email='contact@acme.test',
+			company_phone='0550000000',
+			company_address='Alger',
+			created_by=self.rh_agent,
+		)
+		self.request_item = FormationRequest.objects.create(
+			requested_by=self.chef,
+			nom='Formation Leadership',
+			description='Monter en competences',
+			reasons='Besoin equipe',
+		)
+
+	def get_token(self, email, password):
+		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
+		self.assertEqual(resp.status_code, 200)
+		return resp.json()['access']
+
+	def test_rh_simple_can_list_catalog(self):
+		token = self.get_token('rhs.form@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/agent/formations/catalog/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(len(data), 1)
+		self.assertEqual(data[0]['name'], 'Leadership')
+
+	def test_rh_senior_can_list_requests(self):
+		token = self.get_token('rhsenior.form@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.get('/api/agent/formations/requests/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(len(data), 1)
+		self.assertEqual(data[0]['nom'], 'Formation Leadership')
+
+	def test_rh_simple_cannot_create_catalog(self):
+		token = self.get_token('rhs.form@example.com', 'rhpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(
+			'/api/agent/formations/catalog/',
+			{
+				'name': 'Gestion Projet',
+				'company_name': 'Acme Training',
+				'duration_hours': 10,
+				'people_required': 2,
+				'company_email': 'contact@acme.test',
+				'company_phone': '0550000001',
+				'company_address': 'Oran',
+			},
+			format='json'
+		)
+		self.assertEqual(resp.status_code, 403)
+
+
 class EmployeeScopeTests(APITestCase):
 	def setUp(self):
 		User = get_user_model()
@@ -812,14 +884,20 @@ class AbsenceDisciplineTests(APITestCase):
 		User = get_user_model()
 		from .models import Service, Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag
 		self.d = Service.objects.create(code='DEPT_A', nomService='Dept A', statut='ACTIF', budget=0)
+		self.d_other = Service.objects.create(code='DEPT_B', nomService='Dept B', statut='ACTIF', budget=0)
 		# employee and user
 		self.emp_email = 'absent@example.com'
 		self.emp_pass = 'emppass'
 		User.objects.create_user(email=self.emp_email, password=self.emp_pass, role=RoleChoices.EMPLOYEE)
 		self.emp = Employee.objects.create(first_name='Absent', last_name='User', email=self.emp_email, hired_at='2020-01-01', service=self.d, salary='1000')
+		self.other_emp_email = 'outside@example.com'
+		User.objects.create_user(email=self.other_emp_email, password='outsidepass', role=RoleChoices.EMPLOYEE)
+		self.other_emp = Employee.objects.create(first_name='Outside', last_name='User', email=self.other_emp_email, hired_at='2020-01-01', service=self.d_other, salary='1000')
 		# RH_SIMPLE and RH_SENIOR users
 		self.rh_simple = User.objects.create_user(email='rhsimple@example.com', password='rhsimple', role=RoleChoices.RH_SIMPLE)
 		self.rh_senior = User.objects.create_user(email='rhsenior@example.com', password='rhsenior', role=RoleChoices.RH_SENIOR)
+		self.chef = User.objects.create_user(email='chef.warning@example.com', password='chefpass', role=RoleChoices.CHEF)
+		self.chef_emp = Employee.objects.create(first_name='Chef', last_name='Warning', email='chef.warning@example.com', hired_at='2020-01-01', service=self.d, salary='2000')
 
 	def get_token(self, email, password):
 		resp = self.client.post('/api/auth/token/', {'email': email, 'password': password}, format='json')
@@ -870,6 +948,7 @@ class AbsenceDisciplineTests(APITestCase):
 	def test_rh_simple_can_create_warning_and_no_duplicates_and_flag_on_third(self):
 		from django.utils import timezone
 		from datetime import timedelta
+		from .models import Notification
 		today = timezone.now().date()
 		# pick three days within current month
 		month_start = today.replace(day=1)
@@ -881,9 +960,12 @@ class AbsenceDisciplineTests(APITestCase):
 		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
 		resp1 = self.client.post('/api/warnings/', {'employee_id': self.emp.id, 'date': d1.isoformat(), 'comment': 'first'}, format='json')
 		self.assertEqual(resp1.status_code, 201)
-		# duplicate same day -> 400
+		self.assertEqual(Notification.objects.filter(user__email=self.emp_email, title__icontains='Avertissement').count(), 1)
+		# duplicate same day -> success without creating a second warning
 		resp_dup = self.client.post('/api/warnings/', {'employee_id': self.emp.id, 'date': d1.isoformat(), 'comment': 'dup'}, format='json')
-		self.assertEqual(resp_dup.status_code, 400)
+		self.assertEqual(resp_dup.status_code, 200)
+		self.assertFalse(resp_dup.json()['notification_synced'])
+		self.assertEqual(Notification.objects.filter(user__email=self.emp_email, title__icontains='Avertissement').count(), 1)
 		# second and third warnings
 		resp2 = self.client.post('/api/warnings/', {'employee_id': self.emp.id, 'date': d2.isoformat(), 'comment': 'second'}, format='json')
 		self.assertEqual(resp2.status_code, 201)
@@ -901,6 +983,63 @@ class AbsenceDisciplineTests(APITestCase):
 		data = resp_flags.json()
 		emails = {d['employee_email'] for d in data}
 		self.assertIn(self.emp_email, emails)
+
+	def test_duplicate_warning_recreates_missing_notification(self):
+		from .models import AbsenceWarning, Notification, DisciplineFlag
+		warning_date = date(2026, 4, 12)
+		AbsenceWarning.objects.create(employee=self.emp, date=warning_date, comment='existing warning comment', issued_by=self.rh_simple)
+		DisciplineFlag.objects.create(employee=self.emp, month=warning_date.replace(day=1), warning_count=1)
+
+		token = self.get_token('rhsimple@example.com', 'rhsimple')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(
+			'/api/warnings/',
+			{'employee_id': self.emp.id, 'date': warning_date.isoformat(), 'comment': 'retry'},
+			format='json'
+		)
+		self.assertEqual(resp.status_code, 200)
+		self.assertTrue(resp.json()['notification_synced'])
+		self.assertEqual(Notification.objects.filter(user__email=self.emp_email, title__icontains='Avertissement').count(), 1)
+		notif = Notification.objects.filter(user__email=self.emp_email, title__icontains='Avertissement').first()
+		self.assertIn('existing warning comment', notif.message)
+
+	def test_employee_notified_when_warning_created(self):
+		from .models import Notification
+		token = self.get_token('rhsimple@example.com', 'rhsimple')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(
+			'/api/warnings/',
+			{'employee_id': self.emp.id, 'date': '2026-04-02', 'comment': 'absence non justifiee'},
+			format='json'
+		)
+		self.assertEqual(resp.status_code, 201)
+
+		notifs = Notification.objects.filter(user__email=self.emp_email)
+		self.assertGreater(notifs.count(), 0)
+		notif = notifs.order_by('-created_at').first()
+		self.assertIn('Avertissement', notif.title)
+		self.assertIn('2026-04-02', notif.message)
+		self.assertIn('absence non justifiee', notif.message)
+
+	def test_chef_can_create_warning_for_employee_in_service(self):
+		token = self.get_token('chef.warning@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(
+			'/api/warnings/',
+			{'employee_id': self.emp.id, 'date': '2026-04-03', 'comment': 'absence constatee'},
+			format='json'
+		)
+		self.assertEqual(resp.status_code, 201)
+
+	def test_chef_cannot_create_warning_for_employee_outside_service(self):
+		token = self.get_token('chef.warning@example.com', 'chefpass')
+		self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+		resp = self.client.post(
+			'/api/warnings/',
+			{'employee_id': self.other_emp.id, 'date': '2026-04-04', 'comment': 'hors perimetre'},
+			format='json'
+		)
+		self.assertEqual(resp.status_code, 403)
 
 
 

@@ -5,11 +5,33 @@ import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 
+const statusThemes = {
+  PENDING: {
+    badge: "bg-amber-100 text-amber-800 ring-amber-200",
+    dot: "bg-amber-500",
+    panel: "from-amber-500/15 to-orange-500/10",
+  },
+  ACCEPTED: {
+    badge: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    dot: "bg-emerald-500",
+    panel: "from-emerald-500/15 to-lime-500/10",
+  },
+  REFUSED: {
+    badge: "bg-rose-100 text-rose-800 ring-rose-200",
+    dot: "bg-rose-500",
+    panel: "from-rose-500/15 to-red-500/10",
+  },
+};
+
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("fr-FR");
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function getStatusLabel(status) {
@@ -21,10 +43,51 @@ function getStatusLabel(status) {
   return labels[status] || status;
 }
 
-function getStatusClass(status) {
-  if (status === "ACCEPTED") return "badge-termine";
-  if (status === "REFUSED") return "badge-refuse";
-  return "badge-attente";
+function getStatusTheme(status, dark) {
+  const fallback = dark
+    ? {
+        badge: "bg-slate-800 text-slate-100 ring-slate-700",
+        dot: "bg-slate-400",
+        panel: "from-slate-500/15 to-slate-500/5",
+      }
+    : {
+        badge: "bg-slate-100 text-slate-700 ring-slate-200",
+        dot: "bg-slate-400",
+        panel: "from-slate-500/10 to-slate-500/5",
+      };
+  return statusThemes[status] || fallback;
+}
+
+function getEmployeeName(requestItem) {
+  return (
+    `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() ||
+    requestItem.employee_email ||
+    "-"
+  );
+}
+
+function getStepLabel(step) {
+  if (!step) return "Aucune etape active";
+  return `Etape ${step.validation_order} - ${step.validator_role}`;
+}
+
+function MetricCard({ dark, eyebrow, value, helper, accent }) {
+  return (
+    <div
+      className={`rounded-[28px] border p-5 shadow-sm transition ${
+        dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">{eyebrow}</p>
+          <p className={`mt-4 text-4xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{value}</p>
+          <p className="mt-2 text-sm text-slate-500">{helper}</p>
+        </div>
+        <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${accent}`} />
+      </div>
+    </div>
+  );
 }
 
 export default function RhLeaves() {
@@ -36,6 +99,17 @@ export default function RhLeaves() {
   const [actionId, setActionId] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [decisionTarget, setDecisionTarget] = useState(null);
+  const [decisionAction, setDecisionAction] = useState("approve");
+  const [decisionComment, setDecisionComment] = useState("");
+
+  const isGrh = role === "GRH";
+  const pendingRequests = requests.filter((item) => item.status === "PENDING");
+  const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
+    dark
+      ? "border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500 focus:border-emerald-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+  }`;
 
   const fetchRequests = async () => {
     try {
@@ -67,28 +141,32 @@ export default function RhLeaves() {
     return { total: requests.length, pending, accepted, refused };
   }, [requests]);
 
-  const isGrh = role === "GRH";
+  const openDecisionModal = (requestItem, action) => {
+    setDecisionTarget(requestItem);
+    setDecisionAction(action);
+    setDecisionComment("");
+    setFeedback("");
+    setErrorMessage("");
+  };
 
-  const decideRequest = async (requestId, action) => {
-    const comment =
-      window.prompt(
-        action === "approve"
-          ? isGrh
-            ? "Commentaire GRH (optionnel)"
-            : "Commentaire RH (optionnel)"
-          : isGrh
-            ? "Motif GRH du refus (optionnel)"
-            : "Motif RH du refus (optionnel)",
-        "",
-      ) ?? "";
+  const closeDecisionModal = () => {
+    if (actionId) return;
+    setDecisionTarget(null);
+    setDecisionComment("");
+  };
+
+  const submitDecision = async () => {
+    if (!decisionTarget) return;
 
     try {
-      setActionId(requestId);
+      setActionId(decisionTarget.id);
       setFeedback("");
       setErrorMessage("");
-      await axios.post(`/api/leaves/${requestId}/${action}/`, { comment });
+      await axios.post(`/api/leaves/${decisionTarget.id}/${decisionAction}/`, {
+        comment: decisionComment,
+      });
       setFeedback(
-        action === "approve"
+        decisionAction === "approve"
           ? isGrh
             ? "Demande validee finalement avec succes."
             : "Demande RH validee avec succes."
@@ -96,6 +174,7 @@ export default function RhLeaves() {
             ? "Demande refusee finalement avec succes."
             : "Demande RH refusee avec succes.",
       );
+      closeDecisionModal();
       await fetchRequests();
     } catch (error) {
       console.error("Erreur decision RH conge:", error);
@@ -113,10 +192,10 @@ export default function RhLeaves() {
 
       {isNavOpen && <div className="profile-overlay" onClick={() => setIsNavOpen(false)} aria-hidden="true" />}
 
-      <div className="profile-content !h-auto min-h-screen bg-transparent">
+      <div className={`profile-content min-h-screen !h-auto ${dark ? "bg-slate-950 text-slate-100" : "bg-[#f4f7f1] text-slate-900"}`}>
         <div
-          className={`sticky top-0 z-40 backdrop-blur ${
-            dark ? "border-b border-slate-800 bg-slate-950/90" : "border-b border-slate-200/80 bg-white/90"
+          className={`sticky top-0 z-40 border-b backdrop-blur ${
+            dark ? "border-slate-800 bg-slate-950/90" : "border-white/70 bg-[#f4f7f1]/92"
           }`}
         >
           <div className="profile-naaav">
@@ -124,8 +203,8 @@ export default function RhLeaves() {
               <h1 className="monprofile">{isGrh ? "Validation finale des conges" : "Validation RH des conges"}</h1>
               <p className="morinfo">
                 {isGrh
-                  ? "Arbitrez les demandes en derniere etape sur tout le circuit conges."
-                  : "Traitez les demandes de conges en attente cote RH."}
+                  ? "Arbitrez les demandes en derniere etape avec une vue claire des periodes, etapes et commentaires."
+                  : "Traitez les demandes en attente cote RH avec une interface plus lisible et plus rapide a exploiter."}
               </p>
             </div>
             <div className="yamin">
@@ -139,127 +218,419 @@ export default function RhLeaves() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">{isGrh ? "Arbitrages conges" : "Demandes RH"}</h2>
-              <p className="desc">
-                {isGrh
-                  ? "Vue d'ensemble des validations finales de conges."
-                  : "Vue d'ensemble des validations de conges cote RH."}
-              </p>
+        <div className="mx-auto flex w-[96%] max-w-[1500px] flex-col gap-6 py-6">
+          <section
+            className={`overflow-hidden rounded-[36px] border p-6 md:p-8 ${
+              dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/85"
+            }`}
+          >
+            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="relative overflow-hidden rounded-[30px] border border-sky-300/20 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.22),_transparent_40%),linear-gradient(135deg,#0f172a_0%,#13213c_45%,#165c75_100%)] p-6 text-white shadow-2xl shadow-sky-950/20">
+                <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-200/80">
+                  {isGrh ? "Arbitrage final" : "Hub validation RH"}
+                </p>
+                <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
+                  Une lecture plus nette des demandes de conges avant validation ou refus.
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200">
+                  Les demandes actives sont maintenant presentees sous forme de cartes detaillees avec l'etape en cours,
+                  la periode, le type, le service et un panneau de decision plus propre que l'ancien prompt navigateur.
+                </p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={fetchRequests}
+                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-sky-50"
+                  >
+                    Actualiser les demandes
+                  </button>
+                  <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
+                    {pendingRequests.length} demande{pendingRequests.length > 1 ? "s" : ""} en attente
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MetricCard
+                  dark={dark}
+                  eyebrow="Total"
+                  value={stats.total}
+                  helper="Demandes visibles dans votre perimetre"
+                  accent="from-sky-400 via-cyan-500 to-blue-500"
+                />
+                <MetricCard
+                  dark={dark}
+                  eyebrow="En attente"
+                  value={stats.pending}
+                  helper="Demandes encore decisionnelles"
+                  accent="from-amber-400 via-orange-500 to-rose-500"
+                />
+                <MetricCard
+                  dark={dark}
+                  eyebrow="Acceptees"
+                  value={stats.accepted}
+                  helper="Demandes deja validees"
+                  accent="from-emerald-400 via-emerald-500 to-lime-500"
+                />
+                <MetricCard
+                  dark={dark}
+                  eyebrow="Refusees"
+                  value={stats.refused}
+                  helper="Demandes cloturees par refus"
+                  accent="from-rose-400 via-rose-500 to-red-500"
+                />
+              </div>
             </div>
-            <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
-            <div><p className="desc">En attente</p><h3>{stats.pending}</h3></div>
-            <div><p className="desc">Acceptees</p><h3>{stats.accepted}</h3></div>
-            <div><p className="desc">Refusees</p><h3>{stats.refused}</h3></div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">
-                {isGrh
-                  ? "Actualisez et traitez les validations finales GRH."
-                  : "Actualisez et traitez les validations RH."}
-              </p>
+          {(feedback || errorMessage) && (
+            <div
+              className={`rounded-[24px] border px-5 py-4 text-sm font-medium shadow-sm ${
+                errorMessage
+                  ? dark
+                    ? "border-rose-800 bg-rose-950/40 text-rose-100"
+                    : "border-rose-200 bg-rose-50 text-rose-800"
+                  : dark
+                    ? "border-emerald-800 bg-emerald-950/40 text-emerald-100"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              }`}
+            >
+              {errorMessage || feedback}
             </div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchRequests} type="button">Actualiser</button>
-            </div>
-          </section>
-        </div>
+          )}
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>{errorMessage || feedback}</div>
-        )}
+          <div className="grid gap-6 xl:grid-cols-[1.45fr_0.92fr]">
+            <section
+              className={`rounded-[32px] border p-6 shadow-sm ${
+                dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+              }`}
+            >
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Demandes de conges</p>
+                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    File de validation
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                    Chaque carte presente le collaborateur, la periode demandee, le type, le motif et l'etape de workflow.
+                  </p>
+                </div>
+                <div
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${
+                    dark ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {loading ? "Chargement..." : `${requests.length} element${requests.length > 1 ? "s" : ""}`}
+                </div>
+              </div>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">{isGrh ? "Arbitrages en cours" : "Demandes en cours"}</h2>
-            <p className="activite-subtitle">
-              {isGrh
-                ? "Flux de validation finale des conges remonte par le backend GRH."
-                : "Flux de validation des conges remonte par le backend RH."}
-            </p>
-          </div>
-
-          <div className="activite-table-scroll">
-            <table className="activite-table">
-              <thead>
-                <tr>
-                  <th>Employe</th>
-                  <th>Service</th>
-                  <th>Type</th>
-                  <th>Periode</th>
-                  <th>Etape</th>
-                  <th>Statut</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="7">Chargement des demandes...</td></tr>
-                ) : requests.length === 0 ? (
-                  <tr><td colSpan="7">{isGrh ? "Aucun arbitrage final visible pour le moment." : "Aucune demande RH visible pour le moment."}</td></tr>
-                ) : (
-                  requests.map((requestItem) => {
-                    const fullName =
-                      `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() ||
-                      requestItem.employee_email ||
-                      "-";
+              {loading ? (
+                <div className="grid gap-4">
+                  {[1, 2, 3].map((item) => (
+                    <div
+                      key={item}
+                      className={`h-48 animate-pulse rounded-[28px] ${
+                        dark ? "bg-slate-800/70" : "bg-slate-100"
+                      }`}
+                    />
+                  ))}
+                </div>
+              ) : requests.length === 0 ? (
+                <div
+                  className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${
+                    dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucune demande</p>
+                  <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    {isGrh ? "Aucun arbitrage final visible pour le moment." : "Aucune demande RH visible pour le moment."}
+                  </h3>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
+                    Les nouvelles demandes apparaitront ici avec leur etape de workflow et les actions de validation disponibles.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {requests.map((requestItem) => {
                     const canDecide = !!requestItem.can_decide && requestItem.status === "PENDING";
+                    const theme = getStatusTheme(requestItem.status, dark);
 
                     return (
-                      <tr key={requestItem.id}>
-                        <td>{fullName}</td>
-                        <td>{requestItem.employee?.service || "-"}</td>
-                        <td>{requestItem.type_label || requestItem.type || "-"}</td>
-                        <td>{formatDate(requestItem.start_date)} - {formatDate(requestItem.end_date)}</td>
-                        <td>
-                          {requestItem.current_step
-                            ? `Etape ${requestItem.current_step.validation_order} - ${requestItem.current_step.validator_role}`
-                            : "-"}
-                        </td>
-                        <td>
-                          <span className={`badge ${getStatusClass(requestItem.status)}`}>
-                            {getStatusLabel(requestItem.status)}
-                          </span>
-                        </td>
-                        <td>
+                      <article
+                        key={requestItem.id}
+                        className={`rounded-[28px] border p-5 transition ${
+                          dark ? "border-slate-800 bg-slate-950/65 hover:border-slate-700" : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="max-w-3xl">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
+                              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                Demande #{requestItem.id}
+                              </p>
+                              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
+                                {getStatusLabel(requestItem.status)}
+                              </span>
+                            </div>
+                            <h3 className={`mt-3 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                              {getEmployeeName(requestItem)}
+                            </h3>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                              {requestItem.type_label || requestItem.type || "-"} • {formatDate(requestItem.start_date)} au{" "}
+                              {formatDate(requestItem.end_date)}
+                            </p>
+                          </div>
+
+                          <div className={`min-w-[240px] rounded-[24px] bg-gradient-to-br p-4 ${theme.panel} ${dark ? "border border-slate-800" : "border border-white/70"}`}>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Workflow</p>
+                            <div className="mt-3 space-y-2 text-sm">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-500">Service</span>
+                                <span className={dark ? "text-slate-100" : "text-slate-900"}>{requestItem.employee?.service || "-"}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-500">Etape</span>
+                                <span className={`text-right ${dark ? "text-slate-100" : "text-slate-900"}`}>
+                                  {getStepLabel(requestItem.current_step)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-500">Decision</span>
+                                <span className={dark ? "text-slate-100" : "text-slate-900"}>
+                                  {canDecide ? "Action requise" : "Lecture seule"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+                          <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Motif</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">{requestItem.reason || "Aucun motif renseigne."}</p>
+                          </div>
+
+                          <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Commentaires de validation</p>
+                            <div className="mt-2 space-y-2 text-sm text-slate-600">
+                              <p>
+                                <span className="font-semibold text-slate-500">Chef:</span>{" "}
+                                {requestItem.chef_comment || "Aucun commentaire"}
+                              </p>
+                              <p>
+                                <span className="font-semibold text-slate-500">Decisionnaire:</span>{" "}
+                                {requestItem.decided_by?.email || requestItem.decided_by || "-"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/10 pt-5">
+                          <div className="text-sm text-slate-500">
+                            {canDecide
+                              ? "Cette demande attend votre arbitrage."
+                              : "Cette demande n'est pas decisionnelle pour votre role ou son statut actuel."}
+                          </div>
+
                           {canDecide ? (
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <div className="flex flex-wrap gap-3">
                               <button
-                                className="modifier"
+                                className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                                 disabled={actionId === requestItem.id}
-                                onClick={() => decideRequest(requestItem.id, "approve")}
+                                onClick={() => openDecisionModal(requestItem, "approve")}
                                 type="button"
                               >
                                 Valider
                               </button>
                               <button
-                                className="mode"
+                                className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
+                                  dark
+                                    ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-rose-500 hover:text-rose-300"
+                                    : "border-slate-300 bg-white text-slate-700 hover:border-rose-400 hover:text-rose-600"
+                                } disabled:cursor-not-allowed disabled:opacity-60`}
                                 disabled={actionId === requestItem.id}
-                                onClick={() => decideRequest(requestItem.id, "reject")}
+                                onClick={() => openDecisionModal(requestItem, "reject")}
                                 type="button"
                               >
                                 Refuser
                               </button>
                             </div>
-                          ) : (
-                            <span style={{ color: "#64748b", fontWeight: 600 }}>Lecture seule</span>
-                          )}
-                        </td>
-                      </tr>
+                          ) : null}
+                        </div>
+                      </article>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </div>
+              )}
+            </section>
+
+            <aside className="grid gap-6">
+              <section
+                className={`rounded-[32px] border p-6 shadow-sm ${
+                  dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Vue rapide</p>
+                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    Priorites du jour
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Resume des points qui demandent une action immediate dans le circuit de conges.
+                  </p>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {[
+                    {
+                      label: "Demandes en attente",
+                      value: stats.pending,
+                      helper: "Arbitrages encore ouverts",
+                    },
+                    {
+                      label: isGrh ? "Validations finales" : "Traitements RH",
+                      value: pendingRequests.filter((item) => item.can_decide).length,
+                      helper: "Actions directement disponibles",
+                    },
+                    {
+                      label: "Periode couverte",
+                      value: requests.length ? formatDate(requests[0]?.created_at?.slice?.(0, 10)) : "-",
+                      helper: "Date de la demande la plus recente visible",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className={`rounded-[24px] border p-4 ${
+                        dark ? "border-slate-800 bg-slate-950/70" : "border-slate-200 bg-slate-50"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
+                      <p className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{item.value}</p>
+                      <p className="mt-1 text-sm text-slate-500">{item.helper}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section
+                className={`rounded-[32px] border p-6 shadow-sm ${
+                  dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Mode d'emploi</p>
+                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    Comment traiter une demande
+                  </h2>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {[
+                    "Lisez la periode, le type de conge et le motif avant toute decision.",
+                    "Verifiez l'etape courante pour confirmer que la demande est bien dans votre file.",
+                    "Ajoutez un commentaire avant validation ou refus pour garder une trace claire.",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className={`rounded-[22px] px-4 py-4 text-sm leading-6 ${
+                        dark ? "bg-slate-950/70 text-slate-300" : "bg-slate-50 text-slate-600"
+                      }`}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
           </div>
-        </section>
+        </div>
       </div>
+
+      {decisionTarget ? (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+          onClick={closeDecisionModal}
+        >
+          <div
+            className={`w-full max-w-2xl rounded-[32px] border p-6 shadow-2xl ${
+              dark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-white bg-white text-slate-900"
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  {decisionAction === "approve" ? "Validation" : "Refus"}
+                </p>
+                <h3 className="mt-2 text-2xl font-black">
+                  {decisionAction === "approve" ? "Confirmer la validation" : "Confirmer le refus"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {getEmployeeName(decisionTarget)} • {decisionTarget.type_label || decisionTarget.type || "-"} •{" "}
+                  {formatDate(decisionTarget.start_date)} au {formatDate(decisionTarget.end_date)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDecisionModal}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                  dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className={`mt-6 rounded-[24px] p-4 ${dark ? "bg-slate-950/70" : "bg-slate-50"}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Commentaire {decisionAction === "approve" ? "de validation" : "de refus"}
+              </p>
+              <textarea
+                rows={5}
+                value={decisionComment}
+                onChange={(event) => setDecisionComment(event.target.value)}
+                className={`${fieldClassName} mt-3 resize-y`}
+                placeholder={
+                  decisionAction === "approve"
+                    ? isGrh
+                      ? "Commentaire GRH optionnel..."
+                      : "Commentaire RH optionnel..."
+                    : isGrh
+                      ? "Motif GRH du refus optionnel..."
+                      : "Motif RH du refus optionnel..."
+                }
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDecisionModal}
+                disabled={!!actionId}
+                className={`rounded-full border px-5 py-3 text-sm font-semibold ${
+                  dark ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-300 bg-white text-slate-700"
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={submitDecision}
+                disabled={!!actionId}
+                className={`rounded-full px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${
+                  decisionAction === "approve" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-rose-600 hover:bg-rose-500"
+                }`}
+              >
+                {actionId ? "Enregistrement..." : decisionAction === "approve" ? "Confirmer la validation" : "Confirmer le refus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

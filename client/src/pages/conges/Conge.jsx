@@ -4,6 +4,7 @@ import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
 import usePersistentNavState from "../../hooks/usePersistentNavState";
 import "../../styles/profile.css";
+import "../../styles/main-space.css";
 
 const initialForm = {
   type: "ANNUAL",
@@ -304,77 +305,48 @@ export default function Conge() {
           </div>
         </div>
 
-        <div className="profile-infos">
-          <div className="quelques-infos">
-            <div className="gauche">
-              <div className="infooos">
-                <div className="nom-status">
-                  <h3>Vue rapide</h3>
-                  <div className="status">Actif</div>
-                </div>
-                <p>
-                  Consultez vos soldes et déposez une nouvelle demande de congé.
-                </p>
-                <div>
-                  {balancesDisplay.map((item) => (
-                    <div key={item.label}>
-                      {item.label}: {item.value}
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Gestion plus claire de vos conges</h2>
+              <p className="main-hero-description">
+                Consultez vos soldes, deposez une nouvelle demande et suivez l'historique des validations sur une seule page.
+              </p>
             </div>
-          </div>
+            <div className="main-hero-kpis">
+              {balancesDisplay.slice(0, 4).map((item) => (
+                <article key={item.label} className="main-kpi-card">
+                  <span>{item.label}</span>
+                  <strong>{item.value.replace(" jours", "")}</strong>
+                  <p>{item.value}</p>
+                </article>
+              ))}
+            </div>
+          </section>
 
-          <div className="infopro-infoper">
-            <div className="info-per">
-              <div className="top">
-                <h3 className="title">
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>{editingRequestId ? "Modifier la demande" : "Nouvelle demande"}</h2>
+                <p>
                   {editingRequestId
-                    ? "Modifier la demande"
-                    : "Nouvelle demande"}
-                </h3>
-                <p className="desc">
-                  {editingRequestId
-                    ? "Mettez à jour votre demande en attente."
-                    : "Remplissez le formulaire pour envoyer votre demande"}
+                    ? "Mettez a jour votre demande en attente."
+                    : "Remplissez le formulaire pour envoyer votre demande."}
                 </p>
               </div>
+              <div className="main-action-pill">Demande</div>
+            </div>
 
-              {feedback && (
-                <div
-                  style={{
-                    padding: "12px 22px 0",
-                    color: "#15803d",
-                    fontWeight: 600,
-                  }}
-                >
-                  {feedback}
-                </div>
-              )}
-
-              {errorMessage && (
-                <div
-                  style={{
-                    padding: "12px 22px 0",
-                    color: "#b91c1c",
-                    fontWeight: 600,
-                  }}
-                >
-                  {errorMessage}
-                </div>
-              )}
-
-              <form
-                className="profile-edit-form"
-                style={{ padding: "12px 22px 18px" }}
-                onSubmit={onSubmit}
-              >
-                <div
-                  className="profile-edit-grid"
-                  style={{ gridTemplateColumns: "1fr 1fr" }}
-                >
-                  <label>
+            <form onSubmit={onSubmit}>
+              <div className="main-form-grid">
+                  <label className="main-field">
                     Type de congé
                     <select name="type" value={form.type} onChange={onChange}>
                       {leaveTypes.map((lt) => (
@@ -390,7 +362,7 @@ export default function Conge() {
                     )}
                   </label>
 
-                  <label>
+                  <label className="main-field">
                     Date de début
                     <input
                       type="date"
@@ -401,7 +373,7 @@ export default function Conge() {
                     />
                   </label>
 
-                  <label>
+                  <label className="main-field">
                     Date de fin
                     <input
                       type="date"
@@ -412,7 +384,7 @@ export default function Conge() {
                     />
                   </label>
 
-                  <label style={{ gridColumn: "1 / -1" }}>
+                  <label className="main-field main-field-wide">
                     Motif
                     <input
                       type="text"
@@ -424,7 +396,7 @@ export default function Conge() {
                     />
                   </label>
 
-                  <label style={{ gridColumn: "1 / -1" }}>
+                  <label className="main-field main-field-wide">
                     Justificatif
                     <input
                       type="file"
@@ -441,59 +413,54 @@ export default function Conge() {
                       </span>
                     )}
                   </label>
-                </div>
-
-                <div
-                  className="profile-edit-actions"
-                  style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
-                >
-                  <button
-                    className="btn-save"
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting
-                      ? "Envoi..."
-                      : editingRequestId
-                        ? "Enregistrer les modifications"
-                        : "Envoyer la demande"}
-                  </button>
-                  {editingRequestId && (
-                    <button
-                      type="button"
-                      className="btn-save"
-                      onClick={cancelEditing}
-                      style={{ background: "#475569" }}
-                    >
-                      Annuler la modification
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-
-            <div className="info-pro">
-              <div className="top">
-                <h3 className="title">Soldes de congés</h3>
-                <p className="desc">État courant de vos droits</p>
               </div>
-              {balancesDisplay.map((item) => (
-                <div key={item.label}>
-                  <p className="desc">{item.label}</p>
-                  <h3>{item.value}</h3>
-                </div>
-              ))}
-            </div>
+
+              <div className="main-actions" style={{ marginTop: 18 }}>
+                <button
+                  className="btn-save"
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? "Envoi..."
+                    : editingRequestId
+                      ? "Enregistrer les modifications"
+                      : "Envoyer la demande"}
+                </button>
+                {editingRequestId && (
+                  <button
+                    type="button"
+                    className="btn-save"
+                    onClick={cancelEditing}
+                    style={{ background: "#475569" }}
+                  >
+                    Annuler la modification
+                  </button>
+                )}
+              </div>
+            </form>
+          </section>
+
+          <div className="main-metrics-grid">
+            {balancesDisplay.map((item) => (
+              <article key={item.label} className="main-metric-card">
+                <span>{item.label}</span>
+                <strong>{item.value.replace(" jours", "")}</strong>
+                <p>{item.value}</p>
+              </article>
+            ))}
           </div>
 
-          <div className="activite-recente">
-            <div className="activite-top">
-              <h3 className="activite-title">Historique des demandes</h3>
-              <p className="activite-subtitle">
-                Dernières demandes enregistrées
-              </p>
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Historique des demandes</h2>
+                <p>Dernieres demandes enregistrees dans le systeme.</p>
+              </div>
+              <div className="main-action-pill">Historique</div>
             </div>
-            <table className="activite-table">
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Période</th>
@@ -560,7 +527,8 @@ export default function Conge() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

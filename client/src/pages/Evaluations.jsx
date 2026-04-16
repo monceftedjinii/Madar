@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/main-space.css";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -77,38 +78,51 @@ export default function Evaluations() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Historique</h2>
-              <p className="desc">Synthese de vos evaluations disponibles.</p>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Suivi lisible de vos evaluations</h2>
+              <p className="main-hero-description">
+                Consultez vos notes, vos recommandations et l'historique des campagnes
+                d'evaluation dans une vue plus claire.
+              </p>
             </div>
-            <div><p className="desc">Nombre</p><h3>{stats.total}</h3></div>
-            <div><p className="desc">Moyenne</p><h3>{stats.average}/5</h3></div>
+            <div className="main-hero-kpis">
+              <article className="main-kpi-card">
+                <span>Nombre</span>
+                <strong>{stats.total}</strong>
+                <p>Evaluations disponibles dans votre historique.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Moyenne</span>
+                <strong>{stats.average}</strong>
+                <p>Note globale moyenne sur l'ensemble des campagnes.</p>
+              </article>
+            </div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">Rechargez les evaluations depuis le backend.</p>
+          <div className="main-metrics-grid">
+            <article className="main-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchEvaluations} type="button">Actualiser</button>
+              </p>
+            </article>
+          </div>
+
+          {errorMessage && <div className="page-feedback error">{errorMessage}</div>}
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Evaluations enregistrees</h2>
+                <p>Donnees remontees par le module d'evaluation.</p>
+              </div>
+              <div className="main-action-pill">Historique</div>
             </div>
-            <div><button className="modifier" onClick={fetchEvaluations} type="button">Actualiser</button></div>
-          </section>
-        </div>
-
-        {errorMessage && (
-          <div className="page-feedback error">
-            {errorMessage}
-          </div>
-        )}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Evaluations enregistrees</h2>
-            <p className="activite-subtitle">Donnees remontees par le module d'evaluation.</p>
-          </div>
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -137,9 +151,10 @@ export default function Evaluations() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

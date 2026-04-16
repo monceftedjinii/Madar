@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/main-space.css";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -103,37 +104,62 @@ export default function Gpec() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Projection</h2>
-              <p className="desc">Vision simple de votre progression professionnelle.</p>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Vision personnelle de votre progression GPEC</h2>
+              <p className="main-hero-description">
+                Suivez vos competences, vos objectifs et les plans de developpement proposes dans une interface plus nette.
+              </p>
             </div>
-            <div><p className="desc">Competences</p><h3>{stats.competencies}</h3></div>
-            <div><p className="desc">Ecarts</p><h3>{stats.gaps}</h3></div>
-            <div><p className="desc">Objectifs actifs</p><h3>{stats.inProgress}</h3></div>
-            <div><p className="desc">Plans ouverts</p><h3>{stats.activePlans}</h3></div>
-          </section>
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">Rechargez vos donnees et mettez a jour votre progression.</p>
+            <div className="main-hero-kpis">
+              <article className="main-kpi-card">
+                <span>Competences</span>
+                <strong>{stats.competencies}</strong>
+                <p>Competences actuellement suivies dans votre profil.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Ecarts</span>
+                <strong>{stats.gaps}</strong>
+                <p>Competences dont le niveau cible n'est pas encore atteint.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Objectifs</span>
+                <strong>{stats.inProgress}</strong>
+                <p>Objectifs actuellement en progression.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Plans ouverts</span>
+                <strong>{stats.activePlans}</strong>
+                <p>Plans de developpement encore actifs.</p>
+              </article>
             </div>
-            <div><button className="modifier" onClick={fetchGpec} type="button">Actualiser</button></div>
           </section>
-        </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>{errorMessage || feedback}</div>
-        )}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Competences</h2>
-            <p className="activite-subtitle">Niveaux actuels et cibles definis dans le plan GPEC.</p>
+          <div className="main-metrics-grid">
+            <article className="main-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchGpec} type="button">Actualiser</button>
+              </p>
+            </article>
           </div>
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>{errorMessage || feedback}</div>
+          )}
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Competences</h2>
+                <p>Niveaux actuels et cibles definis dans le plan GPEC.</p>
+              </div>
+              <div className="main-action-pill">Competences</div>
+            </div>
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Competence</th>
@@ -160,17 +186,20 @@ export default function Gpec() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Objectifs</h2>
-            <p className="activite-subtitle">Suivez les objectifs qui structurent votre progression.</p>
-          </div>
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Objectifs</h2>
+                <p>Suivez les objectifs qui structurent votre progression.</p>
+              </div>
+              <div className="main-action-pill">Objectifs</div>
+            </div>
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Objectif</th>
@@ -220,17 +249,20 @@ export default function Gpec() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Plans de developpement</h2>
-            <p className="activite-subtitle">Actions recommandees pour accelerer votre progression.</p>
-          </div>
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Plans de developpement</h2>
+                <p>Actions recommandees pour accelerer votre progression.</p>
+              </div>
+              <div className="main-action-pill">Developpement</div>
+            </div>
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Plan</th>
@@ -255,9 +287,10 @@ export default function Gpec() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

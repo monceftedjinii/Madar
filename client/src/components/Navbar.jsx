@@ -143,7 +143,7 @@ export default function Navbar(props) {
   const isRh = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
   const isRhSeniorManager = resolvedRole === "RH_SENIOR";
   const canManageRhEmployees = resolvedRole === "GRH";
-  const canUseRhFormations = ["RH_AGENT", "GRH"].includes(resolvedRole);
+  const canUseRhFormations = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
 
   const navSections = [
     {

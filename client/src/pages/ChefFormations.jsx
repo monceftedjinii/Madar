@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 const initialForm = {
   nom: "",
@@ -160,75 +161,103 @@ export default function ChefFormations() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat des demandes de formation du service.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Pilotage des besoins de formation du service</h2>
+              <p className="chef-hero-description">
+                Demandez des formations, suivez leur validation et affectez les participants dans
+                une interface plus lisible pour le chef.
+              </p>
             </div>
-            <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
-            <div><p className="desc">En attente</p><h3>{stats.pending}</h3></div>
-            <div><p className="desc">Attente participants</p><h3>{stats.waiting}</h3></div>
-            <div><p className="desc">Approuvees</p><h3>{stats.approved}</h3></div>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Demandes de formation suivies cote chef.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>En attente</span>
+                <strong>{stats.pending}</strong>
+                <p>Demandes encore en cours de traitement.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Participants</span>
+                <strong>{employees.length}</strong>
+                <p>Employes disponibles pour une affectation.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Approuvees</span>
+                <strong>{stats.approved}</strong>
+                <p>Demandes deja validees dans le flux RH.</p>
+              </article>
+            </div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Equipe</h2>
-              <p className="desc">Employes disponibles pour participer.</p>
+          <div className="chef-metrics-grid">
+            <article className="chef-metric-card">
+              <span>Attente participants</span>
+              <strong>{stats.waiting}</strong>
+              <p>Demandes a completer avec les employes du service.</p>
+            </article>
+            <article className="chef-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchData} type="button">Actualiser</button>
+              </p>
+            </article>
+          </div>
+
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
             </div>
-            <div><p className="desc">Employes</p><h3>{employees.length}</h3></div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchData} type="button">Actualiser</button>
+          )}
+
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Nouvelle demande de formation</h2>
+                <p>Formalisez un besoin, son contexte et les raisons de la demande.</p>
+              </div>
+              <div className="chef-action-pill">Creation</div>
             </div>
+
+            <form onSubmit={submitRequest} className="chef-form-grid">
+              <div className="chef-form-field">
+                <p className="chef-form-label">Nom de la formation</p>
+                <input name="nom" value={form.nom} onChange={(e) => setForm((p) => ({ ...p, nom: e.target.value }))} style={fieldStyle} />
+              </div>
+              <div className="chef-form-field chef-form-field-wide">
+                <p className="chef-form-label">Description</p>
+                <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
+              </div>
+              <div className="chef-form-field chef-form-field-wide">
+                <p className="chef-form-label">Raisons</p>
+                <textarea rows={3} value={form.reasons} onChange={(e) => setForm((p) => ({ ...p, reasons: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
+              </div>
+              <div className="chef-form-field chef-form-field-wide">
+                <div className="chef-actions">
+                  <button className="modifier" disabled={submitting} type="submit">
+                    {submitting ? "Envoi..." : "Envoyer la demande"}
+                  </button>
+                </div>
+              </div>
+            </form>
           </section>
-        </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
-          </div>
-        )}
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Demandes de formation</h2>
+                <p>Suivi backend des demandes du chef et gestion des participants.</p>
+              </div>
+              <div className="chef-action-pill">Suivi RH</div>
+            </div>
 
-        <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
-          <form
-            onSubmit={submitRequest}
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 14,
-            }}
-          >
-            <div>
-              <p className="desc">Nom de la formation</p>
-              <input name="nom" value={form.nom} onChange={(e) => setForm((p) => ({ ...p, nom: e.target.value }))} style={fieldStyle} />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <p className="desc">Description</p>
-              <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <p className="desc">Raisons</p>
-              <textarea rows={3} value={form.reasons} onChange={(e) => setForm((p) => ({ ...p, reasons: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
-            </div>
-            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
-              <button className="modifier" disabled={submitting} type="submit">
-                {submitting ? "Envoi..." : "Envoyer la demande"}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Demandes de formation</h2>
-            <p className="activite-subtitle">Suivi backend des demandes du chef et gestion des participants.</p>
-          </div>
-
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Formation</th>
@@ -294,9 +323,10 @@ export default function ChefFormations() {
                   })
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

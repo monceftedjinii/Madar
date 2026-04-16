@@ -76,6 +76,16 @@ class IsRH(HasRole):
         RoleChoices.GRH,
     ]
 
+
+class CanIssueWarnings(HasRole):
+    allowed_roles = [
+        RoleChoices.CHEF,
+        RoleChoices.RH_SIMPLE,
+        RoleChoices.RH_AGENT,
+        RoleChoices.RH_SENIOR,
+        RoleChoices.GRH,
+    ]
+
 class CanUploadDocument(permissions.BasePermission):
     """Only EMPLOYEE, RH_SIMPLE, RH_SENIOR, CHEF, GRH can upload documents."""
 

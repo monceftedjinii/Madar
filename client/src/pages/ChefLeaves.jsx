@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -143,60 +144,73 @@ export default function ChefLeaves() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Demandes</h2>
-              <p className="desc">Vue d'ensemble des conges visibles par le chef.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Validation claire des demandes de conges</h2>
+              <p className="chef-hero-description">
+                Centralisez les demandes du service, priorisez celles en attente et gardez une
+                vision lisible des validations deja traitees.
+              </p>
             </div>
-            <div>
-              <p className="desc">Total</p>
-              <h3>{stats.total}</h3>
-            </div>
-            <div>
-              <p className="desc">En attente</p>
-              <h3>{stats.pending}</h3>
-            </div>
-            <div>
-              <p className="desc">Acceptees</p>
-              <h3>{stats.accepted}</h3>
-            </div>
-            <div>
-              <p className="desc">Refusees</p>
-              <h3>{stats.refused}</h3>
-            </div>
-          </section>
-
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">Rechargez les demandes et traitez les validations.</p>
-            </div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchRequests} type="button">
-                Actualiser
-              </button>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Demandes visibles dans votre perimetre.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>En attente</span>
+                <strong>{stats.pending}</strong>
+                <p>Demandes qui attendent encore votre decision.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Acceptees</span>
+                <strong>{stats.accepted}</strong>
+                <p>Demandes deja validees au niveau chef.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Refusees</span>
+                <strong>{stats.refused}</strong>
+                <p>Demandes refusees ou non retenues.</p>
+              </article>
             </div>
           </section>
-        </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
+          <div className="chef-metrics-grid">
+            <article className="chef-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchRequests} type="button">
+                  Actualiser
+                </button>
+              </p>
+            </article>
+            <article className="chef-metric-card">
+              <span>Lecture</span>
+              <strong>{stats.total - stats.pending}</strong>
+              <p>Demandes deja sorties de la file d&apos;attente.</p>
+            </article>
           </div>
-        )}
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Demandes du service</h2>
-            <p className="activite-subtitle">
-              Liste backend des demandes accessibles a la validation du chef.
-            </p>
-          </div>
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Demandes du service</h2>
+                <p>Liste backend des demandes accessibles a la validation du chef.</p>
+              </div>
+              <div className="chef-action-pill">Validation manager</div>
+            </div>
+
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Employe</th>
@@ -274,9 +288,10 @@ export default function ChefLeaves() {
                   })
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

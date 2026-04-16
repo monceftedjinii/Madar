@@ -5,8 +5,45 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from ..models import Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag, User, RoleChoices
-from ..permissions import IsRH
+from ..permissions import IsRH, CanIssueWarnings
+from ..scopes import service_scope_ids_for_employee
 from .helpers import notify
+
+
+def _warning_notification_payload(employee, issuer_user, warning_date, warning_comment=''):
+	comment = (warning_comment or '').strip()
+	message = f'Un avertissement pour absence a ete enregistre pour la date du {warning_date.isoformat()}.'
+	if comment:
+		message = f'{message} Commentaire: {comment}'
+
+	return {
+		'title': 'Avertissement d\'absence',
+		'message': message,
+		'link': '/notifications',
+	}
+
+
+def _ensure_warning_notification(employee, issuer_user, warning_date, warning_comment=''):
+	employee_user = User.objects.filter(email=employee.email).first()
+	if not employee_user:
+		return False
+
+	payload = _warning_notification_payload(
+		employee,
+		issuer_user,
+		warning_date,
+		warning_comment=warning_comment,
+	)
+	notification_exists = employee_user.notifications.filter(
+		title=payload['title'],
+		message=payload['message'],
+		link=payload['link'],
+	).exists()
+	if notification_exists:
+		return False
+
+	notify(employee_user, payload['title'], payload['message'], link=payload['link'])
+	return True
 
 
 @api_view(['GET'])
@@ -34,9 +71,9 @@ def absences_yesterday(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsRH])
+@permission_classes([IsAuthenticated, CanIssueWarnings])
 def create_warning(request):
-	"""RH issues an absence warning to an employee for a specific date."""
+	"""Authorized manager issues an absence warning to an employee for a specific date."""
 	emp_id = request.data.get('employee_id')
 	date_str = request.data.get('date')
 	comment = request.data.get('comment', '')
@@ -54,13 +91,40 @@ def create_warning(request):
 	except Employee.DoesNotExist:
 		return Response({'detail': 'employee not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if AbsenceWarning.objects.filter(employee=emp, date=dt).exists():
+	if request.user.role == RoleChoices.CHEF:
+		try:
+			chef_emp = Employee.objects.get(email=request.user.email)
+		except Employee.DoesNotExist:
+			return Response({'detail': 'chef has no employee record'}, status=status.HTTP_400_BAD_REQUEST)
+
+		if emp.service_id not in service_scope_ids_for_employee(chef_emp):
+			return Response(
+				{'detail': 'you can only warn employees in your service or its sub-services'},
+				status=status.HTTP_403_FORBIDDEN
+			)
+
+	existing_warning = AbsenceWarning.objects.filter(employee=emp, date=dt).first()
+	if existing_warning:
+		month_start = dt.replace(day=1)
+		flag = DisciplineFlag.objects.filter(employee=emp, month=month_start).first()
+		notification_created = _ensure_warning_notification(
+			emp,
+			existing_warning.issued_by or request.user,
+			dt,
+			warning_comment=existing_warning.comment,
+		)
 		return Response(
-			{'detail': 'warning for this employee and date already exists'},
-			status=status.HTTP_400_BAD_REQUEST
+			{
+				'id': existing_warning.id,
+				'warning_count': flag.warning_count if flag else 0,
+				'detail': 'warning for this employee and date already exists',
+				'notification_synced': notification_created,
+			},
+			status=status.HTTP_200_OK
 		)
 
 	aw = AbsenceWarning.objects.create(employee=emp, date=dt, comment=comment, issued_by=request.user)
+	_ensure_warning_notification(emp, request.user, dt, warning_comment=aw.comment)
 
 	month_start = dt.replace(day=1)
 	flag, _ = DisciplineFlag.objects.get_or_create(

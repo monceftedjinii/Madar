@@ -14,6 +14,42 @@ const initialForm = {
   file: null,
 };
 
+const statusLabels = {
+  DRAFT: "Brouillon",
+  SENT: "Envoye",
+  VALIDATED: "Valide",
+  REJECTED: "Refuse",
+  ARCHIVED: "Archive",
+};
+
+const statusThemes = {
+  DRAFT: {
+    badge: "bg-slate-100 text-slate-700 ring-slate-200",
+    dot: "bg-slate-400",
+    panel: "from-slate-500/10 to-slate-500/5",
+  },
+  SENT: {
+    badge: "bg-amber-100 text-amber-800 ring-amber-200",
+    dot: "bg-amber-500",
+    panel: "from-amber-500/15 to-orange-500/10",
+  },
+  VALIDATED: {
+    badge: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    dot: "bg-emerald-500",
+    panel: "from-emerald-500/15 to-lime-500/10",
+  },
+  REJECTED: {
+    badge: "bg-rose-100 text-rose-800 ring-rose-200",
+    dot: "bg-rose-500",
+    panel: "from-rose-500/15 to-red-500/10",
+  },
+  ARCHIVED: {
+    badge: "bg-sky-100 text-sky-800 ring-sky-200",
+    dot: "bg-sky-500",
+    panel: "from-sky-500/15 to-cyan-500/10",
+  },
+};
+
 function formatDateTime(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -32,21 +68,43 @@ function getSelectedFileLabel(file) {
   return file.name || "Fichier selectionne";
 }
 
-function getStatusClass(status) {
-  if (status === "VALIDATED") return "badge-termine";
-  if (status === "ARCHIVED") return "badge-genere";
-  if (status === "REJECTED") return "badge-refuse";
-  if (status === "SENT") return "badge-attente";
-  return "badge-attente";
+function getStatusTheme(status, dark) {
+  const fallback = dark
+    ? {
+        badge: "bg-slate-800 text-slate-100 ring-slate-700",
+        dot: "bg-slate-400",
+        panel: "from-slate-500/15 to-slate-500/5",
+      }
+    : {
+        badge: "bg-slate-100 text-slate-700 ring-slate-200",
+        dot: "bg-slate-400",
+        panel: "from-slate-500/10 to-slate-500/5",
+      };
+  return statusThemes[status] || fallback;
 }
 
-const statusLabels = {
-  DRAFT: "Brouillon",
-  SENT: "Envoye",
-  VALIDATED: "Valide",
-  REJECTED: "Refuse",
-  ARCHIVED: "Archive",
-};
+function MetricCard({ dark, eyebrow, value, helper, accent }) {
+  return (
+    <div
+      className={`rounded-[28px] border p-5 shadow-sm transition ${
+        dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">{eyebrow}</p>
+          <p className={`mt-4 text-4xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{value}</p>
+          <p className="mt-2 text-sm text-slate-500">{helper}</p>
+        </div>
+        <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${accent}`} />
+      </div>
+    </div>
+  );
+}
+
+function FieldLabel({ children }) {
+  return <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{children}</label>;
+}
 
 export default function RhDocuments() {
   const [dark, setDark] = useDarkModePreference();
@@ -69,31 +127,11 @@ export default function RhDocuments() {
   const canUpload = role === "RH_SIMPLE" || role === "RH_SENIOR" || role === "GRH";
   const isGrh = role === "GRH";
 
-  const fieldStyle = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
-    background: dark ? "#0f172a" : "#ffffff",
-    color: dark ? "#e2e8f0" : "#0f172a",
-    boxSizing: "border-box",
-  };
-
-  const fileFieldStyle = {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`,
-    background: dark ? "#0f172a" : "#ffffff",
-    color: dark ? "#e2e8f0" : "#0f172a",
-    boxSizing: "border-box",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    flexWrap: "wrap",
-    minHeight: 56,
-  };
+  const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
+    dark
+      ? "border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500 focus:border-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
+  }`;
 
   const fetchData = async () => {
     try {
@@ -276,10 +314,10 @@ export default function RhDocuments() {
 
       {isNavOpen && <div className="profile-overlay" onClick={() => setIsNavOpen(false)} aria-hidden="true" />}
 
-      <div className="profile-content !h-auto min-h-screen bg-transparent">
+      <div className={`profile-content min-h-screen !h-auto ${dark ? "bg-slate-950 text-slate-100" : "bg-[#f4f7f1] text-slate-900"}`}>
         <div
-          className={`sticky top-0 z-40 backdrop-blur ${
-            dark ? "border-b border-slate-800 bg-slate-950/90" : "border-b border-slate-200/80 bg-white/90"
+          className={`sticky top-0 z-40 border-b backdrop-blur ${
+            dark ? "border-slate-800 bg-slate-950/90" : "border-white/70 bg-[#f4f7f1]/92"
           }`}
         >
           <div className="profile-naaav">
@@ -287,8 +325,8 @@ export default function RhDocuments() {
               <h1 className="monprofile">{isGrh ? "Documents globaux" : "Documents RH"}</h1>
               <p className="morinfo">
                 {isGrh
-                  ? "Supervisez, arbitrez et archivez les documents sur l'ensemble du circuit."
-                  : "Suivez, commentez et validez les documents du circuit RH."}
+                  ? "Supervisez le circuit documentaire global avec une vue plus claire sur les statuts et les arbitrages."
+                  : "Créez, suivez et commentez les documents RH depuis une interface plus lisible."}
               </p>
             </div>
             <div className="yamin">
@@ -302,273 +340,312 @@ export default function RhDocuments() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">{isGrh ? "Pilotage documentaire" : "Vue rapide"}</h2>
-              <p className="desc">
-                {isGrh
-                  ? "Etat global des documents visibles et des arbitrages GRH."
-                  : "Etat global des documents RH visibles."}
-              </p>
+        <div className="mx-auto flex w-[96%] max-w-[1500px] flex-col gap-6 py-6">
+          <section
+            className={`overflow-hidden rounded-[36px] border p-6 md:p-8 ${
+              dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/85"
+            }`}
+          >
+            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="relative overflow-hidden rounded-[30px] border border-indigo-300/20 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.18),_transparent_40%),linear-gradient(135deg,#0f172a_0%,#1d2441_45%,#4c3d8f_100%)] p-6 text-white shadow-2xl shadow-indigo-950/20">
+                <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-200/80">
+                  {isGrh ? "Circuit global" : "Vue documentaire RH"}
+                </p>
+                <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
+                  Une page documentaire plus nette pour lire les statuts, commenter et arbitrer sans friction.
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200">
+                  Les documents sont maintenant presentes comme un flux lisible avec services, statuts et actions clairement separes.
+                </p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={fetchData}
+                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-indigo-50"
+                  >
+                    Actualiser les documents
+                  </button>
+                  <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
+                    {documents.length} document{documents.length > 1 ? "s" : ""} visible{documents.length > 1 ? "s" : ""}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MetricCard dark={dark} eyebrow="Total" value={stats.total} helper="Documents visibles dans votre scope" accent="from-indigo-400 via-indigo-500 to-fuchsia-500" />
+                <MetricCard dark={dark} eyebrow="Brouillons" value={stats.drafts} helper="Documents encore non envoyes" accent="from-slate-400 via-slate-500 to-slate-600" />
+                <MetricCard dark={dark} eyebrow="Envoyes" value={stats.sent} helper="Documents en attente de traitement" accent="from-amber-400 via-orange-500 to-rose-500" />
+                <MetricCard dark={dark} eyebrow="Valides" value={stats.validated} helper="Documents deja approuves" accent="from-emerald-400 via-emerald-500 to-lime-500" />
+              </div>
             </div>
-            <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
-            <div><p className="desc">Brouillons</p><h3>{stats.drafts}</h3></div>
-            <div><p className="desc">Envoyes</p><h3>{stats.sent}</h3></div>
-            <div><p className="desc">Valides</p><h3>{stats.validated}</h3></div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">
-                {isGrh
-                  ? "Actualisez le circuit documentaire global et ses validations finales."
-                  : "Actualisez le circuit documentaire RH."}
-              </p>
-            </div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchData} type="button">Actualiser</button>
-            </div>
-          </section>
-        </div>
-
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>{errorMessage || feedback}</div>
-        )}
-
-        {canUpload ? (
-          <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
-            <form
-              onSubmit={submitDocument}
-              style={{
-                width: "100%",
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 14,
-              }}
+          {(feedback || errorMessage) && (
+            <div
+              className={`rounded-[24px] border px-5 py-4 text-sm font-medium shadow-sm ${
+                errorMessage
+                  ? dark
+                    ? "border-rose-800 bg-rose-950/40 text-rose-100"
+                    : "border-rose-200 bg-rose-50 text-rose-800"
+                  : dark
+                    ? "border-emerald-800 bg-emerald-950/40 text-emerald-100"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              }`}
             >
-              <div>
-                <p className="desc">Titre</p>
-                <input name="title" value={form.title} onChange={onFieldChange} style={fieldStyle} />
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+            <section
+              className={`rounded-[32px] border p-6 shadow-sm ${
+                dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+              }`}
+            >
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Flux documentaire</p>
+                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    Documents visibles
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                    Les statuts, services et actions sont regroupes en cartes plus simples a lire qu'un tableau dense.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="desc">Type</p>
-                <input name="type" value={form.type} onChange={onFieldChange} placeholder="Ex: Procedure RH" style={fieldStyle} />
-              </div>
-              <div>
-                <p className="desc">Categorie</p>
-                <select name="category" value={form.category} onChange={onFieldChange} style={fieldStyle}>
-                  <option value="RH">RH</option>
-                  <option value="INTERNAL">Interne</option>
-                </select>
-              </div>
-              <div>
-                <p className="desc">Service cible</p>
-                <select name="targetService" value={form.targetService} onChange={onFieldChange} style={fieldStyle}>
-                  <option value="">Aucun service cible</option>
-                  {services.map((service) => (
-                    <option key={service.code} value={service.code}>
-                      {service.nomService || service.code}
-                    </option>
+
+              {loading ? (
+                <div className="grid gap-4">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className={`h-44 animate-pulse rounded-[28px] ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />
                   ))}
-                </select>
-              </div>
-              <div>
-                <p className="desc">Confidentialite</p>
-                <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} style={fieldStyle}>
-                  <option value="INTERNAL">Interne</option>
-                  <option value="CONFIDENTIAL">Confidentiel</option>
-                  <option value="PUBLIC">Public</option>
-                </select>
-              </div>
-              <div>
-                <p className="desc">Fichier</p>
-                <label style={fileFieldStyle}>
-                  <input type="file" name="file" onChange={onFieldChange} style={{ display: "none" }} />
-                  <span
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 10,
-                      background: dark ? "#1d4ed8" : "#2563eb",
-                      color: "#ffffff",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Choisir un fichier
-                  </span>
-                  <span
-                    style={{
-                      color: dark ? "#cbd5e1" : "#475569",
-                      fontSize: 14,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      flex: 1,
-                      minWidth: 140,
-                    }}
-                  >
-                    {getSelectedFileLabel(form.file)}
-                  </span>
-                </label>
-              </div>
-              <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
-                <button className="modifier" disabled={submitting} type="submit">
-                  {submitting ? "Creation..." : "Creer le document"}
-                </button>
-              </div>
-            </form>
-          </section>
-        ) : null}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">{isGrh ? "Documents visibles globalement" : "Documents RH visibles"}</h2>
-            <p className="activite-subtitle">
-              {isGrh
-                ? "Liste backend des documents sur le scope global GRH."
-                : "Liste backend des documents dans le scope RH."}
-            </p>
-          </div>
-
-          <div className="activite-table-scroll">
-            <table className="activite-table">
-              <thead>
-                <tr>
-                  <th>Titre</th>
-                  <th>Type</th>
-                  <th>Service source</th>
-                  <th>Service cible</th>
-                  <th>Statut</th>
-                  <th>Cree le</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="7">Chargement des documents...</td></tr>
-                ) : documents.length === 0 ? (
-                  <tr><td colSpan="7">Aucun document RH visible pour le moment.</td></tr>
-                ) : (
-                  documents.map((doc) => (
-                    <tr key={doc.id}>
-                      <td>{doc.title}</td>
-                      <td>{doc.doc_type}</td>
-                      <td>{doc.source_service || "-"}</td>
-                      <td>{doc.target_service || "-"}</td>
-                      <td><span className={`badge ${getStatusClass(doc.status)}`}>{statusLabels[doc.status] || doc.status}</span></td>
-                      <td>{formatDateTime(doc.created_at)}</td>
-                      <td>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button className="modifier" onClick={() => openDocument(doc)} type="button">Consulter</button>
-                          {canValidate && doc.status === "SENT" ? (
-                            <>
-                              <button className="modifier" disabled={actionId === doc.id} onClick={() => validateDocument(doc.id)} type="button">
-                                Valider
-                              </button>
-                              <button className="mode" disabled={actionId === doc.id} onClick={() => rejectDocument(doc.id)} type="button">
-                                Refuser
-                              </button>
-                            </>
-                          ) : null}
-                          {canValidate && doc.status === "VALIDATED" ? (
-                            <button className="mode" disabled={actionId === doc.id} onClick={() => archiveDocument(doc.id)} type="button">
-                              Archiver
-                            </button>
-                          ) : null}
+                </div>
+              ) : documents.length === 0 ? (
+                <div className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucun document</p>
+                  <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    Aucun document RH visible pour le moment.
+                  </h3>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {documents.map((doc) => {
+                    const theme = getStatusTheme(doc.status, dark);
+                    return (
+                      <article
+                        key={doc.id}
+                        className={`rounded-[28px] border p-5 transition ${
+                          dark ? "border-slate-800 bg-slate-950/65 hover:border-slate-700" : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="max-w-3xl">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
+                              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Document #{doc.id}</p>
+                              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
+                                {statusLabels[doc.status] || doc.status}
+                              </span>
+                            </div>
+                            <h3 className={`mt-3 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{doc.title}</h3>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                              {doc.doc_type} • cree le {formatDateTime(doc.created_at)}
+                            </p>
+                          </div>
+                          <div className={`min-w-[240px] rounded-[24px] bg-gradient-to-br p-4 ${theme.panel} ${dark ? "border border-slate-800" : "border border-white/70"}`}>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Routage</p>
+                            <div className="mt-3 space-y-2 text-sm">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-500">Source</span>
+                                <span className={dark ? "text-slate-100" : "text-slate-900"}>{doc.source_service || "-"}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-500">Cible</span>
+                                <span className={dark ? "text-slate-100" : "text-slate-900"}>{doc.target_service || "-"}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/10 pt-5">
+                          <div className="text-sm text-slate-500">
+                            {canValidate && doc.status === "SENT"
+                              ? "Ce document attend une decision de validation."
+                              : "Consultez le detail pour lire les commentaires et les pieces de contexte."}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <button className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700" onClick={() => openDocument(doc)} type="button">
+                              Consulter
+                            </button>
+                            {canValidate && doc.status === "SENT" ? (
+                              <>
+                                <button className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60" disabled={actionId === doc.id} onClick={() => validateDocument(doc.id)} type="button">
+                                  Valider
+                                </button>
+                                <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-rose-500 hover:text-rose-300" : "border-slate-300 bg-white text-slate-700 hover:border-rose-400 hover:text-rose-600"}`} disabled={actionId === doc.id} onClick={() => rejectDocument(doc.id)} type="button">
+                                  Refuser
+                                </button>
+                              </>
+                            ) : null}
+                            {canValidate && doc.status === "VALIDATED" ? (
+                              <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => archiveDocument(doc.id)} type="button">
+                                Archiver
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <aside className="grid gap-6">
+              {canUpload ? (
+                <section
+                  className={`rounded-[32px] border p-6 shadow-sm ${
+                    dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+                  }`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Creation</p>
+                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Nouveau document</h2>
+
+                  <form onSubmit={submitDocument} className="mt-5 grid gap-4">
+                    <div>
+                      <FieldLabel>Titre</FieldLabel>
+                      <input name="title" value={form.title} onChange={onFieldChange} className={fieldClassName} />
+                    </div>
+                    <div>
+                      <FieldLabel>Type</FieldLabel>
+                      <input name="type" value={form.type} onChange={onFieldChange} placeholder="Ex: Procedure RH" className={fieldClassName} />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <FieldLabel>Categorie</FieldLabel>
+                        <select name="category" value={form.category} onChange={onFieldChange} className={fieldClassName}>
+                          <option value="RH">RH</option>
+                          <option value="INTERNAL">Interne</option>
+                        </select>
+                      </div>
+                      <div>
+                        <FieldLabel>Confidentialite</FieldLabel>
+                        <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} className={fieldClassName}>
+                          <option value="INTERNAL">Interne</option>
+                          <option value="CONFIDENTIAL">Confidentiel</option>
+                          <option value="PUBLIC">Public</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <FieldLabel>Service cible</FieldLabel>
+                      <select name="targetService" value={form.targetService} onChange={onFieldChange} className={fieldClassName}>
+                        <option value="">Aucun service cible</option>
+                        {services.map((service) => (
+                          <option key={service.code} value={service.code}>
+                            {service.nomService || service.code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <FieldLabel>Fichier</FieldLabel>
+                      <label className={`flex min-h-16 cursor-pointer items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${dark ? "border-slate-700 bg-slate-950/80" : "border-slate-200 bg-white"}`}>
+                        <input type="file" name="file" onChange={onFieldChange} className="hidden" />
+                        <span className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Choisir</span>
+                        <span className={`flex-1 truncate text-sm ${dark ? "text-slate-300" : "text-slate-600"}`}>{getSelectedFileLabel(form.file)}</span>
+                      </label>
+                    </div>
+
+                    <button className="mt-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting} type="submit">
+                      {submitting ? "Creation..." : "Creer le document"}
+                    </button>
+                  </form>
+                </section>
+              ) : null}
+
+              <section
+                className={`rounded-[32px] border p-6 shadow-sm ${
+                  dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
+                }`}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Reperes</p>
+                <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Bonnes pratiques</h2>
+                <div className="mt-5 grid gap-3">
+                  {[
+                    "Renseignez un titre explicite et un type exploitable par le circuit RH.",
+                    "Utilisez le service cible pour clarifier la destination du document.",
+                    "Commentez le document pour laisser une trace lisible avant validation ou refus.",
+                  ].map((item) => (
+                    <div key={item} className={`rounded-[22px] px-4 py-4 text-sm leading-6 ${dark ? "bg-slate-950/70 text-slate-300" : "bg-slate-50 text-slate-600"}`}>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
           </div>
-        </section>
+        </div>
       </div>
 
       {selectedDocument ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 500,
-            padding: 16,
-          }}
-          onClick={() => setSelectedDocument(null)}
-        >
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm" onClick={() => setSelectedDocument(null)}>
           <div
             onClick={(event) => event.stopPropagation()}
-            style={{
-              width: "min(94vw, 940px)",
-              maxHeight: "88vh",
-              overflow: "auto",
-              borderRadius: 18,
-              padding: 24,
-              background: dark ? "#111827" : "#ffffff",
-              color: dark ? "#e2e8f0" : "#111827",
-              boxShadow: "0 18px 48px rgba(15, 23, 42, 0.28)",
-              border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-            }}
+            className={`w-full max-w-5xl rounded-[32px] border p-6 shadow-2xl ${dark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-white bg-white text-slate-900"}`}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}>
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 style={{ marginTop: 0, marginBottom: 8 }}>{selectedDocument.title}</h2>
-                <p style={{ margin: 0, color: dark ? "#94a3b8" : "#64748b" }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Detail document</p>
+                <h2 className="mt-2 text-2xl font-black">{selectedDocument.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
                   {selectedDocument.doc_type} • {selectedDocument.source_service || "-"} • {statusLabels[selectedDocument.status] || selectedDocument.status}
                 </p>
               </div>
-              <button className="mode" onClick={() => setSelectedDocument(null)} type="button">Fermer</button>
+              <button className={`rounded-full px-4 py-2 text-sm font-semibold ${dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`} onClick={() => setSelectedDocument(null)} type="button">
+                Fermer
+              </button>
             </div>
 
-            <section style={{ marginTop: 24 }}>
-              <h3 style={{ marginTop: 0 }}>Commentaires</h3>
-              <form onSubmit={submitComment} style={{ marginBottom: 14 }}>
-                <textarea
-                  rows={3}
-                  value={commentText}
-                  onChange={(event) => setCommentText(event.target.value)}
-                  placeholder="Ajouter un commentaire RH."
-                  style={{ ...fieldStyle, resize: "vertical" }}
-                />
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-                  <button className="modifier" disabled={commentSubmitting} type="submit">
-                    {commentSubmitting ? "Envoi..." : "Commenter"}
-                  </button>
-                </div>
-              </form>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {comments.length ? comments.map((comment) => (
-                  <div
-                    key={comment.id}
-                    style={{
-                      padding: 14,
-                      borderRadius: 14,
-                      background: dark ? "#0f172a" : "#f8fafc",
-                      border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <strong>{comment.by_user_name || comment.by_user || "Utilisateur"}</strong>
-                      <span style={{ fontSize: 12, color: dark ? "#94a3b8" : "#64748b" }}>
-                        {formatDateTime(comment.created_at)}
-                      </span>
-                    </div>
-                    <p style={{ margin: "10px 0 0", color: dark ? "#e2e8f0" : "#0f172a" }}>{comment.note}</p>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <section className={`rounded-[24px] p-5 ${dark ? "bg-slate-950/70" : "bg-slate-50"}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Commenter</p>
+                <form onSubmit={submitComment} className="mt-4">
+                  <textarea
+                    rows={4}
+                    value={commentText}
+                    onChange={(event) => setCommentText(event.target.value)}
+                    placeholder="Ajouter un commentaire RH."
+                    className={`${fieldClassName} resize-y`}
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <button className="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60" disabled={commentSubmitting} type="submit">
+                      {commentSubmitting ? "Envoi..." : "Commenter"}
+                    </button>
                   </div>
-                )) : (
-                  <p style={{ color: dark ? "#94a3b8" : "#64748b", margin: 0 }}>
-                    Aucun commentaire pour le moment.
-                  </p>
-                )}
-              </div>
-            </section>
+                </form>
+              </section>
+
+              <section className={`rounded-[24px] p-5 ${dark ? "bg-slate-950/70" : "bg-slate-50"}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Commentaires</p>
+                <div className="mt-4 flex max-h-[420px] flex-col gap-3 overflow-auto">
+                  {comments.length ? comments.map((comment) => (
+                    <div key={comment.id} className={`rounded-[18px] border p-4 ${dark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <strong>{comment.by_user_name || comment.by_user || "Utilisateur"}</strong>
+                        <span className="text-xs text-slate-500">{formatDateTime(comment.created_at)}</span>
+                      </div>
+                      <p className="mt-3 text-sm leading-6">{comment.note}</p>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-slate-500">Aucun commentaire pour le moment.</p>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       ) : null}

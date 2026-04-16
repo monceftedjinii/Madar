@@ -9,6 +9,7 @@ import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import StatsCards from "../../components/dashboard/StatsCards";
 import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
 import ChefSummaryCard from "../../components/dashboard/ChefSummaryCard";
+import "../../styles/chef-space.css";
 
 const MONTH_LABELS = [
   "Janvier",
@@ -220,7 +221,40 @@ export default function ChefDashboard() {
           </div>
         </div>
 
-        <main className="mx-auto flex w-[96%] flex-col gap-6 py-6">
+        <main className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Pilotage du service sur une seule vue</h2>
+              <p className="chef-hero-description">
+                Surveillez l&apos;effectif, les pointages actifs, les conges en attente et la charge
+                de travail avant d&apos;entrer dans les tableaux de detail.
+              </p>
+            </div>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Equipe</span>
+                <strong>{dashboardData.profile.teamSize}</strong>
+                <p>Employes actuellement suivis dans votre service.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>En ligne</span>
+                <strong>{dashboardData.profile.onlineCount}</strong>
+                <p>Collaborateurs actifs sur la periode choisie.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Pointages</span>
+                <strong>{dashboardData.profile.checkedInCount}</strong>
+                <p>Presences deja enregistrees aujourd&apos;hui.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Conges</span>
+                <strong>{dashboardData.profile.pendingLeaves}</strong>
+                <p>Demandes en attente d&apos;attention manager.</p>
+              </article>
+            </div>
+          </section>
+
           <DashboardHeader
             dark={dark}
             eyebrow="Espace chef"

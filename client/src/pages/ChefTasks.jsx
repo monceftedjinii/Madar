@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 const initialForm = {
   title: "",
@@ -308,70 +309,84 @@ export default function ChefTasks() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Suivi global des taches distribuees.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Distribution et revue des taches de l&apos;equipe</h2>
+              <p className="chef-hero-description">
+                Assignez les travaux, suivez les remises et traitez les corrections depuis une vue
+                unique plus nette pour le management quotidien.
+              </p>
             </div>
-            <div>
-              <p className="desc">Total</p>
-              <h3>{stats.total}</h3>
-            </div>
-            <div>
-              <p className="desc">Travaux remis</p>
-              <h3>{stats.submitted}</h3>
-            </div>
-            <div>
-              <p className="desc">Corrections</p>
-              <h3>{stats.revision}</h3>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Taches visibles sur votre scope chef.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Remises</span>
+                <strong>{stats.submitted}</strong>
+                <p>Travaux soumis en attente de revue.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Corrections</span>
+                <strong>{stats.revision}</strong>
+                <p>Taches renvoyees a l&apos;employe pour reprise.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>En retard</span>
+                <strong>{stats.late}</strong>
+                <p>Taches ayant depasse leur echeance.</p>
+              </article>
             </div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Execution</h2>
-              <p className="desc">Validation des travaux et controle des delais.</p>
-            </div>
-            <div>
-              <p className="desc">Terminees</p>
-              <h3>{stats.completed}</h3>
-            </div>
-            <div>
-              <p className="desc">En retard</p>
-              <h3>{stats.late}</h3>
-            </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="modifier" onClick={fetchData} type="button">
-                Actualiser
-              </button>
-              {editingTaskId && (
-                <button className="mode" onClick={() => resetForm()} type="button">
-                  Annuler edition
+          <div className="chef-metrics-grid">
+            <article className="chef-metric-card">
+              <span>Terminees</span>
+              <strong>{stats.completed}</strong>
+              <p>Taches finalisees et validees cote chef.</p>
+            </article>
+            <article className="chef-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchData} type="button">
+                  Actualiser
                 </button>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
+              </p>
+            </article>
+            {editingTaskId && (
+              <article className="chef-metric-card">
+                <span>Edition</span>
+                <p style={{ marginTop: 12 }}>
+                  <button className="mode" onClick={() => resetForm()} type="button">
+                    Annuler edition
+                  </button>
+                </p>
+              </article>
+            )}
           </div>
-        )}
 
-        <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
-          <form
-            onSubmit={submitTask}
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 14,
-            }}
-          >
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>{editingTaskId ? "Modifier la tache" : "Nouvelle tache"}</h2>
+                <p>Precisez l'employe cible, l'echeance et les attentes de livraison.</p>
+              </div>
+              <div className="chef-action-pill">Execution</div>
+            </div>
+
+            <form onSubmit={submitTask} className="chef-form-grid">
             <div>
-              <p className="desc">Titre</p>
+              <p className="chef-form-label">Titre</p>
               <input
                 name="title"
                 value={form.title}
@@ -381,7 +396,7 @@ export default function ChefTasks() {
               />
             </div>
             <div>
-              <p className="desc">Employe</p>
+              <p className="chef-form-label">Employe</p>
               <select
                 name="assignedTo"
                 value={form.assignedTo}
@@ -397,7 +412,7 @@ export default function ChefTasks() {
               </select>
             </div>
             <div>
-              <p className="desc">Echeance</p>
+              <p className="chef-form-label">Echeance</p>
               <input
                 type="date"
                 name="dueDate"
@@ -407,7 +422,7 @@ export default function ChefTasks() {
               />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <p className="desc">Description</p>
+              <p className="chef-form-label">Description</p>
               <textarea
                 name="description"
                 value={form.description}
@@ -442,11 +457,11 @@ export default function ChefTasks() {
                 />
                 Cette tache demande un fichier de remise
               </label>
-              <p className="desc" style={{ marginTop: 8 }}>
+              <p className="chef-form-label" style={{ marginTop: 8 }}>
                 Cochez cette option seulement si l'employe doit renvoyer un document, une capture ou un livrable.
               </p>
             </div>
-            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ gridColumn: "1 / -1" }} className="chef-actions">
               {editingTaskId && (
                 <button className="mode" onClick={() => resetForm()} type="button">
                   Annuler
@@ -461,18 +476,19 @@ export default function ChefTasks() {
               </button>
             </div>
           </form>
-        </section>
+          </section>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Historique des taches d'equipe</h2>
-            <p className="activite-subtitle">
-              Taches envoyees par le chef et suivies depuis le backend.
-            </p>
-          </div>
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Historique des taches d&apos;equipe</h2>
+                <p>Taches envoyees par le chef et suivies depuis le backend.</p>
+              </div>
+              <div className="chef-action-pill">Suivi equipe</div>
+            </div>
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Tache</th>
@@ -571,9 +587,10 @@ export default function ChefTasks() {
                   })
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
 
       {reviewTask && (

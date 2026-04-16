@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/main-space.css";
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -242,64 +243,67 @@ export default function Documents() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Documents publics disponibles pour votre service.</p>
+        <div className="main-page-stack">
+          <section className="main-hero">
+            <div className="main-hero-copy">
+              <span className="main-eyebrow">Espace principal</span>
+              <h2 className="main-hero-title">Reception claire des documents du service</h2>
+              <p className="main-hero-description">
+                Consultez les documents publics envoyes a votre service et accedez rapidement aux details et a la previsualisation.
+              </p>
             </div>
-            <div>
-              <p className="desc">Total</p>
-              <h3>{stats.total}</h3>
-            </div>
-            <div>
-              <p className="desc">Envoyes</p>
-              <h3>{stats.sent}</h3>
-            </div>
-            <div>
-              <p className="desc">Valides</p>
-              <h3>{stats.validated}</h3>
-            </div>
-            <div>
-              <p className="desc">Archives</p>
-              <h3>{stats.archived}</h3>
-            </div>
-          </section>
-
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">Rechargez la liste et ouvrez un document pour voir ses details.</p>
-            </div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchDocuments} type="button">
-                Actualiser
-              </button>
-            </div>
-            <div>
-              <p className="desc">Document selectionne</p>
-              <h3>{selectedDocument?.title || "Aucun"}</h3>
+            <div className="main-hero-kpis">
+              <article className="main-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Documents visibles dans votre fil de reception.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Envoyes</span>
+                <strong>{stats.sent}</strong>
+                <p>Documents deja envoyes a votre service.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Valides</span>
+                <strong>{stats.validated}</strong>
+                <p>Documents valides dans le circuit.</p>
+              </article>
+              <article className="main-kpi-card">
+                <span>Selection</span>
+                <strong>{selectedDocument ? "1" : "0"}</strong>
+                <p>{selectedDocument?.title || "Aucun document ouvert"}</p>
+              </article>
             </div>
           </section>
-        </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
-          </div>
-        )}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Documents recus</h2>
-            <p className="activite-subtitle">
-              Seuls les documents publics envoyes a votre service sont affiches.
-            </p>
+          <div className="main-metrics-grid">
+            <article className="main-metric-card">
+              <span>Actualisation</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchDocuments} type="button">
+                  Actualiser
+                </button>
+              </p>
+            </article>
           </div>
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Documents recus</h2>
+                <p>Seuls les documents publics envoyes a votre service sont affiches.</p>
+              </div>
+              <div className="main-action-pill">Reception</div>
+            </div>
+
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Titre</th>
@@ -353,21 +357,23 @@ export default function Documents() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
 
-        <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
-          <div style={{ width: "100%", display: "grid", gap: 20 }}>
-            <div className="top">
-              <h2 className="title">Detail du document</h2>
-              <p className="desc">Visualisation du document selectionne et de ses informations principales.</p>
+          <section className="main-panel">
+            <div className="main-panel-head">
+              <div>
+                <h2>Detail du document</h2>
+                <p>Visualisation du document selectionne et de ses informations principales.</p>
+              </div>
+              <div className="main-action-pill">Detail</div>
             </div>
 
             {detailLoading ? (
-              <p className="desc">Chargement du detail du document...</p>
+              <div className="main-empty">Chargement du detail du document...</div>
             ) : !selectedDocument ? (
-              <p className="desc">Selectionnez un document public pour afficher ses details.</p>
+              <div className="main-empty">Selectionnez un document public pour afficher ses details.</div>
             ) : (
               <>
                 <div
@@ -529,8 +535,8 @@ export default function Documents() {
                 </div>
               </>
             )}
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
 
       {isPreviewOpen && selectedDocument?.file_url && (

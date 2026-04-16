@@ -219,6 +219,42 @@ export default function Messagrie() {
   const selectedEmail =
     filteredEmails.find((mail) => mail.id === selectedId) || filteredEmails[0] || null;
 
+  const boxLabel = useMemo(
+    () =>
+      ({
+        inbox: "Boite de reception",
+        sent: "Messages envoyes",
+        drafts: "Brouillons",
+        trash: "Corbeille",
+      })[boxType] || "Messagerie",
+    [boxType],
+  );
+
+  const boxDescription = useMemo(
+    () =>
+      ({
+        inbox: "Suivez les messages recus et traitez les reponses en attente.",
+        sent: "Retrouvez l'historique complet des messages expedies.",
+        drafts: "Reprenez vos brouillons avant envoi.",
+        trash: "Consultez les messages retires de la boite active.",
+      })[boxType] || "Suivi des echanges internes.",
+    [boxType],
+  );
+
+  const currentUnreadCount = useMemo(
+    () => filteredEmails.filter((mail) => mail.unread).length,
+    [filteredEmails],
+  );
+
+  const currentImportantCount = useMemo(
+    () => filteredEmails.filter((mail) => mail.important).length,
+    [filteredEmails],
+  );
+
+  const selectedSummary = selectedEmail
+    ? selectedEmail.subject || "(Sans objet)"
+    : "Aucune conversation ouverte";
+
   const openCompose = () => {
     setComposeError("");
     setComposeForm(INITIAL_COMPOSE_FORM);
@@ -464,8 +500,10 @@ export default function Messagrie() {
           >
             <div className="profile-naaav">
               <div className="yasar">
-                <h3 className="monprofile">Mail</h3>
-                <p className="morinfo">Plateforme interne - style boite mail</p>
+                <h3 className="monprofile">Communication</h3>
+                <p className="morinfo">
+                  Messagerie interne, suivi des echanges et reponse rapide par service.
+                </p>
               </div>
               <div className="yamin">
                 <button
@@ -480,87 +518,137 @@ export default function Messagrie() {
                 </button>
 
                 <button className="modifier" type="button" onClick={openCompose}>
-                  nouveau message
+                  Nouveau message
                 </button>
               </div>
             </div>
+          </div>
+          <div className="mail-hero">
+            <section className="mail-hero-panel">
+              <div className="mail-hero-copy">
+                <span className="mail-hero-eyebrow">Espace communication</span>
+                <h2>{boxLabel}</h2>
+                <p>{boxDescription}</p>
+              </div>
+
+              <div className="mail-hero-grid">
+                <article className="mail-stat-card">
+                  <span>Messages visibles</span>
+                  <strong>{filteredEmails.length}</strong>
+                  <p>Apres recherche et filtres appliques.</p>
+                </article>
+                <article className="mail-stat-card accent">
+                  <span>Non lus</span>
+                  <strong>{currentUnreadCount}</strong>
+                  <p>Seulement dans les messages affiches.</p>
+                </article>
+                <article className="mail-stat-card">
+                  <span>Importants</span>
+                  <strong>{currentImportantCount}</strong>
+                  <p>Marques prioritaires dans la vue courante.</p>
+                </article>
+                <article className="mail-stat-card subtle">
+                  <span>Conversation ouverte</span>
+                  <strong>{selectedEmail ? "1" : "0"}</strong>
+                  <p>{selectedSummary}</p>
+                </article>
+              </div>
+            </section>
           </div>
           <div className="contenu-page-mail">
             <div className="block_one">
               <div className="titles_block_one">
                 <h3 className="title_mail">Dossiers</h3>
-                <p className="morinfo size">Organisation des emails</p>
+                <p className="morinfo size">Navigation rapide entre les differentes boites.</p>
               </div>
               <div className="botton_mail">
                 <button className="composer" type="button" onClick={openCompose}>
-                  Composer
+                  Composer un message
                 </button>
                 <button
                   className={`all_buttons ${boxType === "inbox" ? "active-folder" : ""}`}
+                  type="button"
                   onClick={() => switchBox("inbox")}
                 >
-                  Boite
+                  <span className="folder-button-label">Reception</span>
+                  <span className="folder-button-hint">Messages recus</span>
                 </button>
                 <button
                   className={`all_buttons ${
                     activeFilter === "important" ? "active-folder" : ""
                   }`}
+                  type="button"
                   onClick={() => setActiveFilter("important")}
                 >
-                  Importants
+                  <span className="folder-button-label">Importants</span>
+                  <span className="folder-button-hint">Priorites marquees</span>
                 </button>
                 <button
                   className={`all_buttons ${boxType === "sent" ? "active-folder" : ""}`}
+                  type="button"
                   onClick={() => switchBox("sent")}
                 >
-                  Envoyes
-                </button>
-                <button
-                  className={`all_buttons ${boxType === "inbox" ? "active-folder" : ""}`}
-                  onClick={() => switchBox("inbox")}
-                >
-                  Recus
+                  <span className="folder-button-label">Envoyes</span>
+                  <span className="folder-button-hint">Historique sortant</span>
                 </button>
                 <button
                   className={`all_buttons ${boxType === "drafts" ? "active-folder" : ""}`}
+                  type="button"
                   onClick={() => switchBox("drafts")}
                 >
-                  Brouillons
+                  <span className="folder-button-label">Brouillons</span>
+                  <span className="folder-button-hint">Messages non finalises</span>
                 </button>
                 <button
                   className={`all_buttons ${boxType === "trash" ? "active-folder" : ""}`}
                   type="button"
                   onClick={handleTrashClick}
                 >
-                  Corbeille
+                  <span className="folder-button-label">Corbeille</span>
+                  <span className="folder-button-hint">Elements supprimes</span>
                 </button>
               </div>
             </div>
             <div className="block_two">
               <div className="top_block_two">
-                <SearchIcon className="rr" />
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Rechercher (objet, expediteur, contenu)..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+                <div className="mail-list-header">
+                  <div>
+                    <span className="folder-eyebrow">Vue active</span>
+                    <h3>{boxLabel}</h3>
+                    <p>{filteredEmails.length} message(s) correspondent a la recherche courante.</p>
+                  </div>
+                  <div className="mail-list-stats">
+                    <span>{activeFilter === "all" ? "Tous" : activeFilter === "unread" ? "Non lus" : "Importants"}</span>
+                  </div>
+                </div>
+                <div className="search-field">
+                  <SearchIcon className="rr" />
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Rechercher (objet, expediteur, contenu)..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
                 <div className="button-block-two">
                   <button
                     className={`rc ${activeFilter === "all" ? "c" : ""}`}
+                    type="button"
                     onClick={() => setActiveFilter("all")}
                   >
                     Tous
                   </button>
                   <button
                     className={`rc ${activeFilter === "unread" ? "c" : ""}`}
+                    type="button"
                     onClick={() => setActiveFilter("unread")}
                   >
                     Non lus
                   </button>
                   <button
                     className={`rc ${activeFilter === "important" ? "c" : ""}`}
+                    type="button"
                     onClick={() => setActiveFilter("important")}
                   >
                     Importants
@@ -577,17 +665,17 @@ export default function Messagrie() {
                     <button
                       key={mail.id}
                       className={`mail-item ${selectedEmail?.id === mail.id ? "active" : ""}`}
+                      type="button"
                       onClick={() => handleSelectMessage(mail.id)}
                     >
                       <div className="mail-item-head">
                         <div className="mail-avatar">{mail.initials}</div>
                         <div className="mail-head-meta">
                           <div className="mail-subject-line">
-                            <h4>
-                              {mail.sender} - {mail.subject}
-                            </h4>
+                            <h4>{mail.subject}</h4>
                             <span>{mail.time}</span>
                           </div>
+                          <strong className="mail-sender-line">{mail.sender}</strong>
                           <p>{mail.preview}</p>
                         </div>
                       </div>
@@ -605,13 +693,15 @@ export default function Messagrie() {
                 <>
                   <div className="message-header">
                     <div>
+                      <span className="folder-eyebrow">Conversation ouverte</span>
                       <h3>
                         {selectedEmail.department} - {selectedEmail.subject}
                       </h3>
-                      <p>
+                      <p className="message-meta-line">
                         De: {selectedEmail.from || selectedEmail.sender} - A:{" "}
-                        {selectedEmail.to || "Vous"} - {selectedEmail.day}
+                        {selectedEmail.to || "Vous"}
                       </p>
+                      <p>{selectedEmail.day}</p>
                     </div>
                     <div className="message-actions">
                       {boxType === "inbox" && (
@@ -674,7 +764,7 @@ export default function Messagrie() {
                   {boxType === "inbox" && (
                     <div className="reply-box">
                       <h4>Repondre</h4>
-                      <p>
+                      <p className="reply-note">
                         {selectedEmail.hasRepliedByMe
                           ? "Vous avez deja repondu a ce message."
                           : "Votre reponse sera envoyee a l'expediteur."}

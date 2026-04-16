@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 function getCurrentMonthRange() {
   const now = new Date();
@@ -89,28 +90,6 @@ export default function ChefReports() {
     }
   };
 
-  const summaryCardStyle = {
-    borderRadius: 16,
-    padding: 18,
-    background: dark ? "#1e293b" : "#f8fafc",
-    border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-  };
-
-  const summaryLabelStyle = {
-    margin: 0,
-    fontSize: 13,
-    fontWeight: 600,
-    color: dark ? "#93c5fd" : "#2563eb",
-  };
-
-  const summaryValueStyle = {
-    marginTop: 10,
-    marginBottom: 0,
-    fontSize: 30,
-    fontWeight: 700,
-    color: dark ? "#f8fafc" : "#0f172a",
-  };
-
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
@@ -141,70 +120,103 @@ export default function ChefReports() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Periode</h2>
-              <p className="desc">Filtrez les exports et le resume du service.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Rapports et lecture synthetique du service</h2>
+              <p className="chef-hero-description">
+                Filtrez une periode, consultez les indicateurs du scope chef et exportez rapidement
+                les rapports utiles au pilotage.
+              </p>
             </div>
-            <div>
-              <p className="desc">Du</p>
-              <input type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} style={fieldStyle} />
-            </div>
-            <div>
-              <p className="desc">Au</p>
-              <input type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} style={fieldStyle} />
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Periode</span>
+                <strong>{filters.from}</strong>
+                <p>Date de debut de l'analyse selectionnee.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Jusqu&apos;a</span>
+                <strong>{filters.to}</strong>
+                <p>Date de fin appliquee aux exports et indicateurs.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Indicateurs</span>
+                <strong>{cards.length}</strong>
+                <p>Mesures de synthese disponibles pour votre service.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Etat</span>
+                <strong>{loading ? "..." : "A jour"}</strong>
+                <p>Resume backend charge pour la periode courante.</p>
+              </article>
             </div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Exports</h2>
-              <p className="desc">Telechargez les rapports backend selon votre scope chef.</p>
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Filtres et exports</h2>
+                <p>Choisissez la periode d'analyse et lancez les exportations utiles.</p>
+              </div>
+              <div className="chef-action-pill">Reporting</div>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Presence PDF</button>
-              <button className="modifier" onClick={() => downloadReport("attendance", "xlsx")} type="button">Presence Excel</button>
-              <button className="modifier" onClick={() => downloadReport("leaves", "pdf")} type="button">Conges PDF</button>
-              <button className="modifier" onClick={() => downloadReport("tasks", "xlsx")} type="button">Taches Excel</button>
+
+            <div className="chef-inline-grid">
+              <div className="chef-note-card">
+                <h4>Periode du rapport</h4>
+                <div className="chef-form-grid">
+                  <div className="chef-form-field">
+                    <p className="chef-form-label">Du</p>
+                    <input type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} style={fieldStyle} />
+                  </div>
+                  <div className="chef-form-field">
+                    <p className="chef-form-label">Au</p>
+                    <input type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} style={fieldStyle} />
+                  </div>
+                </div>
+              </div>
+              <div className="chef-note-card">
+                <h4>Exports disponibles</h4>
+                <div className="chef-action-row">
+                  <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Presence PDF</button>
+                  <button className="modifier" onClick={() => downloadReport("attendance", "xlsx")} type="button">Presence Excel</button>
+                  <button className="modifier" onClick={() => downloadReport("leaves", "pdf")} type="button">Conges PDF</button>
+                  <button className="modifier" onClick={() => downloadReport("tasks", "xlsx")} type="button">Taches Excel</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {errorMessage && <div className="page-feedback error">{errorMessage}</div>}
+
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Synthese du service</h2>
+                <p>Indicateurs backend calcules sur votre scope chef.</p>
+              </div>
+              <div className="chef-action-pill">Resume</div>
+            </div>
+
+            <div className="chef-metrics-grid">
+              {loading ? (
+                <div className="chef-note-card">
+                  <p>Chargement des indicateurs...</p>
+                </div>
+              ) : (
+                cards.map((card) => (
+                  <article key={card.label} className="chef-metric-card">
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <p>Valeur calculee sur la plage de dates selectionnee.</p>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </div>
-
-        {errorMessage && (
-          <div className="page-feedback error">
-            {errorMessage}
-          </div>
-        )}
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Synthese du service</h2>
-            <p className="activite-subtitle">Indicateurs backend calcules sur votre scope chef.</p>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {loading ? (
-              <div style={{ padding: 16 }}>Chargement des indicateurs...</div>
-            ) : (
-              cards.map((card) => (
-                <div
-                  key={card.label}
-                  style={summaryCardStyle}
-                >
-                  <p style={summaryLabelStyle}>{card.label}</p>
-                  <h3 style={summaryValueStyle}>{card.value}</h3>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );

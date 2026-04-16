@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 export default function ChefEvaluations() {
   const [dark, setDark] = useDarkModePreference();
@@ -67,6 +68,23 @@ export default function ChefEvaluations() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const stats = useMemo(() => {
+    const average =
+      evaluations.length > 0
+        ? (
+            evaluations.reduce((total, item) => total + Number(item.global_score || 0), 0) /
+            evaluations.length
+          ).toFixed(1)
+        : "0.0";
+
+    return {
+      employees: employees.length,
+      criteria: criteria.length,
+      evaluations: evaluations.length,
+      average,
+    };
+  }, [employees, criteria, evaluations]);
 
   const updateScore = (criterionId, value) => {
     setForm((previous) => ({
@@ -153,17 +171,59 @@ export default function ChefEvaluations() {
           </div>
         </div>
 
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`} style={{ marginTop: 16 }}>
-            {errorMessage || feedback}
-          </div>
-        )}
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Evaluation structuree de l&apos;equipe</h2>
+              <p className="chef-hero-description">
+                Notez les collaborateurs du service selon les criteres definis par le systeme et
+                conservez un historique plus lisible des campagnes deja remontees.
+              </p>
+            </div>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Employes</span>
+                <strong>{stats.employees}</strong>
+                <p>Collaborateurs selectionnables pour une evaluation.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Criteres</span>
+                <strong>{stats.criteria}</strong>
+                <p>Axes de notation disponibles dans le module.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Evaluations</span>
+                <strong>{stats.evaluations}</strong>
+                <p>Historique deja enregistre pour votre equipe.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Moyenne</span>
+                <strong>{stats.average}</strong>
+                <p>Score global moyen observe dans l&apos;historique chef.</p>
+              </article>
+            </div>
+          </section>
 
-        <section className="quelques-infos" style={{ width: "96%", marginTop: 16 }}>
-          <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="chef-panel">
+            <div className="chef-panel-head">
               <div>
-                <p className="desc">Employe</p>
+                <h2>Nouvelle evaluation</h2>
+                <p>Renseignez l'employe, la campagne et les scores par critere.</p>
+              </div>
+              <div className="chef-action-pill">Notation</div>
+            </div>
+
+            <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14 }}>
+              <div className="chef-form-grid">
+                <div>
+                <p className="chef-form-label">Employe</p>
                 <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
                   <option value="">Choisir un employe</option>
                   {employees.map((employee) => (
@@ -174,11 +234,11 @@ export default function ChefEvaluations() {
                 </select>
               </div>
               <div>
-                <p className="desc">Periode</p>
+                <p className="chef-form-label">Periode</p>
                 <input value={form.period} onChange={(e) => setForm((p) => ({ ...p, period: e.target.value }))} style={fieldStyle} />
               </div>
               <div>
-                <p className="desc">Campagne</p>
+                <p className="chef-form-label">Campagne</p>
                 <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={fieldStyle} />
               </div>
             </div>
@@ -208,25 +268,28 @@ export default function ChefEvaluations() {
             ))}
 
             <div>
-              <p className="desc">Commentaire global</p>
+              <p className="chef-form-label">Commentaire global</p>
               <textarea rows={4} value={form.overallComment} onChange={(e) => setForm((p) => ({ ...p, overallComment: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <div className="chef-actions">
               <button className="modifier" disabled={submitting} type="submit">
                 {submitting ? "Enregistrement..." : "Enregistrer l'evaluation"}
               </button>
             </div>
           </form>
-        </section>
+          </section>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Historique des evaluations equipe</h2>
-            <p className="activite-subtitle">Evaluations deja remontees pour les employes de votre service.</p>
-          </div>
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Historique des evaluations equipe</h2>
+                <p>Evaluations deja remontees pour les employes de votre service.</p>
+              </div>
+              <div className="chef-action-pill">Historique</div>
+            </div>
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Employe</th>
@@ -253,9 +316,10 @@ export default function ChefEvaluations() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

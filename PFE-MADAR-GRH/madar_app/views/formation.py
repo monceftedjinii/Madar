@@ -6,6 +6,15 @@ from django.db.models import Q
 from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Service
 
 
+def _is_rh_or_grh(user):
+    return user.role in [
+        RoleChoices.RH_SIMPLE,
+        RoleChoices.RH_AGENT,
+        RoleChoices.RH_SENIOR,
+        RoleChoices.GRH,
+    ]
+
+
 def _is_agent_or_grh(user):
     return user.role in [RoleChoices.RH_AGENT, RoleChoices.GRH]
 
@@ -115,8 +124,8 @@ def formation_detail(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def agent_formation_requests(request):
-    """List formation requests for RH Agent / GRH."""
-    if not _is_agent_or_grh(request.user):
+    """List formation requests for RH / GRH."""
+    if not _is_rh_or_grh(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
     requests = FormationRequest.objects.select_related('requested_by', 'approved_formation').prefetch_related('participants__employee').order_by('-created_at')
@@ -163,8 +172,11 @@ def agent_formation_requests(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def agent_formations_catalog(request):
-    """List/search and create catalog formations for RH Agent / GRH."""
-    if not _is_agent_or_grh(request.user):
+    """List/search and create catalog formations for RH roles / GRH."""
+    if request.method == 'GET':
+        if not _is_rh_or_grh(request.user):
+            return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    elif not _is_agent_or_grh(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':

@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 const initialForm = {
   title: "",
@@ -348,65 +349,84 @@ export default function ChefDocuments() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat global des documents du service.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Gestion documentaire du service</h2>
+              <p className="chef-hero-description">
+                Creez, envoyez, commentez et versionnez les documents de votre service dans une
+                interface plus claire pour le suivi quotidien.
+              </p>
             </div>
-            <div><p className="desc">Total</p><h3>{stats.total}</h3></div>
-            <div><p className="desc">Brouillons</p><h3>{stats.drafts}</h3></div>
-            <div><p className="desc">Envoyes</p><h3>{stats.sent}</h3></div>
-            <div><p className="desc">Valides</p><h3>{stats.validated}</h3></div>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Total</span>
+                <strong>{stats.total}</strong>
+                <p>Documents accessibles cote chef.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Brouillons</span>
+                <strong>{stats.drafts}</strong>
+                <p>Documents encore non envoyes.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Envoyes</span>
+                <strong>{stats.sent}</strong>
+                <p>Documents transmis dans le circuit.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Valides</span>
+                <strong>{stats.validated}</strong>
+                <p>Documents deja approuves.</p>
+              </article>
+            </div>
           </section>
 
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Actions</h2>
-              <p className="desc">Creez un document et suivez son cycle de vie.</p>
-            </div>
-            <div>
-              <p className="desc">Actualisation</p>
-              <button className="modifier" onClick={fetchData} type="button">
-                Actualiser
-              </button>
-            </div>
-          </section>
-        </div>
-
-        {(feedback || errorMessage) && (
-          <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
-            {errorMessage || feedback}
+          <div className="chef-metrics-grid">
+            <article className="chef-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchData} type="button">
+                  Actualiser
+                </button>
+              </p>
+            </article>
           </div>
-        )}
 
-        <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
-          <form
-            onSubmit={submitDocument}
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 14,
-            }}
-          >
+          {(feedback || errorMessage) && (
+            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+              {errorMessage || feedback}
+            </div>
+          )}
+
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Nouveau document</h2>
+                <p>Preparez le document, son type, son service cible et son niveau de confidentialite.</p>
+              </div>
+              <div className="chef-action-pill">Publication</div>
+            </div>
+
+            <form onSubmit={submitDocument} className="chef-form-grid">
             <div>
-              <p className="desc">Titre</p>
+              <p className="chef-form-label">Titre</p>
               <input name="title" value={form.title} onChange={onFieldChange} style={fieldStyle} />
             </div>
             <div>
-              <p className="desc">Type</p>
+              <p className="chef-form-label">Type</p>
               <input name="type" value={form.type} onChange={onFieldChange} placeholder="Ex: Note de service" style={fieldStyle} />
             </div>
             <div>
-              <p className="desc">Categorie</p>
+              <p className="chef-form-label">Categorie</p>
               <select name="category" value={form.category} onChange={onFieldChange} style={fieldStyle}>
                 <option value="INTERNAL">Interne</option>
                 <option value="RH">RH</option>
               </select>
             </div>
             <div>
-              <p className="desc">Service cible</p>
+              <p className="chef-form-label">Service cible</p>
               <select name="targetService" value={form.targetService} onChange={onFieldChange} style={fieldStyle}>
                 <option value="">Choisir un service</option>
                 {services.map((service) => (
@@ -417,7 +437,7 @@ export default function ChefDocuments() {
               </select>
             </div>
             <div>
-              <p className="desc">Confidentialite</p>
+              <p className="chef-form-label">Confidentialite</p>
               <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} style={fieldStyle}>
                 <option value="INTERNAL">Interne</option>
                 <option value="CONFIDENTIAL">Confidentiel</option>
@@ -425,7 +445,7 @@ export default function ChefDocuments() {
               </select>
             </div>
             <div>
-              <p className="desc">Fichier</p>
+              <p className="chef-form-label">Fichier</p>
               <label style={fileFieldStyle}>
                 <input
                   type="file"
@@ -460,22 +480,25 @@ export default function ChefDocuments() {
                 </span>
               </label>
             </div>
-            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ gridColumn: "1 / -1" }} className="chef-actions">
               <button className="modifier" disabled={submitting} type="submit">
                 {submitting ? "Creation..." : "Creer le document"}
               </button>
             </div>
           </form>
-        </section>
+          </section>
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Documents du service</h2>
-            <p className="activite-subtitle">Historique backend des documents crees depuis votre service.</p>
-          </div>
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Documents du service</h2>
+                <p>Historique backend des documents crees depuis votre service.</p>
+              </div>
+              <div className="chef-action-pill">Historique</div>
+            </div>
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Titre</th>
@@ -516,9 +539,10 @@ export default function ChefDocuments() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
 
       {selectedDocument && (

@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
+import "../styles/chef-space.css";
 
 function formatTime(value) {
   if (!value) return "--:--";
@@ -90,59 +91,74 @@ export default function ChefAttendance() {
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Vue rapide</h2>
-              <p className="desc">Etat global de la presence du jour.</p>
+        <div className="chef-page-stack">
+          <section className="chef-hero">
+            <div className="chef-hero-copy">
+              <span className="chef-eyebrow">Espace chef</span>
+              <h2 className="chef-hero-title">Lecture instantanee de la presence du service</h2>
+              <p className="chef-hero-description">
+                Reperez rapidement les journees completes, les pointages en cours et les absences
+                de votre equipe avant d'entrer dans le detail.
+              </p>
             </div>
-            <div>
-              <p className="desc">Employes suivis</p>
-              <h3>{stats.total}</h3>
-            </div>
-            <div>
-              <p className="desc">Journees completes</p>
-              <h3>{stats.complete}</h3>
-            </div>
-          </section>
-
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Pointages du jour</h2>
-              <p className="desc">Repartition des pointages d'aujourd'hui.</p>
-            </div>
-            <div>
-              <p className="desc">En cours</p>
-              <h3>{stats.inProgress}</h3>
-            </div>
-            <div>
-              <p className="desc">Absents</p>
-              <h3>{stats.absent}</h3>
-            </div>
-            <div>
-              <button className="modifier" onClick={fetchAttendance} type="button">
-                Actualiser
-              </button>
+            <div className="chef-hero-kpis">
+              <article className="chef-kpi-card">
+                <span>Equipe suivie</span>
+                <strong>{stats.total}</strong>
+                <p>Collaborateurs inclus dans votre scope chef.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Complet</span>
+                <strong>{stats.complete}</strong>
+                <p>Journees cloturees avec entree et sortie.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>En cours</span>
+                <strong>{stats.inProgress}</strong>
+                <p>Pointages encore ouverts aujourd&apos;hui.</p>
+              </article>
+              <article className="chef-kpi-card">
+                <span>Absents</span>
+                <strong>{stats.absent}</strong>
+                <p>Employes sans presence sur la journee.</p>
+              </article>
             </div>
           </section>
-        </div>
 
-        {errorMessage && (
-          <div className="page-feedback error">
-            {errorMessage}
+          <div className="chef-metrics-grid">
+            <article className="chef-metric-card">
+              <span>Actualisation</span>
+              <strong>{loading ? "..." : "OK"}</strong>
+              <p>Les donnees de presence peuvent etre rechargees a tout moment.</p>
+            </article>
+            <article className="chef-metric-card">
+              <span>Controle</span>
+              <strong>{stats.complete + stats.inProgress}</strong>
+              <p>Employes avec une presence deja constatee sur la journee.</p>
+            </article>
+            <article className="chef-metric-card">
+              <span>Action rapide</span>
+              <p style={{ marginTop: 12 }}>
+                <button className="modifier" onClick={fetchAttendance} type="button">
+                  Actualiser
+                </button>
+              </p>
+            </article>
           </div>
-        )}
 
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Suivi de presence equipe</h2>
-            <p className="activite-subtitle">
-              Donnees remontees par le backend pour la periode en cours.
-            </p>
-          </div>
+          {errorMessage && <div className="page-feedback error">{errorMessage}</div>}
 
-          <div className="activite-table-scroll">
-            <table className="activite-table">
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Suivi de presence equipe</h2>
+                <p>Donnees remontees par le backend pour la periode en cours.</p>
+              </div>
+              <div className="chef-action-pill">Pointages du jour</div>
+            </div>
+
+            <div className="activite-table-scroll">
+              <table className="activite-table">
               <thead>
                 <tr>
                   <th>Employe</th>
@@ -194,9 +210,10 @@ export default function ChefAttendance() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-        </section>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

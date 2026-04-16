@@ -163,7 +163,7 @@ class Service(models.Model):
         descendants = []
         children = Service.objects.filter(serviceParentId=self)
         for child in children:
-            descendants.append(child)
+            # descendants.append(child)
             descendants.extend(child.get_all_descendants())
         return descendants
 
