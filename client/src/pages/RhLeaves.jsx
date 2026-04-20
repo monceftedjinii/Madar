@@ -37,8 +37,8 @@ function formatDate(value) {
 function getStatusLabel(status) {
   const labels = {
     PENDING: "En attente",
-    ACCEPTED: "Acceptee",
-    REFUSED: "Refusee",
+    ACCEPTED: "Acceptée",
+    REFUSED: "Refusée",
   };
   return labels[status] || status;
 }
@@ -67,8 +67,8 @@ function getEmployeeName(requestItem) {
 }
 
 function getStepLabel(step) {
-  if (!step) return "Aucune etape active";
-  return `Etape ${step.validation_order} - ${step.validator_role}`;
+  if (!step) return "Aucune étape active";
+  return `Étape ${step.validation_order} - ${step.validator_role}`;
 }
 
 function MetricCard({ dark, eyebrow, value, helper, accent }) {
@@ -122,7 +122,7 @@ export default function RhLeaves() {
       setRole(meResponse.data?.role || "");
       setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error("Erreur chargement validation RH des conges:", error);
+      console.error("Erreur chargement validation RH des congés :", error);
       setRequests([]);
       setErrorMessage("Impossible de charger les demandes RH.");
     } finally {
@@ -168,16 +168,16 @@ export default function RhLeaves() {
       setFeedback(
         decisionAction === "approve"
           ? isGrh
-            ? "Demande validee finalement avec succes."
-            : "Demande RH validee avec succes."
+            ? "Demande validée finalement avec succès."
+            : "Demande RH validée avec succès."
           : isGrh
-            ? "Demande refusee finalement avec succes."
-            : "Demande RH refusee avec succes.",
+            ? "Demande refusée finalement avec succès."
+            : "Demande RH refusée avec succès.",
       );
       closeDecisionModal();
       await fetchRequests();
     } catch (error) {
-      console.error("Erreur decision RH conge:", error);
+      console.error("Erreur décision RH congé :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible de traiter cette demande.");
     } finally {
       setActionId(null);
@@ -200,11 +200,11 @@ export default function RhLeaves() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">{isGrh ? "Validation finale des conges" : "Validation RH des conges"}</h1>
+              <h1 className="monprofile">{isGrh ? "Validation finale des congés" : "Validation RH des congés"}</h1>
               <p className="morinfo">
                 {isGrh
-                  ? "Arbitrez les demandes en derniere etape avec une vue claire des periodes, etapes et commentaires."
-                  : "Traitez les demandes en attente cote RH avec une interface plus lisible et plus rapide a exploiter."}
+                  ? "Arbitrez les demandes en dernière étape avec une vue claire des périodes, étapes et commentaires."
+                  : "Traitez les demandes en attente côté RH avec une interface plus lisible et plus rapide à exploiter."}
               </p>
             </div>
             <div className="yamin">
@@ -232,11 +232,11 @@ export default function RhLeaves() {
                   {isGrh ? "Arbitrage final" : "Hub validation RH"}
                 </p>
                 <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
-                  Une lecture plus nette des demandes de conges avant validation ou refus.
+                  Une lecture plus nette des demandes de congés avant validation ou refus.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200">
-                  Les demandes actives sont maintenant presentees sous forme de cartes detaillees avec l'etape en cours,
-                  la periode, le type, le service et un panneau de decision plus propre que l'ancien prompt navigateur.
+                  Les demandes actives sont maintenant présentées sous forme de cartes détaillées avec l'étape en cours,
+                  la période, le type, le service et un panneau de décision plus propre que l'ancien prompt navigateur.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <button
@@ -257,7 +257,7 @@ export default function RhLeaves() {
                   dark={dark}
                   eyebrow="Total"
                   value={stats.total}
-                  helper="Demandes visibles dans votre perimetre"
+                  helper="Demandes visibles dans votre périmètre"
                   accent="from-sky-400 via-cyan-500 to-blue-500"
                 />
                 <MetricCard
@@ -269,16 +269,16 @@ export default function RhLeaves() {
                 />
                 <MetricCard
                   dark={dark}
-                  eyebrow="Acceptees"
+                  eyebrow="Acceptées"
                   value={stats.accepted}
-                  helper="Demandes deja validees"
+                  helper="Demandes déjà validées"
                   accent="from-emerald-400 via-emerald-500 to-lime-500"
                 />
                 <MetricCard
                   dark={dark}
-                  eyebrow="Refusees"
+                  eyebrow="Refusées"
                   value={stats.refused}
-                  helper="Demandes cloturees par refus"
+                  helper="Demandes clôturées par refus"
                   accent="from-rose-400 via-rose-500 to-red-500"
                 />
               </div>
@@ -309,12 +309,12 @@ export default function RhLeaves() {
             >
               <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Demandes de conges</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Demandes de congés</p>
                   <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
                     File de validation
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                    Chaque carte presente le collaborateur, la periode demandee, le type, le motif et l'etape de workflow.
+                    Chaque carte présente le collaborateur, la période demandée, le type, le motif et l'étape de workflow.
                   </p>
                 </div>
                 <div
@@ -348,7 +348,7 @@ export default function RhLeaves() {
                     {isGrh ? "Aucun arbitrage final visible pour le moment." : "Aucune demande RH visible pour le moment."}
                   </h3>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
-                    Les nouvelles demandes apparaitront ici avec leur etape de workflow et les actions de validation disponibles.
+                    Les nouvelles demandes apparaîtront ici avec leur étape de workflow et les actions de validation disponibles.
                   </p>
                 </div>
               ) : (
@@ -392,7 +392,7 @@ export default function RhLeaves() {
                                 <span className={dark ? "text-slate-100" : "text-slate-900"}>{requestItem.employee?.service || "-"}</span>
                               </div>
                               <div className="flex items-center justify-between gap-4">
-                                <span className="text-slate-500">Etape</span>
+                                <span className="text-slate-500">Étape</span>
                                 <span className={`text-right ${dark ? "text-slate-100" : "text-slate-900"}`}>
                                   {getStepLabel(requestItem.current_step)}
                                 </span>
@@ -410,7 +410,7 @@ export default function RhLeaves() {
                         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
                           <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Motif</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-600">{requestItem.reason || "Aucun motif renseigne."}</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">{requestItem.reason || "Aucun motif renseigné."}</p>
                           </div>
 
                           <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
@@ -421,7 +421,7 @@ export default function RhLeaves() {
                                 {requestItem.chef_comment || "Aucun commentaire"}
                               </p>
                               <p>
-                                <span className="font-semibold text-slate-500">Decisionnaire:</span>{" "}
+                                <span className="font-semibold text-slate-500">Décisionnaire :</span>{" "}
                                 {requestItem.decided_by?.email || requestItem.decided_by || "-"}
                               </p>
                             </div>
@@ -432,7 +432,7 @@ export default function RhLeaves() {
                           <div className="text-sm text-slate-500">
                             {canDecide
                               ? "Cette demande attend votre arbitrage."
-                              : "Cette demande n'est pas decisionnelle pour votre role ou son statut actuel."}
+                              : "Cette demande n'est pas décisionnelle pour votre rôle ou son statut actuel."}
                           </div>
 
                           {canDecide ? (
@@ -476,10 +476,10 @@ export default function RhLeaves() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Vue rapide</p>
                   <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Priorites du jour
+                    Priorités du jour
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Resume des points qui demandent une action immediate dans le circuit de conges.
+                    Résumé des points qui demandent une action immédiate dans le circuit de congés.
                   </p>
                 </div>
 
@@ -496,9 +496,9 @@ export default function RhLeaves() {
                       helper: "Actions directement disponibles",
                     },
                     {
-                      label: "Periode couverte",
+                      label: "Période couverte",
                       value: requests.length ? formatDate(requests[0]?.created_at?.slice?.(0, 10)) : "-",
-                      helper: "Date de la demande la plus recente visible",
+                      helper: "Date de la demande la plus récente visible",
                     },
                   ].map((item) => (
                     <div
@@ -529,8 +529,8 @@ export default function RhLeaves() {
 
                 <div className="mt-5 grid gap-3">
                   {[
-                    "Lisez la periode, le type de conge et le motif avant toute decision.",
-                    "Verifiez l'etape courante pour confirmer que la demande est bien dans votre file.",
+                    "Lisez la période, le type de congé et le motif avant toute décision.",
+                    "Vérifiez l'étape courante pour confirmer que la demande est bien dans votre file.",
                     "Ajoutez un commentaire avant validation ou refus pour garder une trace claire.",
                   ].map((item) => (
                     <div

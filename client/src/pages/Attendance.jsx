@@ -67,7 +67,7 @@ const mapAttendanceError = (requestError, role) => {
 
   if (detail === "You do not have permission to perform this action.") {
     return role && !["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role)
-      ? "Le pointage est reserve aux comptes employe, chef et RH."
+      ? "Le pointage est réservé aux comptes employé, chef et RH."
       : "Vous n'avez pas la permission d'effectuer cette action.";
   }
 
@@ -76,20 +76,20 @@ const mapAttendanceError = (requestError, role) => {
     return "Le code PIN doit contenir exactement 4 chiffres.";
   }
   if (detail === "employee record not found") {
-    return "Aucun dossier employe n'est lie a ce compte.";
+    return "Aucun dossier employé n'est lié à ce compte.";
   }
   if (detail === "pin not set") {
-    return "Aucun code PIN n'est configure pour ce compte.";
+    return "Aucun code PIN n'est configuré pour ce compte.";
   }
   if (detail === "Invalid PIN") return "Code PIN invalide.";
   if (detail === "already checked in") {
-    return "L'entree a deja ete enregistree aujourd'hui.";
+    return "L'entrée a déjà été enregistrée aujourd'hui.";
   }
   if (detail === "already checked out") {
-    return "La sortie a deja ete enregistree aujourd'hui.";
+    return "La sortie a déjà été enregistrée aujourd'hui.";
   }
   if (detail === "no check-in found for today") {
-    return "Aucune entree n'a ete enregistree pour aujourd'hui.";
+    return "Aucune entrée n'a été enregistrée pour aujourd'hui.";
   }
 
   return detail || "Erreur lors du pointage.";
@@ -341,7 +341,7 @@ export default function Attendance() {
       !["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(currentUserRole)
     ) {
       setPinError(
-        "Le pointage est reserve aux comptes employe, chef et RH.",
+        "Le pointage est réservé aux comptes employé, chef et RH.",
       );
       return;
     }
@@ -486,29 +486,29 @@ export default function Attendance() {
               <span className="main-eyebrow">Espace principal</span>
               <h2 className="main-hero-title">Pointage et historique personnel</h2>
               <p className="main-hero-description">
-                Utilisez votre PIN pour enregistrer l'entree et la sortie, puis suivez votre presence sur la periode choisie.
+                Utilisez votre PIN pour enregistrer l'entrée et la sortie, puis suivez votre présence sur la période choisie.
               </p>
             </div>
             <div className="main-hero-kpis">
               <article className="main-kpi-card">
                 <span>Statut du jour</span>
                 <strong>{todayStatus}</strong>
-                <p>Entree: {formatTime(todayRecord?.check_in_time)} | Sortie: {formatTime(todayRecord?.check_out_time)}</p>
+                <p>Entrée : {formatTime(todayRecord?.check_in_time)} | Sortie : {formatTime(todayRecord?.check_out_time)}</p>
               </article>
               <article className="main-kpi-card">
                 <span>Jours suivis</span>
                 <strong>{displayedRecords.length}</strong>
-                <p>Periode: {appliedRange.from} - {appliedRange.to}</p>
+                <p>Période : {appliedRange.from} - {appliedRange.to}</p>
               </article>
               <article className="main-kpi-card">
                 <span>Complets</span>
                 <strong>{completedDays}</strong>
-                <p>Journees avec entree et sortie enregistrees.</p>
+                <p>Journées avec entrée et sortie enregistrées.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Absences</span>
                 <strong>{absentDays}</strong>
-                <p>Jours sans pointage sur la periode chargee.</p>
+                <p>Jours sans pointage sur la période chargée.</p>
               </article>
             </div>
           </section>
@@ -517,23 +517,23 @@ export default function Attendance() {
             <div className="main-panel-head">
               <div>
                 <h2>Pointage du jour</h2>
-                <p>Utilisez votre PIN a 4 chiffres pour enregistrer votre presence.</p>
+                <p>Utilisez votre PIN à 4 chiffres pour enregistrer votre présence.</p>
               </div>
               <div className="main-action-pill">Pointage</div>
             </div>
 
             {!canUseAttendance && (
               <div className="page-feedback error">
-                Ce compte n'a pas acces au pointage. Utilisez un compte employe, chef ou RH pour pointer l'entree et la sortie.
+                Ce compte n'a pas accès au pointage. Utilisez un compte employé, chef ou RH pour pointer l'entrée et la sortie.
               </div>
             )}
 
             <div className="main-inline-grid">
               <article className="main-note-card">
-                <h4>Resume du jour</h4>
-                <p>Entree: {formatTime(todayRecord?.check_in_time)}</p>
+                <h4>Résumé du jour</h4>
+                <p>Entrée : {formatTime(todayRecord?.check_in_time)}</p>
                 <p style={{ marginTop: 8 }}>Sortie: {formatTime(todayRecord?.check_out_time)}</p>
-                <p style={{ marginTop: 8 }}>Periode active: {appliedRange.from} - {appliedRange.to}</p>
+                <p style={{ marginTop: 8 }}>Période active : {appliedRange.from} - {appliedRange.to}</p>
               </article>
               <article className="main-note-card">
                 <h4>Actions rapides</h4>
@@ -544,7 +544,7 @@ export default function Attendance() {
                     disabled={!canCheckIn}
                     onClick={() => openPinModal("check-in")}
                   >
-                    {actionInProgress === "check-in" ? "Pointage..." : "Pointer l'entree"}
+                    {actionInProgress === "check-in" ? "Pointage..." : "Pointer l'entrée"}
                   </button>
                   <button
                     type="button"
@@ -581,18 +581,18 @@ export default function Attendance() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Filtres et resume</h2>
-                <p>Choisissez la periode a afficher puis analysez votre historique.</p>
+                <h2>Filtres et résumé</h2>
+                <p>Choisissez la période à afficher puis analysez votre historique.</p>
               </div>
               <div className="main-action-pill">Filtres</div>
             </div>
 
             <div className="main-inline-grid">
               <div className="main-note-card">
-                <h4>Periode</h4>
+                <h4>Période</h4>
                 <div className="main-form-grid" style={{ marginTop: 14 }}>
                   <div className="main-field">
-                    <p className="main-label">Date de debut</p>
+                    <p className="main-label">Date de début</p>
                     <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} style={fieldStyle} />
                   </div>
                   <div className="main-field">
@@ -615,9 +615,9 @@ export default function Attendance() {
                 </div>
               </div>
               <div className="main-note-card">
-                <h4>Resume</h4>
-                <p>Jours sur la periode: {displayedRecords.length}</p>
-                <p style={{ marginTop: 8 }}>Journees completes: {completedDays}</p>
+                <h4>Résumé</h4>
+                <p>Jours sur la période : {displayedRecords.length}</p>
+                <p style={{ marginTop: 8 }}>Journées complètes : {completedDays}</p>
                 <p style={{ marginTop: 8 }}>Sorties manquantes: {pendingCheckoutDays}</p>
                 <p style={{ marginTop: 8 }}>Absences: {absentDays}</p>
               </div>
@@ -627,16 +627,16 @@ export default function Attendance() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Historique de presence</h2>
-                <p>{displayedRecords.length} enregistrement(s) trouves sur la periode selectionnee.</p>
+                <h2>Historique de présence</h2>
+                <p>{displayedRecords.length} enregistrement(s) trouvés sur la période sélectionnée.</p>
               </div>
               <div className="main-action-pill">Historique</div>
             </div>
 
             {loading ? (
-              <div className="main-empty">Chargement des donnees...</div>
+              <div className="main-empty">Chargement des données...</div>
             ) : displayedRecords.length === 0 ? (
-              <div className="main-empty">Aucun enregistrement de presence sur cette periode.</div>
+              <div className="main-empty">Aucun enregistrement de présence sur cette période.</div>
             ) : (
               <div className="activite-table-scroll">
                 <table className="activite-table">

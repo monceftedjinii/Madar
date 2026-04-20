@@ -27,9 +27,9 @@ function formatDateTime(value) {
 }
 
 function getTaskStatus(task) {
-  if (task.status === "DONE") return "Terminee";
+  if (task.status === "DONE") return "Terminée";
   if (task.status === "SUBMITTED") return "Travail remis";
-  if (task.status === "REVISION") return "Correction demandee";
+  if (task.status === "REVISION") return "Correction demandée";
   if (task.due_date) {
     const dueDate = new Date(`${task.due_date}T00:00:00`);
     const today = new Date();
@@ -42,9 +42,9 @@ function getTaskStatus(task) {
 }
 
 function getStatusClass(label) {
-  if (label === "Terminee") return "badge-termine";
+  if (label === "Terminée") return "badge-termine";
   if (label === "Travail remis") return "badge-genere";
-  if (label === "Correction demandee") return "badge-attente";
+  if (label === "Correction demandée") return "badge-attente";
   if (label === "En retard") return "badge-refuse";
   return "badge-attente";
 }
@@ -84,9 +84,9 @@ export default function Tasks() {
       const response = await axios.get("/api/tasks/me/");
       setTasks(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error("Erreur chargement taches:", error);
+      console.error("Erreur chargement tâches :", error);
       setTasks([]);
-      setErrorMessage("Impossible de charger vos taches.");
+      setErrorMessage("Impossible de charger vos tâches.");
     } finally {
       setLoading(false);
     }
@@ -135,13 +135,13 @@ export default function Tasks() {
       await axios.post(`/api/tasks/${submissionTask.id}/submit/`, payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setFeedback("Travail remis au chef avec succes.");
+      setFeedback("Travail remis au chef avec succès.");
       setSubmissionTask(null);
       setSubmissionNote("");
       setSubmissionFile(null);
       await fetchTasks();
     } catch (error) {
-      console.error("Erreur remise travail:", error);
+      console.error("Erreur remise travail :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible de remettre le travail.");
     } finally {
       setActionId(null);
@@ -174,9 +174,9 @@ export default function Tasks() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Mes taches</h1>
+              <h1 className="monprofile">Mes tâches</h1>
               <p className="morinfo">
-                Consultez les taches recues, remettez votre travail et suivez les retours du chef.
+                Consultez les tâches reçues, remettez votre travail et suivez les retours du chef.
               </p>
             </div>
             <div className="yamin">
@@ -198,38 +198,38 @@ export default function Tasks() {
           <section className="main-hero">
             <div className="main-hero-copy">
               <span className="main-eyebrow">Espace principal</span>
-              <h2 className="main-hero-title">Suivi propre de vos taches recues</h2>
+              <h2 className="main-hero-title">Suivi propre de vos tâches reçues</h2>
               <p className="main-hero-description">
-                Consultez les missions affectees par votre chef, envoyez vos remises et gardez une lecture claire des retours.
+                Consultez les missions affectées par votre chef, envoyez vos remises et gardez une lecture claire des retours.
               </p>
             </div>
             <div className="main-hero-kpis">
               <article className="main-kpi-card">
                 <span>Total</span>
                 <strong>{stats.total}</strong>
-                <p>Taches actuellement visibles dans votre espace.</p>
+                <p>Tâches actuellement visibles dans votre espace.</p>
               </article>
               <article className="main-kpi-card">
-                <span>Terminees</span>
+                <span>Terminées</span>
                 <strong>{stats.completed}</strong>
-                <p>Taches deja validees comme terminees.</p>
+                <p>Tâches déjà validées comme terminées.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Travaux remis</span>
                 <strong>{stats.submitted}</strong>
-                <p>Remises envoyees au chef pour validation.</p>
+                <p>Remises envoyées au chef pour validation.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Corrections</span>
                 <strong>{stats.revision}</strong>
-                <p>Taches repassees en correction.</p>
+                <p>Tâches repassées en correction.</p>
               </article>
             </div>
           </section>
 
           <div className="main-metrics-grid">
             <article className="main-metric-card">
-              <span>Mise a jour</span>
+              <span>Mise à jour</span>
               <p style={{ marginTop: 12 }}>
                 <button className="modifier" onClick={fetchTasks} type="button">
                   Actualiser
@@ -247,19 +247,19 @@ export default function Tasks() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Taches recues</h2>
-                <p>Taches affectees par votre chef et disponibles depuis le backend.</p>
+                <h2>Tâches reçues</h2>
+                <p>Tâches affectées par votre chef et disponibles depuis le backend.</p>
               </div>
-              <div className="main-action-pill">Execution</div>
+              <div className="main-action-pill">Exécution</div>
             </div>
 
             <div className="activite-table-scroll">
               <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Tache</th>
+                  <th>Tâche</th>
                   <th>Chef</th>
-                  <th>Echeance</th>
+                  <th>Échéance</th>
                   <th>Statut</th>
                   <th>Remise</th>
                   <th>Retour chef</th>
@@ -269,11 +269,11 @@ export default function Tasks() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7">Chargement des taches...</td>
+                    <td colSpan="7">Chargement des tâches...</td>
                   </tr>
                 ) : tasks.length === 0 ? (
                   <tr>
-                    <td colSpan="7">Aucune tache assignee pour le moment.</td>
+                    <td colSpan="7">Aucune tâche assignée pour le moment.</td>
                   </tr>
                 ) : (
                   tasks.map((task) => {
@@ -298,7 +298,7 @@ export default function Tasks() {
                         <td>{task.review_comment || "-"}</td>
                         <td>
                           {task.status === "DONE" ? (
-                            <span className="badge badge-termine">Validee</span>
+                            <span className="badge badge-termine">Validée</span>
                           ) : canSubmit ? (
                             <button
                               className="modifier"
@@ -361,7 +361,7 @@ export default function Tasks() {
                   rows={4}
                   value={submissionNote}
                   onChange={(event) => setSubmissionNote(event.target.value)}
-                  placeholder="Decrivez ce qui a ete fait ou les points a verifier."
+                  placeholder="Décrivez ce qui a été fait ou les points à vérifier."
                   style={{
                     ...fieldStyle,
                     resize: "vertical",
@@ -377,14 +377,14 @@ export default function Tasks() {
                     onChange={(event) => setSubmissionFile(event.target.files?.[0] || null)}
                   />
                   <p className="desc" style={{ marginTop: 8 }}>
-                    Cette tache exige un fichier de retour.
+                    Cette tâche exige un fichier de retour.
                   </p>
                 </div>
               ) : (
                 <div style={{ marginTop: 16 }}>
                   <p className="desc">Fichier de remise</p>
                   <p style={{ color: dark ? "#94a3b8" : "#64748b" }}>
-                    Aucun fichier n'est obligatoire pour cette tache. Vous pouvez envoyer la remise sans piece jointe.
+                    Aucun fichier n'est obligatoire pour cette tâche. Vous pouvez envoyer la remise sans pièce jointe.
                   </p>
                 </div>
               )}

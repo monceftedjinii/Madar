@@ -37,10 +37,10 @@ function getPreviewType(fileUrl) {
 
 const statusLabels = {
   DRAFT: "Brouillon",
-  SENT: "Envoye",
-  VALIDATED: "Valide",
-  REJECTED: "Refuse",
-  ARCHIVED: "Archive",
+  SENT: "Envoyé",
+  VALIDATED: "Validé",
+  REJECTED: "Refusé",
+  ARCHIVED: "Archivé",
 };
 
 const confidentialityLabels = {
@@ -81,7 +81,7 @@ export default function Documents() {
         setSelectedId(null);
       }
     } catch (error) {
-      console.error("Erreur chargement documents employe:", error);
+      console.error("Erreur chargement documents employé :", error);
       setDocuments([]);
       setSelectedDocument(null);
       setSelectedId(null);
@@ -129,7 +129,7 @@ export default function Documents() {
       setSelectedDocument(response.data || null);
       setSelectedId(documentId);
     } catch (error) {
-      console.error("Erreur detail document employe:", error);
+      console.error("Erreur détail document employé :", error);
       setSelectedDocument(null);
       setSelectedId(null);
       setErrorMessage(error?.response?.data?.detail || "Impossible d'afficher ce document.");
@@ -166,10 +166,10 @@ export default function Documents() {
       link.download = `document-${documentId}`;
       link.click();
       window.URL.revokeObjectURL(url);
-      setFeedback("Telechargement lance.");
+      setFeedback("Téléchargement lancé.");
     } catch (error) {
-      console.error("Erreur telechargement document employe:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible de telecharger ce document.");
+      console.error("Erreur téléchargement document employé :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de télécharger ce document.");
     }
   };
 
@@ -225,7 +225,7 @@ export default function Documents() {
             <div className="yasar">
               <h1 className="monprofile">Mes documents</h1>
               <p className="morinfo">
-                Consultez les documents publics envoyes a votre service. Les documents prives ou confidentiels sont masques.
+                Consultez les documents publics envoyés à votre service. Les documents privés ou confidentiels sont masqués.
               </p>
             </div>
             <div className="yamin">
@@ -247,9 +247,9 @@ export default function Documents() {
           <section className="main-hero">
             <div className="main-hero-copy">
               <span className="main-eyebrow">Espace principal</span>
-              <h2 className="main-hero-title">Reception claire des documents du service</h2>
+              <h2 className="main-hero-title">Réception claire des documents du service</h2>
               <p className="main-hero-description">
-                Consultez les documents publics envoyes a votre service et accedez rapidement aux details et a la previsualisation.
+                Consultez les documents publics envoyés à votre service et accédez rapidement aux détails et à la prévisualisation.
               </p>
             </div>
             <div className="main-hero-kpis">
@@ -259,17 +259,17 @@ export default function Documents() {
                 <p>Documents visibles dans votre fil de reception.</p>
               </article>
               <article className="main-kpi-card">
-                <span>Envoyes</span>
+                <span>Envoyés</span>
                 <strong>{stats.sent}</strong>
-                <p>Documents deja envoyes a votre service.</p>
+                <p>Documents déjà envoyés à votre service.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Valides</span>
                 <strong>{stats.validated}</strong>
-                <p>Documents valides dans le circuit.</p>
+                <p>Documents validés dans le circuit.</p>
               </article>
               <article className="main-kpi-card">
-                <span>Selection</span>
+                <span>Sélection</span>
                 <strong>{selectedDocument ? "1" : "0"}</strong>
                 <p>{selectedDocument?.title || "Aucun document ouvert"}</p>
               </article>
@@ -296,10 +296,10 @@ export default function Documents() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Documents recus</h2>
-                <p>Seuls les documents publics envoyes a votre service sont affiches.</p>
+                <h2>Documents reçus</h2>
+                <p>Seuls les documents publics envoyés à votre service sont affichés.</p>
               </div>
-              <div className="main-action-pill">Reception</div>
+              <div className="main-action-pill">Réception</div>
             </div>
 
             <div className="activite-table-scroll">
@@ -321,7 +321,7 @@ export default function Documents() {
                   </tr>
                 ) : documents.length === 0 ? (
                   <tr>
-                    <td colSpan="6">Aucun document public n'a ete envoye a votre service.</td>
+                    <td colSpan="6">Aucun document public n'a été envoyé à votre service.</td>
                   </tr>
                 ) : (
                   documents.map((document) => (
@@ -342,14 +342,14 @@ export default function Documents() {
                             onClick={() => openDocument(document.id)}
                             type="button"
                           >
-                            Details
+                            Détails
                           </button>
                           <button
                             className="mode"
                             onClick={() => downloadDocument(document.id)}
                             type="button"
                           >
-                            Telecharger
+                            Télécharger
                           </button>
                         </div>
                       </td>
@@ -364,16 +364,16 @@ export default function Documents() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Detail du document</h2>
-                <p>Visualisation du document selectionne et de ses informations principales.</p>
+                <h2>Détail du document</h2>
+                <p>Visualisation du document sélectionné et de ses informations principales.</p>
               </div>
-              <div className="main-action-pill">Detail</div>
+              <div className="main-action-pill">Détail</div>
             </div>
 
             {detailLoading ? (
-              <div className="main-empty">Chargement du detail du document...</div>
+              <div className="main-empty">Chargement du détail du document...</div>
             ) : !selectedDocument ? (
-              <div className="main-empty">Selectionnez un document public pour afficher ses details.</div>
+              <div className="main-empty">Sélectionnez un document public pour afficher ses détails.</div>
             ) : (
               <>
                 <div
@@ -392,7 +392,7 @@ export default function Documents() {
                     <h3>{selectedDocument.doc_type || "-"}</h3>
                   </div>
                   <div>
-                    <p className="desc">Confidentialite</p>
+                    <p className="desc">Confidentialité</p>
                     <h3>{confidentialityLabels[selectedDocument.confidentiality_level] || selectedDocument.confidentiality_level || "-"}</h3>
                   </div>
                   <div>
@@ -408,11 +408,11 @@ export default function Documents() {
                     <h3>{selectedDocument.target_service || "-"}</h3>
                   </div>
                   <div>
-                    <p className="desc">Cree par</p>
+                    <p className="desc">Créé par</p>
                     <h3>{selectedDocument.created_by_name || selectedDocument.created_by || "-"}</h3>
                   </div>
                   <div>
-                    <p className="desc">Date de creation</p>
+                    <p className="desc">Date de création</p>
                     <h3>{formatDateTime(selectedDocument.created_at)}</h3>
                   </div>
                 </div>
@@ -423,7 +423,7 @@ export default function Documents() {
                     onClick={() => downloadDocument(selectedDocument.id)}
                     type="button"
                   >
-                    Telecharger le document
+                    Télécharger le document
                   </button>
                 </div>
 
@@ -526,9 +526,9 @@ export default function Documents() {
                         textAlign: "center",
                       }}
                     >
-                      <h3 style={{ margin: 0 }}>Apercu indisponible</h3>
+                      <h3 style={{ margin: 0 }}>Aperçu indisponible</h3>
                       <p className="desc" style={{ maxWidth: 480 }}>
-                        Ce type de fichier ne peut pas etre previsualise directement dans la page. Utilisez le bouton de telechargement pour le consulter.
+                        Ce type de fichier ne peut pas être prévisualisé directement dans la page. Utilisez le bouton de téléchargement pour le consulter.
                       </p>
                     </div>
                   )}
@@ -560,7 +560,7 @@ export default function Documents() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`Apercu complet de ${selectedDocument.title}`}
+            aria-label={`Aperçu complet de ${selectedDocument.title}`}
             onClick={(event) => event.stopPropagation()}
             style={{
               width: "min(1200px, 100%)",
@@ -608,13 +608,13 @@ export default function Documents() {
                   {selectedDocument.title}
                 </h3>
                 <p className="desc" style={{ margin: "4px 0 0" }}>
-                  Visualisation complete du document
+                  Visualisation complète du document
                 </p>
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <button className="modifier" onClick={() => downloadDocument(selectedDocument.id)} type="button">
-                  Telecharger
+                  Télécharger
                 </button>
                 <button
                   type="button"

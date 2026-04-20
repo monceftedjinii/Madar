@@ -25,9 +25,9 @@ export default function ChefAttendance() {
       const response = await axios.get("/api/attendance/team/");
       setRows(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error("Erreur chargement presence equipe:", error);
+      console.error("Erreur chargement présence équipe :", error);
       setRows([]);
-      setErrorMessage("Impossible de charger le suivi de presence de l'equipe.");
+      setErrorMessage("Impossible de charger le suivi de présence de l'équipe.");
     } finally {
       setLoading(false);
     }
@@ -71,9 +71,9 @@ export default function ChefAttendance() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Presence equipe</h1>
+              <h1 className="monprofile">Présence équipe</h1>
               <p className="morinfo">
-                Suivi des pointages, absences et journees completes des employes de votre service.
+                Suivi des pointages, absences et journées complètes des employés de votre service.
               </p>
             </div>
             <div className="yamin">
@@ -95,22 +95,22 @@ export default function ChefAttendance() {
           <section className="chef-hero">
             <div className="chef-hero-copy">
               <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Lecture instantanee de la presence du service</h2>
+              <h2 className="chef-hero-title">Lecture instantanée de la présence du service</h2>
               <p className="chef-hero-description">
-                Reperez rapidement les journees completes, les pointages en cours et les absences
-                de votre equipe avant d'entrer dans le detail.
+                Repérez rapidement les journées complètes, les pointages en cours et les absences
+                de votre équipe avant d'entrer dans le détail.
               </p>
             </div>
             <div className="chef-hero-kpis">
               <article className="chef-kpi-card">
-                <span>Equipe suivie</span>
+                <span>Équipe suivie</span>
                 <strong>{stats.total}</strong>
                 <p>Collaborateurs inclus dans votre scope chef.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>Complet</span>
                 <strong>{stats.complete}</strong>
-                <p>Journees cloturees avec entree et sortie.</p>
+                <p>Journées clôturées avec entrée et sortie.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>En cours</span>
@@ -120,7 +120,7 @@ export default function ChefAttendance() {
               <article className="chef-kpi-card">
                 <span>Absents</span>
                 <strong>{stats.absent}</strong>
-                <p>Employes sans presence sur la journee.</p>
+                <p>Employés sans présence sur la journée.</p>
               </article>
             </div>
           </section>
@@ -129,12 +129,12 @@ export default function ChefAttendance() {
             <article className="chef-metric-card">
               <span>Actualisation</span>
               <strong>{loading ? "..." : "OK"}</strong>
-              <p>Les donnees de presence peuvent etre rechargees a tout moment.</p>
+              <p>Les données de présence peuvent être rechargées à tout moment.</p>
             </article>
             <article className="chef-metric-card">
               <span>Controle</span>
               <strong>{stats.complete + stats.inProgress}</strong>
-              <p>Employes avec une presence deja constatee sur la journee.</p>
+              <p>Employés avec une présence déjà constatée sur la journée.</p>
             </article>
             <article className="chef-metric-card">
               <span>Action rapide</span>
@@ -151,8 +151,8 @@ export default function ChefAttendance() {
           <section className="chef-panel">
             <div className="chef-panel-head">
               <div>
-                <h2>Suivi de presence equipe</h2>
-                <p>Donnees remontees par le backend pour la periode en cours.</p>
+                <h2>Suivi de présence équipe</h2>
+                <p>Données remontées par le backend pour la période en cours.</p>
               </div>
               <div className="chef-action-pill">Pointages du jour</div>
             </div>
@@ -161,11 +161,11 @@ export default function ChefAttendance() {
               <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Employe</th>
+                  <th>Employé</th>
                   <th>Poste</th>
-                  <th>Entree</th>
+                  <th>Entrée</th>
                   <th>Sortie</th>
-                  <th>Journees completes</th>
+                  <th>Journées complètes</th>
                   <th>Sorties manquantes</th>
                   <th>Absences</th>
                   <th>Statut du jour</th>
@@ -174,11 +174,11 @@ export default function ChefAttendance() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8">Chargement de la presence equipe...</td>
+                    <td colSpan="8">Chargement de la présence équipe...</td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan="8">Aucune donnee de presence disponible.</td>
+                    <td colSpan="8">Aucune donnée de présence disponible.</td>
                   </tr>
                 ) : (
                   rows.map((row) => (

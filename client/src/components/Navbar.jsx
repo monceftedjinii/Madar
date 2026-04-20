@@ -131,7 +131,7 @@ export default function Navbar(props) {
   }, []);
 
   const resolvedName = fullName || fetchedProfile.fullName || "Utilisateur";
-  const resolvedPost = post || fetchedProfile.post || "Poste non renseigne";
+  const resolvedPost = post || fetchedProfile.post || "Poste non renseigné";
   const resolvedImage = image || fetchedProfile.image;
   const resolvedEmail = email || fetchedProfile.email;
   const resolvedRole = fetchedProfile.role || "";
@@ -151,26 +151,26 @@ export default function Navbar(props) {
       items: [
         { to: "/home", label: "Dashboard" },
         { to: "/profile", label: "Mon Profil" },
-        { to: "/conge", label: "Conges" },
-        { to: "/attendance", label: "Presence" },
+        { to: "/conge", label: "Congés" },
+        { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
-        { to: "/evaluations", label: "Evaluations" },
+        { to: "/evaluations", label: "Évaluations" },
         { to: "/gpec", label: "GPEC" },
-        { to: "/tasks", label: "Mes taches" },
+        { to: "/tasks", label: "Mes tâches" },
       ],
     },
     ...(isChef || isRhSeniorManager
       ? [
           {
-            title: isRhSeniorManager ? "Equipe RH" : "Espace Chef",
+            title: isRhSeniorManager ? "Équipe RH" : "Espace Chef",
             items: [
-              { to: "/team", label: "Mon equipe" },
-              { to: "/chef/attendance", label: "Presence equipe" },
-              { to: "/chef/tasks", label: "Taches equipe" },
+              { to: "/team", label: "Mon équipe" },
+              { to: "/chef/attendance", label: "Présence équipe" },
+              { to: "/chef/tasks", label: "Tâches équipe" },
               ...(isChef
                 ? [
-                    { to: "/chef/leaves", label: "Validation conges" },
-                    { to: "/chef/evaluations", label: "Evaluer equipe" },
+                    { to: "/chef/leaves", label: "Validation des congés" },
+                    { to: "/chef/evaluations", label: "Évaluer l'équipe" },
                     { to: "/chef/documents", label: "Documents" },
                     { to: "/chef/formations", label: "Formations" },
                     { to: "/chef/reports", label: "Rapports" },
@@ -189,10 +189,10 @@ export default function Navbar(props) {
               { to: "/rh/absences", label: isGrh ? "Absences globales" : "Absences RH" },
               { to: "/rh/documents", label: isGrh ? "Documents globaux" : "Documents RH" },
               ...(canUseRhFormations ? [{ to: "/rh/formations", label: isGrh ? "Formations globales" : "Formations RH" }] : []),
-              { to: "/rh/evaluations", label: isGrh ? "Evaluations globales" : "Evaluations RH" },
+              { to: "/rh/evaluations", label: isGrh ? "Évaluations globales" : "Évaluations RH" },
               { to: "/rh/gpec", label: isGrh ? "GPEC global" : "GPEC RH" },
               { to: "/rh/reports", label: isGrh ? "Pilotage et rapports" : "Rapports RH" },
-              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Gerer les employes" }] : []),
+              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Gérer les employés" }] : []),
             ],
           },
         ]

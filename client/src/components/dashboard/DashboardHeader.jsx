@@ -1,7 +1,7 @@
 export default function DashboardHeader({
-  eyebrow = "Espace Employe",
-  title = "Tableau de bord employe",
-  description = "Suivez votre performance, votre productivite et votre note mensuelle dans un tableau de bord RH clair et moderne.",
+  eyebrow = "Espace Employé",
+  title = "Tableau de bord employé",
+  description = "Suivez votre performance, votre productivité et votre note mensuelle dans un tableau de bord RH clair et moderne.",
   monthLabel = "Ce mois",
   monthValue = "",
   monthOptions = [],

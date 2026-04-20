@@ -38,11 +38,11 @@ export default function TeamEmployees() {
       setEmployees(data);
       setServiceName(data[0]?.service?.nomService || "");
     } catch (requestError) {
-      console.error("Erreur chargement equipe:", requestError);
+      console.error("Erreur chargement équipe :", requestError);
       setEmployees([]);
       setServiceName("");
       setCurrentRole("");
-      setError("Impossible de charger la liste des employes du service.");
+      setError("Impossible de charger la liste des employés du service.");
     } finally {
       setLoading(false);
     }
@@ -97,9 +97,9 @@ export default function TeamEmployees() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Mon equipe</h1>
+              <h1 className="monprofile">Mon équipe</h1>
               <p className="morinfo">
-                Visualisez les employes de votre service et leur statut de presence en ligne.
+                Visualisez les employés de votre service et leur statut de présence en ligne.
               </p>
             </div>
             <div className="yamin">
@@ -125,22 +125,22 @@ export default function TeamEmployees() {
           <section className="info-per">
             <div className="top">
               <h2 className="title">Service</h2>
-              <p className="desc">Equipe actuellement rattachee a votre compte.</p>
+              <p className="desc">Équipe actuellement rattachée à votre compte.</p>
             </div>
             <div>
               <p className="desc">Nom du service</p>
-              <h3>{serviceName || "Non renseigne"}</h3>
+              <h3>{serviceName || "Non renseigné"}</h3>
             </div>
             <div>
-              <p className="desc">Employes visibles</p>
+              <p className="desc">Employés visibles</p>
               <h3>{stats.total}</h3>
             </div>
           </section>
 
           <section className="info-pro">
             <div className="top">
-              <h2 className="title">Presence en ligne</h2>
-              <p className="desc">Suivi rapide de la disponibilite actuelle.</p>
+              <h2 className="title">Présence en ligne</h2>
+              <p className="desc">Suivi rapide de la disponibilité actuelle.</p>
             </div>
             <div>
               <p className="desc">En ligne</p>
@@ -160,9 +160,9 @@ export default function TeamEmployees() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Employes du service</h2>
+            <h2 className="activite-title">Employés du service</h2>
             <p className="activite-subtitle">
-              Statut en ligne des employes remontes par le backend.
+              Statut en ligne des employés remontés par le backend.
             </p>
           </div>
 
@@ -171,7 +171,7 @@ export default function TeamEmployees() {
               className="page-feedback info"
               style={{ margin: "0 0 16px" }}
             >
-              Cette page est principalement destinee au chef de service et au RH senior pour suivre leur equipe.
+              Cette page est principalement destinée au chef de service et au RH senior pour suivre leur équipe.
             </div>
           )}
 
@@ -188,23 +188,23 @@ export default function TeamEmployees() {
             <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Employe</th>
+                  <th>Employé</th>
                   <th>Poste</th>
-                  <th>Email</th>
-                  <th>Telephone</th>
+                  <th>E-mail</th>
+                  <th>Téléphone</th>
                   <th>Contrat</th>
-                  <th>Entree entreprise</th>
+                  <th>Entrée entreprise</th>
                   <th>Statut</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7">Chargement de l'equipe...</td>
+                    <td colSpan="7">Chargement de l'équipe...</td>
                   </tr>
                 ) : employees.length === 0 ? (
                   <tr>
-                    <td colSpan="7">Aucun employe n'est visible pour ce service.</td>
+                    <td colSpan="7">Aucun employé n'est visible pour ce service.</td>
                   </tr>
                 ) : (
                   employees.map((employee) => {
@@ -267,7 +267,7 @@ export default function TeamEmployees() {
                 <h2 style={{ margin: 0 }}>
                   {`${selectedEmployee.first_name || ""} ${selectedEmployee.last_name || ""}`.trim() ||
                     selectedEmployee.email ||
-                    "Employe"}
+                    "Employé"}
                 </h2>
                 <p
                   style={{
@@ -304,9 +304,9 @@ export default function TeamEmployees() {
               >
                 <h3 style={{ marginTop: 0 }}>Informations personnelles</h3>
                 <p><strong>Nom:</strong> {selectedEmployee.last_name || "-"}</p>
-                <p><strong>Prenom:</strong> {selectedEmployee.first_name || "-"}</p>
-                <p><strong>Email:</strong> {selectedEmployee.email || "-"}</p>
-                <p><strong>Telephone:</strong> {selectedEmployee.phone_number || "-"}</p>
+                <p><strong>Prénom :</strong> {selectedEmployee.first_name || "-"}</p>
+                <p><strong>E-mail :</strong> {selectedEmployee.email || "-"}</p>
+                <p><strong>Téléphone :</strong> {selectedEmployee.phone_number || "-"}</p>
                 <p><strong>Adresse:</strong> {selectedEmployee.address || "-"}</p>
               </section>
 
@@ -323,7 +323,7 @@ export default function TeamEmployees() {
                 <p><strong>Service:</strong> {selectedEmployee.service?.nomService || "-"}</p>
                 <p><strong>Code service:</strong> {selectedEmployee.service?.code || "-"}</p>
                 <p><strong>Contrat:</strong> {selectedEmployee.contract_type || "-"}</p>
-                <p><strong>Date d'entree:</strong> {formatDate(selectedEmployee.hired_at)}</p>
+                <p><strong>Date d'entrée :</strong> {formatDate(selectedEmployee.hired_at)}</p>
                 <p>
                   <strong>Statut en ligne:</strong>{" "}
                   <span

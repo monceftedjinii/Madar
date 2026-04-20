@@ -49,11 +49,11 @@ export default function Form({
               />
             </label>
             <label>
-              Email
+              E-mail
               <input type="email" name="email" value={formData.email} readOnly />
             </label>
             <label>
-              Telephone
+              Téléphone
               <input
                 type="text"
                 name="phone"
@@ -82,7 +82,7 @@ export default function Form({
               />
             </label>
             <label>
-              Departement
+              Département
               <input
                 type="text"
                 name="department"

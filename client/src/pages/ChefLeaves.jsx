@@ -16,8 +16,8 @@ function formatDate(value) {
 function getStatusLabel(status) {
   const labels = {
     PENDING: "En attente",
-    ACCEPTED: "Acceptee",
-    REFUSED: "Refusee",
+    ACCEPTED: "Acceptée",
+    REFUSED: "Refusée",
   };
   return labels[status] || status;
 }
@@ -44,7 +44,7 @@ export default function ChefLeaves() {
       const response = await axios.get("/api/leaves/department/");
       setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (requestError) {
-      console.error("Erreur chargement validation conges:", requestError);
+      console.error("Erreur chargement validation congés :", requestError);
       setRequests([]);
       setErrorMessage("Impossible de charger les demandes du service.");
     } finally {
@@ -84,12 +84,12 @@ export default function ChefLeaves() {
       await axios.post(`/api/leaves/${requestId}/${action}/`, { comment });
       setFeedback(
         action === "approve"
-          ? "Demande validee avec succes."
-          : "Demande refusee avec succes.",
+          ? "Demande validée avec succès."
+          : "Demande refusée avec succès.",
       );
       await fetchRequests();
     } catch (requestError) {
-      console.error("Erreur decision conge:", requestError);
+      console.error("Erreur décision congé :", requestError);
       setErrorMessage(
         requestError?.response?.data?.detail || "Impossible de traiter cette demande.",
       );
@@ -124,9 +124,9 @@ export default function ChefLeaves() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Validation conges</h1>
+              <h1 className="monprofile">Validation des congés</h1>
               <p className="morinfo">
-                Consultez et traitez les demandes de conges de votre service.
+                Consultez et traitez les demandes de congés de votre service.
               </p>
             </div>
             <div className="yamin">
@@ -148,17 +148,17 @@ export default function ChefLeaves() {
           <section className="chef-hero">
             <div className="chef-hero-copy">
               <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Validation claire des demandes de conges</h2>
+              <h2 className="chef-hero-title">Validation claire des demandes de congés</h2>
               <p className="chef-hero-description">
                 Centralisez les demandes du service, priorisez celles en attente et gardez une
-                vision lisible des validations deja traitees.
+                vision lisible des validations déjà traitées.
               </p>
             </div>
             <div className="chef-hero-kpis">
               <article className="chef-kpi-card">
                 <span>Total</span>
                 <strong>{stats.total}</strong>
-                <p>Demandes visibles dans votre perimetre.</p>
+                <p>Demandes visibles dans votre périmètre.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>En attente</span>
@@ -166,14 +166,14 @@ export default function ChefLeaves() {
                 <p>Demandes qui attendent encore votre decision.</p>
               </article>
               <article className="chef-kpi-card">
-                <span>Acceptees</span>
+                <span>Acceptées</span>
                 <strong>{stats.accepted}</strong>
-                <p>Demandes deja validees au niveau chef.</p>
+                <p>Demandes déjà validées au niveau chef.</p>
               </article>
               <article className="chef-kpi-card">
-                <span>Refusees</span>
+                <span>Refusées</span>
                 <strong>{stats.refused}</strong>
-                <p>Demandes refusees ou non retenues.</p>
+                <p>Demandes refusées ou non retenues.</p>
               </article>
             </div>
           </section>
@@ -190,7 +190,7 @@ export default function ChefLeaves() {
             <article className="chef-metric-card">
               <span>Lecture</span>
               <strong>{stats.total - stats.pending}</strong>
-              <p>Demandes deja sorties de la file d&apos;attente.</p>
+              <p>Demandes déjà sorties de la file d&apos;attente.</p>
             </article>
           </div>
 
@@ -204,7 +204,7 @@ export default function ChefLeaves() {
             <div className="chef-panel-head">
               <div>
                 <h2>Demandes du service</h2>
-                <p>Liste backend des demandes accessibles a la validation du chef.</p>
+                <p>Liste backend des demandes accessibles à la validation du chef.</p>
               </div>
               <div className="chef-action-pill">Validation manager</div>
             </div>
@@ -213,11 +213,11 @@ export default function ChefLeaves() {
               <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Employe</th>
+                  <th>Employé</th>
                   <th>Type</th>
-                  <th>Periode</th>
+                  <th>Période</th>
                   <th>Motif</th>
-                  <th>Etape</th>
+                  <th>Étape</th>
                   <th>Statut</th>
                   <th>Action</th>
                 </tr>
@@ -229,7 +229,7 @@ export default function ChefLeaves() {
                   </tr>
                 ) : requests.length === 0 ? (
                   <tr>
-                    <td colSpan="7">Aucune demande de conge visible pour le moment.</td>
+                    <td colSpan="7">Aucune demande de congé visible pour le moment.</td>
                   </tr>
                 ) : (
                   requests.map((requestItem) => {
@@ -249,7 +249,7 @@ export default function ChefLeaves() {
                         <td>{requestItem.reason || "-"}</td>
                         <td>
                           {requestItem.current_step
-                            ? `Etape ${requestItem.current_step.validation_order} - ${requestItem.current_step.validator_role}`
+                            ? `Étape ${requestItem.current_step.validation_order} - ${requestItem.current_step.validator_role}`
                             : "-"}
                         </td>
                         <td>

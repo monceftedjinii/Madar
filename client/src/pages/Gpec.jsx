@@ -70,11 +70,11 @@ export default function Gpec() {
         progress: Number(nextProgress),
         status,
       });
-      setFeedback("Progression mise a jour.");
+      setFeedback("Progression mise à jour.");
       await fetchGpec();
     } catch (error) {
-      console.error("Erreur mise a jour objectif:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible de mettre a jour cet objectif.");
+      console.error("Erreur mise à jour objectif :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de mettre à jour cet objectif.");
     } finally {
       setActionId(null);
     }
@@ -91,7 +91,7 @@ export default function Gpec() {
           <div className="profile-naaav">
             <div className="yasar">
               <h1 className="monprofile">Mon espace GPEC</h1>
-              <p className="morinfo">Consultez vos competences, objectifs et plans de developpement.</p>
+              <p className="morinfo">Consultez vos compétences, objectifs et plans de développement.</p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -110,19 +110,19 @@ export default function Gpec() {
               <span className="main-eyebrow">Espace principal</span>
               <h2 className="main-hero-title">Vision personnelle de votre progression GPEC</h2>
               <p className="main-hero-description">
-                Suivez vos competences, vos objectifs et les plans de developpement proposes dans une interface plus nette.
+                Suivez vos compétences, vos objectifs et les plans de développement proposés dans une interface plus nette.
               </p>
             </div>
             <div className="main-hero-kpis">
               <article className="main-kpi-card">
-                <span>Competences</span>
+                <span>Compétences</span>
                 <strong>{stats.competencies}</strong>
-                <p>Competences actuellement suivies dans votre profil.</p>
+                <p>Compétences actuellement suivies dans votre profil.</p>
               </article>
               <article className="main-kpi-card">
-                <span>Ecarts</span>
+                <span>Écarts</span>
                 <strong>{stats.gaps}</strong>
-                <p>Competences dont le niveau cible n'est pas encore atteint.</p>
+                <p>Compétences dont le niveau cible n'est pas encore atteint.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Objectifs</span>
@@ -132,7 +132,7 @@ export default function Gpec() {
               <article className="main-kpi-card">
                 <span>Plans ouverts</span>
                 <strong>{stats.activePlans}</strong>
-                <p>Plans de developpement encore actifs.</p>
+                <p>Plans de développement encore actifs.</p>
               </article>
             </div>
           </section>
@@ -153,17 +153,17 @@ export default function Gpec() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Competences</h2>
-                <p>Niveaux actuels et cibles definis dans le plan GPEC.</p>
+                <h2>Compétences</h2>
+                <p>Niveaux actuels et cibles définis dans le plan GPEC.</p>
               </div>
-              <div className="main-action-pill">Competences</div>
+              <div className="main-action-pill">Compétences</div>
             </div>
             <div className="activite-table-scroll">
               <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Competence</th>
-                  <th>Categorie</th>
+                  <th>Compétence</th>
+                  <th>Catégorie</th>
                   <th>Niveau actuel</th>
                   <th>Niveau cible</th>
                   <th>Ecart</th>
@@ -171,9 +171,9 @@ export default function Gpec() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="5">Chargement des competences...</td></tr>
+                  <tr><td colSpan="5">Chargement des compétences...</td></tr>
                 ) : data.competencies.length === 0 ? (
-                  <tr><td colSpan="5">Aucune competence renseignee pour le moment.</td></tr>
+                  <tr><td colSpan="5">Aucune compétence renseignée pour le moment.</td></tr>
                 ) : (
                   data.competencies.map((item) => (
                     <tr key={item.id}>
@@ -203,7 +203,7 @@ export default function Gpec() {
               <thead>
                 <tr>
                   <th>Objectif</th>
-                  <th>Echeance</th>
+                  <th>Échéance</th>
                   <th>Statut</th>
                   <th>Progression</th>
                   <th>Action</th>
@@ -213,7 +213,7 @@ export default function Gpec() {
                 {loading ? (
                   <tr><td colSpan="5">Chargement des objectifs...</td></tr>
                 ) : data.objectives.length === 0 ? (
-                  <tr><td colSpan="5">Aucun objectif defini pour le moment.</td></tr>
+                  <tr><td colSpan="5">Aucun objectif défini pour le moment.</td></tr>
                 ) : (
                   data.objectives.map((item) => (
                     <tr key={item.id}>
@@ -256,10 +256,10 @@ export default function Gpec() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Plans de developpement</h2>
-                <p>Actions recommandees pour accelerer votre progression.</p>
+                <h2>Plans de développement</h2>
+                <p>Actions recommandées pour accélérer votre progression.</p>
               </div>
-              <div className="main-action-pill">Developpement</div>
+              <div className="main-action-pill">Développement</div>
             </div>
             <div className="activite-table-scroll">
               <table className="activite-table">
@@ -275,7 +275,7 @@ export default function Gpec() {
                 {loading ? (
                   <tr><td colSpan="4">Chargement des plans...</td></tr>
                 ) : data.plans.length === 0 ? (
-                  <tr><td colSpan="4">Aucun plan de developpement disponible.</td></tr>
+                  <tr><td colSpan="4">Aucun plan de développement disponible.</td></tr>
                 ) : (
                   data.plans.map((item) => (
                     <tr key={item.id}>

@@ -34,9 +34,9 @@ export default function Evaluations() {
       const response = await axios.get("/api/evaluations/me/");
       setItems(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error("Erreur chargement evaluations:", error);
+      console.error("Erreur chargement évaluations :", error);
       setItems([]);
-      setErrorMessage("Impossible de charger vos evaluations.");
+      setErrorMessage("Impossible de charger vos évaluations.");
     } finally {
       setLoading(false);
     }
@@ -64,8 +64,8 @@ export default function Evaluations() {
         <div className={`sticky top-0 z-40 backdrop-blur ${dark ? "border-b border-slate-800 bg-slate-950/90" : "border-b border-slate-200/80 bg-white/90"}`}>
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Mes evaluations</h1>
-              <p className="morinfo">Consultez vos notes, recommandations et commentaires d'evaluation.</p>
+              <h1 className="monprofile">Mes évaluations</h1>
+              <p className="morinfo">Consultez vos notes, recommandations et commentaires d'évaluation.</p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -82,17 +82,17 @@ export default function Evaluations() {
           <section className="main-hero">
             <div className="main-hero-copy">
               <span className="main-eyebrow">Espace principal</span>
-              <h2 className="main-hero-title">Suivi lisible de vos evaluations</h2>
+              <h2 className="main-hero-title">Suivi lisible de vos évaluations</h2>
               <p className="main-hero-description">
                 Consultez vos notes, vos recommandations et l'historique des campagnes
-                d'evaluation dans une vue plus claire.
+                d'évaluation dans une vue plus claire.
               </p>
             </div>
             <div className="main-hero-kpis">
               <article className="main-kpi-card">
                 <span>Nombre</span>
                 <strong>{stats.total}</strong>
-                <p>Evaluations disponibles dans votre historique.</p>
+                <p>Évaluations disponibles dans votre historique.</p>
               </article>
               <article className="main-kpi-card">
                 <span>Moyenne</span>
@@ -116,8 +116,8 @@ export default function Evaluations() {
           <section className="main-panel">
             <div className="main-panel-head">
               <div>
-                <h2>Evaluations enregistrees</h2>
-                <p>Donnees remontees par le module d'evaluation.</p>
+                <h2>Évaluations enregistrées</h2>
+                <p>Données remontées par le module d'évaluation.</p>
               </div>
               <div className="main-action-pill">Historique</div>
             </div>
@@ -126,18 +126,18 @@ export default function Evaluations() {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Periode</th>
-                  <th>Evaluateur</th>
+                  <th>Période</th>
+                  <th>Évaluateur</th>
                   <th>Note globale</th>
-                  <th>Recommendation</th>
+                  <th>Recommandation</th>
                   <th>Commentaire</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="6">Chargement des evaluations...</td></tr>
+                  <tr><td colSpan="6">Chargement des évaluations...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan="6">Aucune evaluation disponible pour le moment.</td></tr>
+                  <tr><td colSpan="6">Aucune évaluation disponible pour le moment.</td></tr>
                 ) : (
                   items.map((item) => (
                     <tr key={item.id}>

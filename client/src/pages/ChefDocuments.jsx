@@ -17,7 +17,7 @@ const initialForm = {
 
 function getSelectedFileLabel(file) {
   if (!file) return "Aucun fichier choisi";
-  return file.name || "Fichier selectionne";
+  return file.name || "Fichier sélectionné";
 }
 
 function formatDateTime(value) {
@@ -43,10 +43,10 @@ function getStatusClass(status) {
 
 const statusLabels = {
   DRAFT: "Brouillon",
-  SENT: "Envoye",
-  VALIDATED: "Valide",
-  REJECTED: "Refuse",
-  ARCHIVED: "Archive",
+  SENT: "Envoyé",
+  VALIDATED: "Validé",
+  REJECTED: "Refusé",
+  ARCHIVED: "Archivé",
 };
 
 function CommentThread({ comments, dark = false }) {
@@ -221,12 +221,12 @@ export default function ChefDocuments() {
       await axios.post("/api/documents/", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setFeedback("Document cree en brouillon avec succes.");
+      setFeedback("Document créé en brouillon avec succès.");
       setForm(initialForm);
       await fetchData();
     } catch (error) {
-      console.error("Erreur creation document:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible de creer le document.");
+      console.error("Erreur création document :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de créer le document.");
     } finally {
       setSubmitting(false);
     }
@@ -237,13 +237,13 @@ export default function ChefDocuments() {
       setActionId(documentId);
       resetMessages();
       await axios.post(`/api/documents/${documentId}/send/`);
-      setFeedback("Document envoye avec succes.");
+      setFeedback("Document envoyé avec succès.");
       await fetchData();
       if (selectedDocument?.id === documentId) {
         await openDocument({ id: documentId });
       }
     } catch (error) {
-      console.error("Erreur envoi document:", error);
+      console.error("Erreur envoi document :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible d'envoyer ce document.");
     } finally {
       setActionId(null);
@@ -263,8 +263,8 @@ export default function ChefDocuments() {
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Erreur telechargement document:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible de telecharger ce document.");
+      console.error("Erreur téléchargement document :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de télécharger ce document.");
     }
   };
 
@@ -279,7 +279,7 @@ export default function ChefDocuments() {
         comment: commentText.trim(),
       });
       setCommentText("");
-      setFeedback("Commentaire ajoute avec succes.");
+      setFeedback("Commentaire ajouté avec succès.");
       await openDocument(selectedDocument);
       await fetchData();
     } catch (error) {
@@ -293,7 +293,7 @@ export default function ChefDocuments() {
   const submitNewVersion = async (event) => {
     event.preventDefault();
     if (!selectedDocument || !versionFile) {
-      setErrorMessage("Selectionnez un fichier pour creer une nouvelle version.");
+      setErrorMessage("Sélectionnez un fichier pour créer une nouvelle version.");
       return;
     }
 
@@ -308,7 +308,7 @@ export default function ChefDocuments() {
       });
       setVersionFile(null);
       setVersionComment("");
-      setFeedback("Nouvelle version du document creee avec succes.");
+      setFeedback("Nouvelle version du document créée avec succès.");
       await openDocument(selectedDocument);
       await fetchData();
     } catch (error) {
@@ -355,7 +355,7 @@ export default function ChefDocuments() {
               <span className="chef-eyebrow">Espace chef</span>
               <h2 className="chef-hero-title">Gestion documentaire du service</h2>
               <p className="chef-hero-description">
-                Creez, envoyez, commentez et versionnez les documents de votre service dans une
+                Créez, envoyez, commentez et versionnez les documents de votre service dans une
                 interface plus claire pour le suivi quotidien.
               </p>
             </div>
@@ -363,22 +363,22 @@ export default function ChefDocuments() {
               <article className="chef-kpi-card">
                 <span>Total</span>
                 <strong>{stats.total}</strong>
-                <p>Documents accessibles cote chef.</p>
+                <p>Documents accessibles côté chef.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>Brouillons</span>
                 <strong>{stats.drafts}</strong>
-                <p>Documents encore non envoyes.</p>
+                <p>Documents encore non envoyés.</p>
               </article>
               <article className="chef-kpi-card">
-                <span>Envoyes</span>
+                <span>Envoyés</span>
                 <strong>{stats.sent}</strong>
                 <p>Documents transmis dans le circuit.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>Valides</span>
                 <strong>{stats.validated}</strong>
-                <p>Documents deja approuves.</p>
+                <p>Documents déjà approuvés.</p>
               </article>
             </div>
           </section>
@@ -404,7 +404,7 @@ export default function ChefDocuments() {
             <div className="chef-panel-head">
               <div>
                 <h2>Nouveau document</h2>
-                <p>Preparez le document, son type, son service cible et son niveau de confidentialite.</p>
+                <p>Préparez le document, son type, son service cible et son niveau de confidentialité.</p>
               </div>
               <div className="chef-action-pill">Publication</div>
             </div>
@@ -419,7 +419,7 @@ export default function ChefDocuments() {
               <input name="type" value={form.type} onChange={onFieldChange} placeholder="Ex: Note de service" style={fieldStyle} />
             </div>
             <div>
-              <p className="chef-form-label">Categorie</p>
+              <p className="chef-form-label">Catégorie</p>
               <select name="category" value={form.category} onChange={onFieldChange} style={fieldStyle}>
                 <option value="INTERNAL">Interne</option>
                 <option value="RH">RH</option>
@@ -437,7 +437,7 @@ export default function ChefDocuments() {
               </select>
             </div>
             <div>
-              <p className="chef-form-label">Confidentialite</p>
+              <p className="chef-form-label">Confidentialité</p>
               <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} style={fieldStyle}>
                 <option value="INTERNAL">Interne</option>
                 <option value="CONFIDENTIAL">Confidentiel</option>
@@ -482,7 +482,7 @@ export default function ChefDocuments() {
             </div>
             <div style={{ gridColumn: "1 / -1" }} className="chef-actions">
               <button className="modifier" disabled={submitting} type="submit">
-                {submitting ? "Creation..." : "Creer le document"}
+                {submitting ? "Création..." : "Créer le document"}
               </button>
             </div>
           </form>
@@ -492,7 +492,7 @@ export default function ChefDocuments() {
             <div className="chef-panel-head">
               <div>
                 <h2>Documents du service</h2>
-                <p>Historique backend des documents crees depuis votre service.</p>
+                <p>Historique backend des documents créés depuis votre service.</p>
               </div>
               <div className="chef-action-pill">Historique</div>
             </div>
@@ -506,7 +506,7 @@ export default function ChefDocuments() {
                   <th>Service cible</th>
                   <th>Version</th>
                   <th>Statut</th>
-                  <th>Cree le</th>
+                  <th>Créé le</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -527,7 +527,7 @@ export default function ChefDocuments() {
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <button className="modifier" onClick={() => openDocument(doc)} type="button">Consulter</button>
-                          <button className="mode" onClick={() => downloadDocument(doc.id)} type="button">Telecharger</button>
+                          <button className="mode" onClick={() => downloadDocument(doc.id)} type="button">Télécharger</button>
                           {doc.status === "DRAFT" && (
                             <button className="mode" disabled={actionId === doc.id} onClick={() => sendDocument(doc.id)} type="button">
                               {actionId === doc.id ? "Envoi..." : "Envoyer"}
@@ -586,7 +586,7 @@ export default function ChefDocuments() {
             </div>
 
             {detailLoading ? (
-              <div style={{ padding: "20px 0" }}>Chargement du detail...</div>
+              <div style={{ padding: "20px 0" }}>Chargement du détail...</div>
             ) : (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 20 }}>
@@ -599,7 +599,7 @@ export default function ChefDocuments() {
                     <strong>{selectedDocument.source_service || "-"}</strong>
                   </div>
                   <div style={{ ...fieldStyle, minHeight: 74 }}>
-                    <p className="desc">Cree le</p>
+                    <p className="desc">Créé le</p>
                     <strong>{formatDateTime(selectedDocument.created_at)}</strong>
                   </div>
                 </div>

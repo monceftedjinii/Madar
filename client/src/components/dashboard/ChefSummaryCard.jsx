@@ -46,7 +46,7 @@ export default function ChefSummaryCard({ profile, dark = false }) {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className={innerClass}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Taille equipe
+            Taille équipe
           </p>
           <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
             {profile.teamSize ?? 0}
@@ -70,7 +70,7 @@ export default function ChefSummaryCard({ profile, dark = false }) {
         </div>
         <div className={innerClass}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Conges a valider
+            Congés à valider
           </p>
           <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
             {profile.pendingLeaves ?? 0}

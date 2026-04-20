@@ -78,13 +78,13 @@ export default function RhReports() {
   const cards = useMemo(() => {
     if (!summary) return [];
     return [
-      { label: "Employes", value: summary.employees_count ?? 0 },
-      { label: "Jours de presence", value: summary.attendance_days_count ?? 0 },
-      { label: "Absences detectees", value: summary.absences_detected_count ?? 0 },
-      { label: "Conges en attente", value: summary.leaves_pending_count ?? 0 },
-      { label: "Conges acceptes", value: summary.leaves_accepted_count ?? 0 },
-      { label: "Documents crees", value: summary.documents_created_count ?? 0 },
-      { label: "Documents valides", value: summary.documents_validated_count ?? 0 },
+      { label: "Employés", value: summary.employees_count ?? 0 },
+      { label: "Jours de présence", value: summary.attendance_days_count ?? 0 },
+      { label: "Absences détectées", value: summary.absences_detected_count ?? 0 },
+      { label: "Congés en attente", value: summary.leaves_pending_count ?? 0 },
+      { label: "Congés acceptés", value: summary.leaves_accepted_count ?? 0 },
+      { label: "Documents créés", value: summary.documents_created_count ?? 0 },
+      { label: "Documents validés", value: summary.documents_validated_count ?? 0 },
       { label: "Flags disciplinaires", value: summary.discipline_flags_count ?? 0 },
     ];
   }, [summary]);
@@ -132,8 +132,8 @@ export default function RhReports() {
               <h1 className="monprofile">{isGrh ? "Pilotage et rapports GRH" : "Rapports RH"}</h1>
               <p className="morinfo">
                 {isGrh
-                  ? "Pilotez les exports globaux et l'activite RH depuis un cockpit plus lisible."
-                  : "Filtrez la periode, lisez les indicateurs et exportez les rapports RH depuis un seul espace clair."}
+                  ? "Pilotez les exports globaux et l'activité RH depuis un cockpit plus lisible."
+                  : "Filtrez la période, lisez les indicateurs et exportez les rapports RH depuis un seul espace clair."}
               </p>
             </div>
             <div className="yamin">
@@ -164,8 +164,8 @@ export default function RhReports() {
                   Un cockpit RH plus net pour filtrer, lire les indicateurs et lancer les exports utiles.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200">
-                  Les filtres de periode, les exports et la synthese ne sont plus disperses. Tout est regroupe dans une vue
-                  simple a lire, plus proche d'un panneau de pilotage RH.
+                  Les filtres de période, les exports et la synthèse ne sont plus dispersés. Tout est regroupé dans une vue
+                  simple à lire, plus proche d'un panneau de pilotage RH.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <button
@@ -176,16 +176,16 @@ export default function RhReports() {
                     Recharger les indicateurs
                   </button>
                   <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
-                    Periode: {filters.from} au {filters.to}
+                    Période : {filters.from} au {filters.to}
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <MetricCard dark={dark} eyebrow="Employes" value={summary?.employees_count ?? 0} helper="Effectif visible" accent="from-cyan-400 via-cyan-500 to-blue-500" />
-                <MetricCard dark={dark} eyebrow="Presence" value={summary?.attendance_days_count ?? 0} helper="Jours de presence comptabilises" accent="from-emerald-400 via-emerald-500 to-lime-500" />
-                <MetricCard dark={dark} eyebrow="Absences" value={summary?.absences_detected_count ?? 0} helper="Absences detectees sur la periode" accent="from-amber-400 via-orange-500 to-rose-500" />
-                <MetricCard dark={dark} eyebrow="Documents" value={summary?.documents_validated_count ?? 0} helper="Documents valides" accent="from-fuchsia-400 via-pink-500 to-rose-500" />
+                <MetricCard dark={dark} eyebrow="Employés" value={summary?.employees_count ?? 0} helper="Effectif visible" accent="from-cyan-400 via-cyan-500 to-blue-500" />
+                <MetricCard dark={dark} eyebrow="Présence" value={summary?.attendance_days_count ?? 0} helper="Jours de présence comptabilisés" accent="from-emerald-400 via-emerald-500 to-lime-500" />
+                <MetricCard dark={dark} eyebrow="Absences" value={summary?.absences_detected_count ?? 0} helper="Absences détectées sur la période" accent="from-amber-400 via-orange-500 to-rose-500" />
+                <MetricCard dark={dark} eyebrow="Documents" value={summary?.documents_validated_count ?? 0} helper="Documents validés" accent="from-fuchsia-400 via-pink-500 to-rose-500" />
               </div>
             </div>
           </section>
@@ -204,7 +204,7 @@ export default function RhReports() {
                 }`}
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Filtres</p>
-                <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Periode d'analyse</h2>
+                <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Période d'analyse</h2>
 
                 <div className="mt-5 grid gap-4">
                   <div>
@@ -228,10 +228,10 @@ export default function RhReports() {
 
                 <div className="mt-5 grid gap-3">
                   {[
-                    { label: "Presence PDF", action: () => downloadReport("attendance", "pdf") },
-                    { label: "Presence Excel", action: () => downloadReport("attendance", "xlsx") },
-                    { label: "Conges PDF", action: () => downloadReport("leaves", "pdf") },
-                    { label: "Taches Excel", action: () => downloadReport("tasks", "xlsx") },
+                    { label: "Présence PDF", action: () => downloadReport("attendance", "pdf") },
+                    { label: "Présence Excel", action: () => downloadReport("attendance", "xlsx") },
+                    { label: "Congés PDF", action: () => downloadReport("leaves", "pdf") },
+                    { label: "Tâches Excel", action: () => downloadReport("tasks", "xlsx") },
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -255,12 +255,12 @@ export default function RhReports() {
             >
               <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Synthese</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Synthèse</p>
                   <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
                     Indicateurs RH
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                    Les indicateurs backend sont presentes sous forme de cartes lisibles, prêtes pour le pilotage.
+                    Les indicateurs backend sont présentés sous forme de cartes lisibles, prêtes pour le pilotage.
                   </p>
                 </div>
                 <div className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${dark ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>

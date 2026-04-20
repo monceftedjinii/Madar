@@ -55,11 +55,11 @@ export default function ChefEvaluations() {
         employeeId: previous.employeeId || String(employeesData[0]?.id || ""),
       }));
     } catch (error) {
-      console.error("Erreur chargement evaluations chef:", error);
+      console.error("Erreur chargement évaluations chef :", error);
       setEmployees([]);
       setCriteria([]);
       setEvaluations([]);
-      setErrorMessage("Impossible de charger le module d'evaluation chef.");
+      setErrorMessage("Impossible de charger le module d'évaluation chef.");
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export default function ChefEvaluations() {
   const submitEvaluation = async (event) => {
     event.preventDefault();
     if (!form.employeeId) {
-      setErrorMessage("Choisissez un employe a evaluer.");
+      setErrorMessage("Choisissez un employé à évaluer.");
       return;
     }
 
@@ -131,7 +131,7 @@ export default function ChefEvaluations() {
         overall_comment: form.overallComment,
         scores: scoresPayload,
       });
-      setFeedback("Evaluation enregistree avec succes.");
+      setFeedback("Évaluation enregistrée avec succès.");
       setForm((previous) => ({
         ...previous,
         overallComment: "",
@@ -140,8 +140,8 @@ export default function ChefEvaluations() {
       }));
       await fetchData();
     } catch (error) {
-      console.error("Erreur creation evaluation:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible d'enregistrer l'evaluation.");
+      console.error("Erreur création évaluation :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible d'enregistrer l'évaluation.");
     } finally {
       setSubmitting(false);
     }
@@ -157,8 +157,8 @@ export default function ChefEvaluations() {
         <div className={`sticky top-0 z-40 backdrop-blur ${dark ? "border-b border-slate-800 bg-slate-950/90" : "border-b border-slate-200/80 bg-white/90"}`}>
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Evaluations equipe</h1>
-              <p className="morinfo">Attribuez des notes aux employes de votre service selon les criteres du systeme.</p>
+              <h1 className="monprofile">Évaluations équipe</h1>
+              <p className="morinfo">Attribuez des notes aux employés de votre service selon les critères du système.</p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -175,27 +175,27 @@ export default function ChefEvaluations() {
           <section className="chef-hero">
             <div className="chef-hero-copy">
               <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Evaluation structuree de l&apos;equipe</h2>
+              <h2 className="chef-hero-title">Évaluation structurée de l&apos;équipe</h2>
               <p className="chef-hero-description">
-                Notez les collaborateurs du service selon les criteres definis par le systeme et
-                conservez un historique plus lisible des campagnes deja remontees.
+                Notez les collaborateurs du service selon les critères définis par le système et
+                conservez un historique plus lisible des campagnes déjà remontées.
               </p>
             </div>
             <div className="chef-hero-kpis">
               <article className="chef-kpi-card">
-                <span>Employes</span>
+                <span>Employés</span>
                 <strong>{stats.employees}</strong>
-                <p>Collaborateurs selectionnables pour une evaluation.</p>
+                <p>Collaborateurs sélectionnables pour une évaluation.</p>
               </article>
               <article className="chef-kpi-card">
-                <span>Criteres</span>
+                <span>Critères</span>
                 <strong>{stats.criteria}</strong>
                 <p>Axes de notation disponibles dans le module.</p>
               </article>
               <article className="chef-kpi-card">
-                <span>Evaluations</span>
+                <span>Évaluations</span>
                 <strong>{stats.evaluations}</strong>
-                <p>Historique deja enregistre pour votre equipe.</p>
+                <p>Historique déjà enregistré pour votre équipe.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>Moyenne</span>
@@ -214,8 +214,8 @@ export default function ChefEvaluations() {
           <section className="chef-panel">
             <div className="chef-panel-head">
               <div>
-                <h2>Nouvelle evaluation</h2>
-                <p>Renseignez l'employe, la campagne et les scores par critere.</p>
+                <h2>Nouvelle évaluation</h2>
+                <p>Renseignez l'employé, la campagne et les scores par critère.</p>
               </div>
               <div className="chef-action-pill">Notation</div>
             </div>
@@ -223,9 +223,9 @@ export default function ChefEvaluations() {
             <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14 }}>
               <div className="chef-form-grid">
                 <div>
-                <p className="chef-form-label">Employe</p>
+                <p className="chef-form-label">Employé</p>
                 <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
-                  <option value="">Choisir un employe</option>
+                  <option value="">Choisir un employé</option>
                   {employees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
                       {employee.full_name || `${employee.first_name} ${employee.last_name}`.trim() || employee.email}
@@ -234,7 +234,7 @@ export default function ChefEvaluations() {
                 </select>
               </div>
               <div>
-                <p className="chef-form-label">Periode</p>
+                <p className="chef-form-label">Période</p>
                 <input value={form.period} onChange={(e) => setForm((p) => ({ ...p, period: e.target.value }))} style={fieldStyle} />
               </div>
               <div>
@@ -260,7 +260,7 @@ export default function ChefEvaluations() {
                   <input
                     value={form.comments[criterion.id] || ""}
                     onChange={(e) => updateComment(criterion.id, e.target.value)}
-                    placeholder="Commentaire sur ce critere"
+                    placeholder="Commentaire sur ce critère"
                     style={fieldStyle}
                   />
                 </div>
@@ -274,7 +274,7 @@ export default function ChefEvaluations() {
 
             <div className="chef-actions">
               <button className="modifier" disabled={submitting} type="submit">
-                {submitting ? "Enregistrement..." : "Enregistrer l'evaluation"}
+                {submitting ? "Enregistrement..." : "Enregistrer l'évaluation"}
               </button>
             </div>
           </form>
@@ -283,8 +283,8 @@ export default function ChefEvaluations() {
           <section className="chef-panel">
             <div className="chef-panel-head">
               <div>
-                <h2>Historique des evaluations equipe</h2>
-                <p>Evaluations deja remontees pour les employes de votre service.</p>
+                <h2>Historique des évaluations équipe</h2>
+                <p>Évaluations déjà remontées pour les employés de votre service.</p>
               </div>
               <div className="chef-action-pill">Historique</div>
             </div>
@@ -292,18 +292,18 @@ export default function ChefEvaluations() {
               <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Employe</th>
-                  <th>Periode</th>
+                  <th>Employé</th>
+                  <th>Période</th>
                   <th>Date</th>
                   <th>Note</th>
-                  <th>Recommendation</th>
+                  <th>Recommandation</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="5">Chargement des evaluations...</td></tr>
+                  <tr><td colSpan="5">Chargement des évaluations...</td></tr>
                 ) : evaluations.length === 0 ? (
-                  <tr><td colSpan="5">Aucune evaluation enregistree pour l'instant.</td></tr>
+                  <tr><td colSpan="5">Aucune évaluation enregistrée pour l'instant.</td></tr>
                 ) : (
                   evaluations.map((item) => (
                     <tr key={item.id}>

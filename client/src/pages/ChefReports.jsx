@@ -57,12 +57,12 @@ export default function ChefReports() {
   const cards = useMemo(() => {
     if (!summary) return [];
     return [
-      { label: "Employes du scope", value: summary.employees_count ?? 0 },
-      { label: "Jours de presence", value: summary.attendance_days_count ?? 0 },
-      { label: "Absences detectees", value: summary.absences_detected_count ?? 0 },
-      { label: "Conges en attente", value: summary.leaves_pending_count ?? 0 },
-      { label: "Documents crees", value: summary.documents_created_count ?? 0 },
-      { label: "Documents valides", value: summary.documents_validated_count ?? 0 },
+      { label: "Employés du scope", value: summary.employees_count ?? 0 },
+      { label: "Jours de présence", value: summary.attendance_days_count ?? 0 },
+      { label: "Absences détectées", value: summary.absences_detected_count ?? 0 },
+      { label: "Congés en attente", value: summary.leaves_pending_count ?? 0 },
+      { label: "Documents créés", value: summary.documents_created_count ?? 0 },
+      { label: "Documents validés", value: summary.documents_validated_count ?? 0 },
       { label: "Avertissements", value: summary.warnings_count ?? 0 },
       { label: "Flags disciplinaires", value: summary.discipline_flags_count ?? 0 },
     ];
@@ -107,7 +107,7 @@ export default function ChefReports() {
           <div className="profile-naaav">
             <div className="yasar">
               <h1 className="monprofile">Rapports chef</h1>
-              <p className="morinfo">Vue synthese du service et exports presence, conges et taches.</p>
+              <p className="morinfo">Vue synthèse du service et exports présence, congés et tâches.</p>
             </div>
             <div className="yamin">
               <button className="nav-toggle" onClick={() => setIsNavOpen((prev) => !prev)} type="button">
@@ -124,17 +124,17 @@ export default function ChefReports() {
           <section className="chef-hero">
             <div className="chef-hero-copy">
               <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Rapports et lecture synthetique du service</h2>
+              <h2 className="chef-hero-title">Rapports et lecture synthétique du service</h2>
               <p className="chef-hero-description">
-                Filtrez une periode, consultez les indicateurs du scope chef et exportez rapidement
+                Filtrez une période, consultez les indicateurs du scope chef et exportez rapidement
                 les rapports utiles au pilotage.
               </p>
             </div>
             <div className="chef-hero-kpis">
               <article className="chef-kpi-card">
-                <span>Periode</span>
+                <span>Période</span>
                 <strong>{filters.from}</strong>
-                <p>Date de debut de l'analyse selectionnee.</p>
+                <p>Date de début de l'analyse sélectionnée.</p>
               </article>
               <article className="chef-kpi-card">
                 <span>Jusqu&apos;a</span>
@@ -148,8 +148,8 @@ export default function ChefReports() {
               </article>
               <article className="chef-kpi-card">
                 <span>Etat</span>
-                <strong>{loading ? "..." : "A jour"}</strong>
-                <p>Resume backend charge pour la periode courante.</p>
+                <strong>{loading ? "..." : "À jour"}</strong>
+                <p>Résumé backend chargé pour la période courante.</p>
               </article>
             </div>
           </section>
@@ -158,14 +158,14 @@ export default function ChefReports() {
             <div className="chef-panel-head">
               <div>
                 <h2>Filtres et exports</h2>
-                <p>Choisissez la periode d'analyse et lancez les exportations utiles.</p>
+                <p>Choisissez la période d'analyse et lancez les exportations utiles.</p>
               </div>
               <div className="chef-action-pill">Reporting</div>
             </div>
 
             <div className="chef-inline-grid">
               <div className="chef-note-card">
-                <h4>Periode du rapport</h4>
+                <h4>Période du rapport</h4>
                 <div className="chef-form-grid">
                   <div className="chef-form-field">
                     <p className="chef-form-label">Du</p>
@@ -180,10 +180,10 @@ export default function ChefReports() {
               <div className="chef-note-card">
                 <h4>Exports disponibles</h4>
                 <div className="chef-action-row">
-                  <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Presence PDF</button>
-                  <button className="modifier" onClick={() => downloadReport("attendance", "xlsx")} type="button">Presence Excel</button>
-                  <button className="modifier" onClick={() => downloadReport("leaves", "pdf")} type="button">Conges PDF</button>
-                  <button className="modifier" onClick={() => downloadReport("tasks", "xlsx")} type="button">Taches Excel</button>
+                  <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Présence PDF</button>
+                  <button className="modifier" onClick={() => downloadReport("attendance", "xlsx")} type="button">Présence Excel</button>
+                  <button className="modifier" onClick={() => downloadReport("leaves", "pdf")} type="button">Congés PDF</button>
+                  <button className="modifier" onClick={() => downloadReport("tasks", "xlsx")} type="button">Tâches Excel</button>
                 </div>
               </div>
             </div>
@@ -194,10 +194,10 @@ export default function ChefReports() {
           <section className="chef-panel">
             <div className="chef-panel-head">
               <div>
-                <h2>Synthese du service</h2>
-                <p>Indicateurs backend calcules sur votre scope chef.</p>
+                <h2>Synthèse du service</h2>
+                <p>Indicateurs backend calculés sur votre scope chef.</p>
               </div>
-              <div className="chef-action-pill">Resume</div>
+              <div className="chef-action-pill">Résumé</div>
             </div>
 
             <div className="chef-metrics-grid">
@@ -210,7 +210,7 @@ export default function ChefReports() {
                   <article key={card.label} className="chef-metric-card">
                     <span>{card.label}</span>
                     <strong>{card.value}</strong>
-                    <p>Valeur calculee sur la plage de dates selectionnee.</p>
+                    <p>Valeur calculée sur la plage de dates sélectionnée.</p>
                   </article>
                 ))
               )}

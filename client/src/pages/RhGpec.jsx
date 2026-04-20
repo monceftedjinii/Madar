@@ -122,11 +122,11 @@ export default function RhGpec() {
       setErrorMessage("");
       await axios.post("/api/gpec/competencies/", competencyForm);
       setCompetencyForm(initialCompetencyForm);
-      setFeedback("Competence enregistree.");
+      setFeedback("Compétence enregistrée.");
       await fetchGpec();
     } catch (error) {
-      console.error("Erreur creation competence:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible d'enregistrer cette competence.");
+      console.error("Erreur création compétence :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible d'enregistrer cette compétence.");
     } finally {
       setSubmitting("");
     }
@@ -140,11 +140,11 @@ export default function RhGpec() {
       setErrorMessage("");
       await axios.post("/api/gpec/employee-competencies/", employeeCompetencyForm);
       setEmployeeCompetencyForm(initialEmployeeCompetencyForm);
-      setFeedback("Competence employee mise a jour.");
+      setFeedback("Compétence employé mise à jour.");
       await fetchGpec();
     } catch (error) {
-      console.error("Erreur affectation competence:", error);
-      setErrorMessage(error?.response?.data?.detail || "Impossible de mettre a jour cette competence employee.");
+      console.error("Erreur affectation compétence :", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de mettre à jour cette compétence employé.");
     } finally {
       setSubmitting("");
     }
@@ -158,10 +158,10 @@ export default function RhGpec() {
       setErrorMessage("");
       await axios.post("/api/gpec/objectives/", objectiveForm);
       setObjectiveForm(initialObjectiveForm);
-      setFeedback("Objectif ajoute.");
+      setFeedback("Objectif ajouté.");
       await fetchGpec();
     } catch (error) {
-      console.error("Erreur creation objectif:", error);
+      console.error("Erreur création objectif :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible d'ajouter cet objectif.");
     } finally {
       setSubmitting("");
@@ -176,10 +176,10 @@ export default function RhGpec() {
       setErrorMessage("");
       await axios.post("/api/gpec/plans/", planForm);
       setPlanForm(initialPlanForm);
-      setFeedback("Plan de developpement ajoute.");
+      setFeedback("Plan de développement ajouté.");
       await fetchGpec();
     } catch (error) {
-      console.error("Erreur creation plan:", error);
+      console.error("Erreur création plan :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible d'ajouter ce plan.");
     } finally {
       setSubmitting("");
@@ -200,8 +200,8 @@ export default function RhGpec() {
               <h1 className="monprofile">{isGrh ? "Pilotage GPEC global" : "GPEC RH"}</h1>
               <p className="morinfo">
                 {isGrh
-                  ? "Pilotez les competences, objectifs et plans de developpement sur le perimetre global."
-                  : "Pilotez le suivi GPEC des employes et les actions de developpement."}
+                  ? "Pilotez les compétences, objectifs et plans de développement sur le périmètre global."
+                  : "Pilotez le suivi GPEC des employés et les actions de développement."}
               </p>
             </div>
             <div className="yamin">
@@ -218,11 +218,11 @@ export default function RhGpec() {
         <div className="infopro-infoper">
           <section className="info-per">
             <div className="top">
-              <h2 className="title">Synthese</h2>
+              <h2 className="title">Synthèse</h2>
               <p className="desc">Indicateurs de couverture du module GPEC.</p>
             </div>
-            <div><p className="desc">Employes</p><h3>{stats.employees}</h3></div>
-            <div><p className="desc">Competences</p><h3>{stats.catalog}</h3></div>
+            <div><p className="desc">Employés</p><h3>{stats.employees}</h3></div>
+            <div><p className="desc">Compétences</p><h3>{stats.catalog}</h3></div>
             <div><p className="desc">Affectations</p><h3>{stats.assignments}</h3></div>
             <div><p className="desc">Objectifs ouverts</p><h3>{stats.objectivesOpen}</h3></div>
           </section>
@@ -244,8 +244,8 @@ export default function RhGpec() {
         <section className="quelques-infos" style={{ width: "96%", marginTop: 0 }}>
           <div style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
             <form onSubmit={submitCatalog} style={{ display: "grid", gap: 10 }}>
-              <h3 className="title">Catalogue des competences</h3>
-              <input placeholder="Nom de la competence" style={fieldStyle} value={competencyForm.name} onChange={(event) => setCompetencyForm((prev) => ({ ...prev, name: event.target.value }))} />
+              <h3 className="title">Catalogue des compétences</h3>
+              <input placeholder="Nom de la compétence" style={fieldStyle} value={competencyForm.name} onChange={(event) => setCompetencyForm((prev) => ({ ...prev, name: event.target.value }))} />
               <select style={fieldStyle} value={competencyForm.category} onChange={(event) => setCompetencyForm((prev) => ({ ...prev, category: event.target.value }))}>
                 <option value="TECHNICAL">Technique</option>
                 <option value="BEHAVIORAL">Comportementale</option>
@@ -260,15 +260,15 @@ export default function RhGpec() {
             </form>
 
             <form onSubmit={submitEmployeeCompetency} style={{ display: "grid", gap: 10 }}>
-              <h3 className="title">Affecter une competence</h3>
+              <h3 className="title">Affecter une compétence</h3>
               <select style={fieldStyle} value={employeeCompetencyForm.employee_id} onChange={(event) => setEmployeeCompetencyForm((prev) => ({ ...prev, employee_id: event.target.value }))}>
-                <option value="">Choisir un employe</option>
+                <option value="">Choisir un employé</option>
                 {data.employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>{employee.full_name}</option>
                 ))}
               </select>
               <select style={fieldStyle} value={employeeCompetencyForm.competency_id} onChange={(event) => setEmployeeCompetencyForm((prev) => ({ ...prev, competency_id: event.target.value }))}>
-                <option value="">Choisir une competence</option>
+                <option value="">Choisir une compétence</option>
                 {data.catalog.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
@@ -286,7 +286,7 @@ export default function RhGpec() {
             <form onSubmit={submitObjective} style={{ display: "grid", gap: 10 }}>
               <h3 className="title">Nouvel objectif</h3>
               <select style={fieldStyle} value={objectiveForm.employee_id} onChange={(event) => setObjectiveForm((prev) => ({ ...prev, employee_id: event.target.value }))}>
-                <option value="">Choisir un employe</option>
+                <option value="">Choisir un employé</option>
                 {data.employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>{employee.full_name}</option>
                 ))}
@@ -300,16 +300,16 @@ export default function RhGpec() {
             </form>
 
             <form onSubmit={submitPlan} style={{ display: "grid", gap: 10 }}>
-              <h3 className="title">Plan de developpement</h3>
+              <h3 className="title">Plan de développement</h3>
               <select style={fieldStyle} value={planForm.employee_id} onChange={(event) => setPlanForm((prev) => ({ ...prev, employee_id: event.target.value }))}>
-                <option value="">Choisir un employe</option>
+                <option value="">Choisir un employé</option>
                 {data.employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>{employee.full_name}</option>
                 ))}
               </select>
               <input placeholder="Titre du plan" style={fieldStyle} value={planForm.title} onChange={(event) => setPlanForm((prev) => ({ ...prev, title: event.target.value }))} />
               <input type="date" style={fieldStyle} value={planForm.target_date} onChange={(event) => setPlanForm((prev) => ({ ...prev, target_date: event.target.value }))} />
-              <textarea placeholder="Actions a mener" rows="3" style={fieldStyle} value={planForm.actions} onChange={(event) => setPlanForm((prev) => ({ ...prev, actions: event.target.value }))} />
+              <textarea placeholder="Actions à mener" rows="3" style={fieldStyle} value={planForm.actions} onChange={(event) => setPlanForm((prev) => ({ ...prev, actions: event.target.value }))} />
               <button className="modifier" disabled={submitting === "plan"} type="submit">
                 {submitting === "plan" ? "Enregistrement..." : "Ajouter"}
               </button>
@@ -319,26 +319,26 @@ export default function RhGpec() {
 
         <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
           <div className="activite-top">
-            <h2 className="activite-title">Competences employees</h2>
-            <p className="activite-subtitle">Suivi des niveaux et des ecarts de progression.</p>
+            <h2 className="activite-title">Compétences des employés</h2>
+            <p className="activite-subtitle">Suivi des niveaux et des écarts de progression.</p>
           </div>
           <div className="activite-table-scroll">
             <table className="activite-table">
               <thead>
                 <tr>
-                  <th>Employe</th>
-                  <th>Competence</th>
+                  <th>Employé</th>
+                  <th>Compétence</th>
                   <th>Actuel</th>
                   <th>Cible</th>
-                  <th>Ecart</th>
-                  <th>Evaluation</th>
+                  <th>Écart</th>
+                  <th>Évaluation</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr><td colSpan="6">Chargement des affectations...</td></tr>
                 ) : data.employee_competencies.length === 0 ? (
-                  <tr><td colSpan="6">Aucune affectation de competence disponible.</td></tr>
+                  <tr><td colSpan="6">Aucune affectation de compétence disponible.</td></tr>
                 ) : (
                   data.employee_competencies.map((item) => (
                     <tr key={item.id}>
