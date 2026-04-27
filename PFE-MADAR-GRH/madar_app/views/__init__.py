@@ -27,6 +27,7 @@ from .documents import (
 	send_document,
 	modify_document,
 	download_document,
+	preview_document,
 	list_documents_scoped,
 	documents_feed,
 	documents_mine,
@@ -38,7 +39,6 @@ from .documents import (
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
 from .evaluations import evaluation_criteria_list, my_evaluations, chef_evaluations, rh_evaluations
-from .gpec import my_gpec, rh_gpec, gpec_competencies, upsert_employee_competency, create_objective, update_objective_progress, create_development_plan
 from .messages import (
 	inbox,
 	sent,
@@ -89,15 +89,13 @@ __all__ = [
 	'approve_formation_request', 'reject_formation_request',
 	'get_department_employees', 'add_formation_participants',
 	# documents
-	'upload_document', 'document_detail', 'send_document', 'modify_document', 'download_document', 'list_documents_scoped',
+	'upload_document', 'document_detail', 'send_document', 'modify_document', 'download_document', 'preview_document', 'list_documents_scoped',
 	'documents_feed', 'documents_mine', 'comment_document',
 	'document_comments', 'validate_document', 'reject_document_validation', 'archive_document',
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# evaluations
 	'evaluation_criteria_list', 'my_evaluations', 'chef_evaluations', 'rh_evaluations',
-	# gpec
-	'my_gpec', 'rh_gpec', 'gpec_competencies', 'upsert_employee_competency', 'create_objective', 'update_objective_progress', 'create_development_plan',
 	# messages
 	'inbox', 'sent', 'trash', 'get_message', 'mark_message_read_unread', 'delete_message',
 	'search_messages', 'send_message', 'reply_message', 'forward_message',

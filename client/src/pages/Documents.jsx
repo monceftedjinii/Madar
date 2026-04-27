@@ -4,6 +4,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { downloadBlob } from "../utils/downloadFile";
 import "../styles/profile.css";
 import "../styles/main-space.css";
 
@@ -28,10 +29,11 @@ function getStatusClass(status) {
   return "badge-attente";
 }
 
-function getPreviewType(fileUrl) {
-  const normalized = String(fileUrl || "").toLowerCase();
-  if (normalized.endsWith(".pdf")) return "pdf";
-  if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(normalized)) return "image";
+function getPreviewType(documentItem) {
+  const contentType = String(documentItem?.content_type || "").toLowerCase();
+  const fileName = String(documentItem?.file_name || documentItem?.file_url || "").toLowerCase();
+  if (contentType === "application/pdf" || fileName.endsWith(".pdf")) return "pdf";
+  if (contentType.startsWith("image/") || /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(fileName)) return "image";
   return "other";
 }
 
@@ -60,6 +62,7 @@ export default function Documents() {
   const [selectedId, setSelectedId] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState("");
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -139,6 +142,37 @@ export default function Documents() {
   };
 
   useEffect(() => {
+    let objectUrl = "";
+
+    const loadPreview = async () => {
+      const type = getPreviewType(selectedDocument);
+      if (!selectedDocument?.preview_url || (type !== "pdf" && type !== "image")) {
+        setPreviewObjectUrl("");
+        return;
+      }
+
+      try {
+        const response = await axios.get(selectedDocument.preview_url, {
+          responseType: "blob",
+        });
+        objectUrl = window.URL.createObjectURL(response.data);
+        setPreviewObjectUrl(objectUrl);
+      } catch (error) {
+        console.error("Erreur aperçu document employé :", error);
+        setPreviewObjectUrl("");
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      if (objectUrl) {
+        window.URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [selectedDocument?.id, selectedDocument?.preview_url, selectedDocument?.content_type, selectedDocument?.file_name]);
+
+  useEffect(() => {
     if (!documents.length) return;
 
     const preferredId = requestedDocId || selectedId || documents[0]?.id;
@@ -156,16 +190,20 @@ export default function Documents() {
     try {
       setFeedback("");
       setErrorMessage("");
-      const response = await axios.get(`/api/documents/${documentId}/download/`, {
-        responseType: "blob",
-      });
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `document-${documentId}`;
-      link.click();
-      window.URL.revokeObjectURL(url);
+      let response;
+      try {
+        response = await axios.get(`/api/documents/${documentId}/download/`, {
+          responseType: "blob",
+        });
+      } catch (downloadError) {
+        if (!selectedDocument?.preview_url) {
+          throw downloadError;
+        }
+        response = await axios.get(selectedDocument.preview_url, {
+          responseType: "blob",
+        });
+      }
+      downloadBlob(response, selectedDocument?.file_name || `document-${documentId}`);
       setFeedback("Téléchargement lancé.");
     } catch (error) {
       console.error("Erreur téléchargement document employé :", error);
@@ -181,9 +219,9 @@ export default function Documents() {
     return { total, sent, validated, archived };
   }, [documents]);
 
-  const previewType = getPreviewType(selectedDocument?.file_url);
+  const previewType = getPreviewType(selectedDocument);
   const canOpenPreview = Boolean(
-    selectedDocument?.file_url && (previewType === "pdf" || previewType === "image"),
+    previewObjectUrl && (previewType === "pdf" || previewType === "image"),
   );
 
   const openPreview = () => {
@@ -456,7 +494,7 @@ export default function Documents() {
                     </div>
                   )}
 
-                  {selectedDocument.file_url && previewType === "pdf" && (
+                  {previewObjectUrl && previewType === "pdf" && (
                     <button
                       type="button"
                       onClick={openPreview}
@@ -475,7 +513,7 @@ export default function Documents() {
                       }}
                     >
                       <iframe
-                        src={selectedDocument.file_url}
+                        src={previewObjectUrl}
                         title={selectedDocument.title}
                         style={{
                           width: "100%",
@@ -488,7 +526,7 @@ export default function Documents() {
                     </button>
                   )}
 
-                  {selectedDocument.file_url && previewType === "image" && (
+                  {previewObjectUrl && previewType === "image" && (
                     <button
                       type="button"
                       onClick={openPreview}
@@ -507,14 +545,14 @@ export default function Documents() {
                       }}
                     >
                       <img
-                        src={selectedDocument.file_url}
+                        src={previewObjectUrl}
                         alt={selectedDocument.title}
                         style={{ width: "100%", maxHeight: 620, objectFit: "contain", borderRadius: 12 }}
                       />
                     </button>
                   )}
 
-                  {(!selectedDocument.file_url || previewType === "other") && (
+                  {(!previewObjectUrl || previewType === "other") && (
                     <div
                       style={{
                         minHeight: 360,
@@ -539,7 +577,7 @@ export default function Documents() {
         </div>
       </div>
 
-      {isPreviewOpen && selectedDocument?.file_url && (
+      {isPreviewOpen && previewObjectUrl && (
         <div
           aria-hidden="true"
           onClick={closePreview}
@@ -645,7 +683,7 @@ export default function Documents() {
             >
               {previewType === "pdf" ? (
                 <iframe
-                  src={selectedDocument.file_url}
+                  src={previewObjectUrl}
                   title={`${selectedDocument.title} preview`}
                   style={{ width: "100%", height: "100%", border: "none", borderRadius: 18, background: "#ffffff" }}
                 />
@@ -663,7 +701,7 @@ export default function Documents() {
                   }}
                 >
                   <img
-                    src={selectedDocument.file_url}
+                    src={previewObjectUrl}
                     alt={selectedDocument.title}
                     style={{
                       maxWidth: "100%",

@@ -235,7 +235,6 @@ def department_pending_leaves(request):
 		RoleChoices.RH_SIMPLE,
 		RoleChoices.RH_AGENT,
 		RoleChoices.RH_SENIOR,
-		RoleChoices.GRH,
 	}:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -248,8 +247,7 @@ def department_pending_leaves(request):
 			return Response({'detail': 'validator has no Employee record'}, status=status.HTTP_400_BAD_REQUEST)
 		qs = qs.filter(employee__service=chef_emp.service)
 	else:
-		expected_role = RoleChoices.RH_SIMPLE if request.user.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR} else request.user.role
-		qs = qs.filter(validation_workflow__validator_role=expected_role)
+		qs = qs.filter(validation_workflow__validator_role=RoleChoices.RH_SIMPLE)
 
 	qs = qs.order_by('-created_at').distinct()
 	data = [
@@ -307,7 +305,10 @@ def _chef_decide_common(request, pk, accept=True):
 
 	comment = request.data.get('comment', '')
 	if accept:
-		pending_steps = ValidationWorkflow.objects.filter(leave_request=lr, decision=ValidationWorkflow.Decision.PENDING)
+		pending_steps = ValidationWorkflow.objects.filter(
+			leave_request=lr,
+			decision=ValidationWorkflow.Decision.PENDING,
+		).exclude(validator_role=RoleChoices.GRH)
 		is_last_step = pending_steps.count() == 1
 
 		if is_last_step:
@@ -434,7 +435,13 @@ def _role_matches(expected_role, user_role):
 
 
 def _get_current_pending_step(leave_request):
-	return leave_request.validation_workflow.filter(decision=ValidationWorkflow.Decision.PENDING).order_by('validation_order').first()
+	return (
+		leave_request.validation_workflow
+		.filter(decision=ValidationWorkflow.Decision.PENDING)
+		.exclude(validator_role=RoleChoices.GRH)
+		.order_by('validation_order')
+		.first()
+	)
 
 
 def _serialize_current_step(leave_request):
@@ -487,7 +494,7 @@ def _notify_step_validators(leave_request, step):
 	elif step.validator_role == RoleChoices.RH_SIMPLE:
 		validators = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR])
 	else:
-		validators = User.objects.filter(role=RoleChoices.GRH)
+		validators = User.objects.none()
 
 	for validator_user in validators:
 		notify(

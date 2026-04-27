@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { downloadBlob } from "../utils/downloadFile";
 import "../styles/profile.css";
 import "../styles/chef-space.css";
 
@@ -252,16 +253,20 @@ export default function ChefDocuments() {
 
   const downloadDocument = async (documentId) => {
     try {
-      const response = await axios.get(`/api/documents/${documentId}/download/`, {
-        responseType: "blob",
-      });
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `document-${documentId}`;
-      link.click();
-      window.URL.revokeObjectURL(url);
+      let response;
+      try {
+        response = await axios.get(`/api/documents/${documentId}/download/`, {
+          responseType: "blob",
+        });
+      } catch (downloadError) {
+        if (!selectedDocument?.preview_url) {
+          throw downloadError;
+        }
+        response = await axios.get(selectedDocument.preview_url, {
+          responseType: "blob",
+        });
+      }
+      downloadBlob(response, selectedDocument?.file_name || `document-${documentId}`);
     } catch (error) {
       console.error("Erreur téléchargement document :", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible de télécharger ce document.");

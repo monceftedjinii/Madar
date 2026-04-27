@@ -3,22 +3,10 @@ import axios from "axios";
 import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
-import { isAuthenticated } from "../app/auth";
+import { AUTH_SESSION_CHANGED_EVENT, isAuthenticated } from "../app/auth";
 
 const NAVBAR_CACHE_KEY = "madar_navbar_cache";
 const NAVBAR_SCROLL_KEY = "madar_navbar_scroll";
-const NAVBAR_CACHE_TTL_MS = 60 * 1000;
-
-function readNavbarCache() {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = window.sessionStorage.getItem(NAVBAR_CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
 
 function writeNavbarCache(payload) {
   if (typeof window === "undefined") return;
@@ -47,20 +35,26 @@ export default function Navbar(props) {
   const navigate = useNavigate();
   const navMenuRef = useRef(null);
   const [fetchedProfile, setFetchedProfile] = useState({
-    fullName: readNavbarCache()?.profile?.fullName || "",
-    post: readNavbarCache()?.profile?.post || "",
-    image: readNavbarCache()?.profile?.image || "",
-    email: readNavbarCache()?.profile?.email || "",
-    role: readNavbarCache()?.profile?.role || "",
+    fullName: "",
+    post: "",
+    image: "",
+    email: "",
+    role: "",
   });
-  const [unreadNotifications, setUnreadNotifications] = useState(
-    readNavbarCache()?.unreadNotifications || 0,
-  );
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated()) return;
+    let isMounted = true;
 
     const fetchNavbarData = async () => {
+      if (!isAuthenticated()) {
+        if (isMounted) {
+          setFetchedProfile({ fullName: "", post: "", image: "", email: "", role: "" });
+          setUnreadNotifications(0);
+        }
+        return;
+      }
+
       try {
         const [me, notifications] = await Promise.all([
           axios.get("/api/whoami/"),
@@ -78,6 +72,8 @@ export default function Navbar(props) {
         const items = Array.isArray(notifications.data) ? notifications.data : [];
         const nextUnreadNotifications = items.filter((item) => !item.is_read).length;
 
+        if (!isMounted) return;
+
         setFetchedProfile(nextProfile);
         setUnreadNotifications(nextUnreadNotifications);
         writeNavbarCache({
@@ -90,24 +86,20 @@ export default function Navbar(props) {
       }
     };
 
-    const cachedNavbarData = readNavbarCache();
-    const cacheAge = cachedNavbarData?.timestamp
-      ? Date.now() - cachedNavbarData.timestamp
-      : Number.POSITIVE_INFINITY;
-
-    if (!cachedNavbarData || cacheAge > NAVBAR_CACHE_TTL_MS) {
-      fetchNavbarData();
-    }
+    fetchNavbarData();
 
     const handleNotificationsUpdated = () => {
       fetchNavbarData();
     };
 
     window.addEventListener("focus", fetchNavbarData);
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, fetchNavbarData);
     window.addEventListener("notifications-updated", handleNotificationsUpdated);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("focus", fetchNavbarData);
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, fetchNavbarData);
       window.removeEventListener("notifications-updated", handleNotificationsUpdated);
     };
   }, []);
@@ -155,7 +147,6 @@ export default function Navbar(props) {
         { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
         { to: "/evaluations", label: "Évaluations" },
-        { to: "/gpec", label: "GPEC" },
         { to: "/tasks", label: "Mes tâches" },
       ],
     },
@@ -185,12 +176,11 @@ export default function Navbar(props) {
           {
             title: isGrh ? "Espace GRH" : "Espace RH",
             items: [
-              { to: "/rh/leaves", label: isGrh ? "Validation finale" : "Validation RH" },
+              ...(!isGrh ? [{ to: "/rh/leaves", label: "Validation RH" }] : []),
               { to: "/rh/absences", label: isGrh ? "Absences globales" : "Absences RH" },
               { to: "/rh/documents", label: isGrh ? "Documents globaux" : "Documents RH" },
               ...(canUseRhFormations ? [{ to: "/rh/formations", label: isGrh ? "Formations globales" : "Formations RH" }] : []),
               { to: "/rh/evaluations", label: isGrh ? "Évaluations globales" : "Évaluations RH" },
-              { to: "/rh/gpec", label: isGrh ? "GPEC global" : "GPEC RH" },
               { to: "/rh/reports", label: isGrh ? "Pilotage et rapports" : "Rapports RH" },
               ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Gérer les employés" }] : []),
             ],

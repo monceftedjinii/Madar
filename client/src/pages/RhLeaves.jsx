@@ -103,7 +103,6 @@ export default function RhLeaves() {
   const [decisionAction, setDecisionAction] = useState("approve");
   const [decisionComment, setDecisionComment] = useState("");
 
-  const isGrh = role === "GRH";
   const pendingRequests = requests.filter((item) => item.status === "PENDING");
   const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
     dark
@@ -167,12 +166,8 @@ export default function RhLeaves() {
       });
       setFeedback(
         decisionAction === "approve"
-          ? isGrh
-            ? "Demande validée finalement avec succès."
-            : "Demande RH validée avec succès."
-          : isGrh
-            ? "Demande refusée finalement avec succès."
-            : "Demande RH refusée avec succès.",
+          ? "Demande RH validée avec succès."
+          : "Demande RH refusée avec succès.",
       );
       closeDecisionModal();
       await fetchRequests();
@@ -200,11 +195,9 @@ export default function RhLeaves() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">{isGrh ? "Validation finale des congés" : "Validation RH des congés"}</h1>
+              <h1 className="monprofile">Validation RH des congés</h1>
               <p className="morinfo">
-                {isGrh
-                  ? "Arbitrez les demandes en dernière étape avec une vue claire des périodes, étapes et commentaires."
-                  : "Traitez les demandes en attente côté RH avec une interface plus lisible et plus rapide à exploiter."}
+                Traitez les demandes validées par le directeur de direction. La décision RH clôture le congé.
               </p>
             </div>
             <div className="yamin">
@@ -229,7 +222,7 @@ export default function RhLeaves() {
                 <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
                 <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-200/80">
-                  {isGrh ? "Arbitrage final" : "Hub validation RH"}
+                  Hub validation RH
                 </p>
                 <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
                   Une lecture plus nette des demandes de congés avant validation ou refus.
@@ -345,7 +338,7 @@ export default function RhLeaves() {
                 >
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucune demande</p>
                   <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    {isGrh ? "Aucun arbitrage final visible pour le moment." : "Aucune demande RH visible pour le moment."}
+                    Aucune demande RH visible pour le moment.
                   </h3>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
                     Les nouvelles demandes apparaîtront ici avec leur étape de workflow et les actions de validation disponibles.
@@ -491,7 +484,7 @@ export default function RhLeaves() {
                       helper: "Arbitrages encore ouverts",
                     },
                     {
-                      label: isGrh ? "Validations finales" : "Traitements RH",
+                      label: "Traitements RH",
                       value: pendingRequests.filter((item) => item.can_decide).length,
                       helper: "Actions directement disponibles",
                     },
@@ -596,12 +589,8 @@ export default function RhLeaves() {
                 className={`${fieldClassName} mt-3 resize-y`}
                 placeholder={
                   decisionAction === "approve"
-                    ? isGrh
-                      ? "Commentaire GRH optionnel..."
-                      : "Commentaire RH optionnel..."
-                    : isGrh
-                      ? "Motif GRH du refus optionnel..."
-                      : "Motif RH du refus optionnel..."
+                    ? "Commentaire RH optionnel..."
+                    : "Motif RH du refus optionnel..."
                 }
               />
             </div>

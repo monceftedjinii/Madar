@@ -5,6 +5,7 @@ from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
 from django.http import FileResponse
+import mimetypes
 import os
 from ..models import (
 	Employee, User, RoleChoices, Service,
@@ -52,6 +53,8 @@ def _serialize_document(doc, request):
 		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
 		created_by_name = name or doc.created_by.email
 	current_version = doc.current_version
+	file_field = current_version.file_path if current_version and current_version.file_path else doc.file
+	file_name = os.path.basename(file_field.name) if file_field else None
 	return {
 		'id': doc.id,
 		'title': doc.title,
@@ -65,10 +68,50 @@ def _serialize_document(doc, request):
 		'created_by_name': created_by_name,
 		'created_at': doc.created_at.isoformat() if doc.created_at else None,
 		'sent_at': doc.sent_at.isoformat() if doc.sent_at else None,
-		'file_url': request.build_absolute_uri(current_version.file_path.url) if current_version and current_version.file_path else (request.build_absolute_uri(doc.file.url) if doc.file else None),
+		'file_url': request.build_absolute_uri(file_field.url) if file_field else None,
+		'preview_url': request.build_absolute_uri(f'/api/documents/{doc.id}/preview/'),
+		'file_name': file_name,
+		'content_type': mimetypes.guess_type(file_name or '')[0] or 'application/octet-stream',
 		'current_version': current_version.numVersion if current_version else None,
 		'current_checksum': current_version.checksum if current_version else None,
 	}
+
+
+def _get_current_document_file(doc):
+	current_version = doc.current_version
+	if current_version and current_version.file_path:
+		return current_version.file_path, current_version
+	if doc.file:
+		return doc.file, None
+	return None, current_version
+
+
+def _check_document_file_access(request, doc, action):
+	ip_address = _get_client_ip(request)
+	if _employee_public_access_required(request.user, doc):
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=action,
+			ip_address=ip_address,
+			result=False,
+			details='Employees can only access public received documents',
+		)
+		return False, Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	permission = DocumentAccess.check_permission(request.user, doc, action)
+	if not permission['allowed']:
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=action,
+			ip_address=ip_address,
+			result=False,
+			details=permission['reason'],
+		)
+		return False, Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	return True, None
 
 
 def _employee_public_access_required(user, document):
@@ -666,35 +709,15 @@ def download_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	ip_address = _get_client_ip(request)
-	if _employee_public_access_required(request.user, doc):
-		DocumentAccess.log_access(
-			document=doc,
-			user=request.user,
-			action=DocumentAccess.Action.DOWNLOAD,
-			ip_address=ip_address,
-			result=False,
-			details='Employees can only download public received documents',
-		)
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+	allowed, error_response = _check_document_file_access(request, doc, DocumentAccess.Action.DOWNLOAD)
+	if not allowed:
+		return error_response
 
-	permission = DocumentAccess.check_permission(request.user, doc, DocumentAccess.Action.DOWNLOAD)
-	if not permission['allowed']:
-		DocumentAccess.log_access(
-			document=doc,
-			user=request.user,
-			action=DocumentAccess.Action.DOWNLOAD,
-			ip_address=ip_address,
-			result=False,
-			details=permission['reason'],
-		)
-		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
-
-	current_version = doc.current_version
-	if not current_version or not current_version.file_path:
+	file_field, current_version = _get_current_document_file(doc)
+	if not file_field:
 		return Response({'detail': 'no current version available'}, status=status.HTTP_404_NOT_FOUND)
 
-	if not current_version.verify_integrity():
+	if current_version and not current_version.verify_integrity():
 		DocumentAccess.log_access(
 			document=doc,
 			user=request.user,
@@ -711,11 +734,46 @@ def download_document(request, pk):
 		action=DocumentAccess.Action.DOWNLOAD,
 		ip_address=ip_address,
 		result=True,
-		details=f'Downloaded version {current_version.numVersion}',
+		details=f'Downloaded version {current_version.numVersion if current_version else "original"}',
 	)
 
-	file_name = os.path.basename(current_version.file_path.name)
-	response = FileResponse(current_version.file_path.open('rb'), as_attachment=True, filename=file_name)
+	file_name = os.path.basename(file_field.name)
+	content_type = mimetypes.guess_type(file_name)[0] or 'application/octet-stream'
+	response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_name, content_type=content_type)
+	return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def preview_document(request, pk):
+	"""Render current document version inline for browser preview."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	allowed, error_response = _check_document_file_access(request, doc, DocumentAccess.Action.READ)
+	if not allowed:
+		return error_response
+
+	file_field, current_version = _get_current_document_file(doc)
+	if not file_field:
+		return Response({'detail': 'no current version available'}, status=status.HTTP_404_NOT_FOUND)
+
+	if current_version and not current_version.verify_integrity():
+		DocumentAccess.log_access(
+			document=doc,
+			user=request.user,
+			action=DocumentAccess.Action.READ,
+			ip_address=_get_client_ip(request),
+			result=False,
+			details=f'Integrity check failed for version {current_version.numVersion}',
+		)
+		return Response({'detail': 'integrity verification failed'}, status=status.HTTP_409_CONFLICT)
+
+	file_name = os.path.basename(file_field.name)
+	content_type = mimetypes.guess_type(file_name)[0] or 'application/octet-stream'
+	response = FileResponse(file_field.open('rb'), as_attachment=False, filename=file_name, content_type=content_type)
 	return response
 
 

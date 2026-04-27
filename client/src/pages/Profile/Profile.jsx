@@ -396,7 +396,7 @@ export default function Profile() {
 
   const logout = async () => {
     await logoutRequest();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   return (

@@ -20,6 +20,15 @@ function formatDateTime(value) {
 
 function getNotificationTone(item) {
   const text = `${item?.title || ""} ${item?.message || ""}`.toLowerCase();
+  if (isLeaveNotification(item)) {
+    return {
+      badge: "Congé",
+      dot: "bg-emerald-500",
+      accentBorder: "border-l-emerald-500",
+      softLight: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      softDark: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+    };
+  }
   if (text.includes("avertissement") || text.includes("absence")) {
     return {
       badge: "Alerte RH",
@@ -45,6 +54,11 @@ function getNotificationTone(item) {
     softLight: "border-sky-200 bg-sky-50 text-sky-900",
     softDark: "border-sky-500/30 bg-sky-500/10 text-sky-100",
   };
+}
+
+function isLeaveNotification(item) {
+  const text = `${item?.title || ""} ${item?.message || ""}`.toLowerCase();
+  return text.includes("conge") || text.includes("congé") || item?.link === "/rh/leaves" || item?.link === "/chef/leaves";
 }
 
 export default function Notifications() {
@@ -79,7 +93,7 @@ export default function Notifications() {
   );
 
   const notificationsWithLinks = useMemo(
-    () => items.filter((item) => Boolean(item.link)).length,
+    () => items.filter((item) => Boolean(item.link) && !isLeaveNotification(item)).length,
     [items],
   );
 
@@ -93,7 +107,7 @@ export default function Notifications() {
 
   const latestNotification = orderedItems[0] || null;
 
-  const markAsRead = async (notificationId, link) => {
+  const markAsRead = async (notificationId, link, shouldOpenLink = true) => {
     try {
       setActionId(notificationId);
       await axios.post(`/api/notifications/${notificationId}/read/`);
@@ -103,7 +117,7 @@ export default function Notifications() {
         ),
       );
       window.dispatchEvent(new Event("notifications-updated"));
-      if (link) {
+      if (link && shouldOpenLink) {
         window.location.assign(link);
       }
     } catch (error) {
@@ -317,7 +331,7 @@ export default function Notifications() {
                 Navigation
               </p>
               <p className="mt-3 text-2xl font-semibold">
-                {latestNotification?.link ? "Notification cliquable" : "Consultation locale"}
+                {latestNotification?.link && !isLeaveNotification(latestNotification) ? "Notification cliquable" : "Consultation locale"}
               </p>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Les notifications avec lien peuvent ouvrir directement la page associee.
@@ -339,7 +353,7 @@ export default function Notifications() {
                   Toutes les notifications recues
                 </h2>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Chaque notification peut etre marquee comme lue puis ouvrir sa destination si un lien est disponible.
+                  Les notifications peuvent etre marquees comme traitees. Les demandes de conge affichent uniquement leur etat de traitement.
                 </p>
               </div>
               <div
@@ -377,6 +391,7 @@ export default function Notifications() {
               {!loading &&
                 orderedItems.map((item) => {
                   const tone = getNotificationTone(item);
+                  const isLeave = isLeaveNotification(item);
 
                   return (
                     <article
@@ -443,7 +458,7 @@ export default function Notifications() {
                               }`}
                             >
                               <span>{formatDateTime(item.created_at)}</span>
-                              {item.link && <span>Destination disponible</span>}
+                              {item.link && !isLeave && <span>Destination disponible</span>}
                             </div>
                           </div>
                         </div>
@@ -453,12 +468,14 @@ export default function Notifications() {
                             <button
                               className="modifier"
                               disabled={actionId === item.id}
-                              onClick={() => markAsRead(item.id, item.link)}
+                              onClick={() => markAsRead(item.id, item.link, !isLeave)}
                               type="button"
                             >
                               {actionId === item.id
                                 ? "Traitement..."
-                                : item.link
+                                : isLeave
+                                  ? "Pas traitee"
+                                  : item.link
                                   ? "Lire et ouvrir"
                                   : "Marquer lue"}
                             </button>
@@ -474,7 +491,7 @@ export default function Notifications() {
                             </span>
                           )}
 
-                          {item.is_read && item.link && (
+                          {item.is_read && item.link && !isLeave && (
                             <button
                               className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                                 dark

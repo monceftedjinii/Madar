@@ -36,7 +36,7 @@ export default function Login() {
         refresh: response.refresh,
       });
       setErrorMessage("");
-      navigate("/home");
+      navigate("/home", { replace: true });
       // console.log(status);
     } catch (error) {
       console.error("Login failed", error);
