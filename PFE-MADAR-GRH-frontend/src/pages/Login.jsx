@@ -47,7 +47,7 @@ function Login({ setUser }) {
       // Redirect to dashboard
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed')
+      setError(err.response?.data?.detail || 'Échec de la connexion')
     } finally {
       setLoading(false)
     }
@@ -56,13 +56,13 @@ function Login({ setUser }) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>MADAR Login</h1>
+        <h1 style={styles.title}>MADAR — Connexion</h1>
         
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
-            <label htmlFor="email">Email:</label>
+            <label htmlFor="email">Adresse e-mail :</label>
             <input
               id="email"
               type="email"
@@ -75,7 +75,7 @@ function Login({ setUser }) {
           </div>
 
           <div style={styles.formGroup}>
-            <label htmlFor="password">Password:</label>
+            <label htmlFor="password">Mot de passe :</label>
             <input
               id="password"
               type="password"
@@ -92,12 +92,12 @@ function Login({ setUser }) {
             disabled={loading}
             style={styles.button}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Connexion en cours...' : 'Se connecter'}
           </button>
         </form>
 
         <p style={styles.hint}>
-          Demo: emp@example.com / emppass123
+          Démo : emp@example.com / emppass123
         </p>
       </div>
     </div>

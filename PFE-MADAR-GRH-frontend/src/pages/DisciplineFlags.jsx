@@ -27,9 +27,9 @@ export default function DisciplineFlags() {
       setFlags(response.data);
     } catch (err) {
       if (err.response?.status === 403) {
-        setAuthorizedError('You do not have permission to view discipline flags');
+        setAuthorizedError('Vous n’avez pas l’autorisation de consulter les signalements disciplinaires');
       } else {
-        setError(err.response?.data?.error || 'Failed to load discipline flags');
+        setError(err.response?.data?.error || 'Impossible de charger les signalements disciplinaires');
       }
     } finally {
       setLoading(false);
@@ -195,7 +195,7 @@ export default function DisciplineFlags() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading discipline flags...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des signalements disciplinaires...</div></div>;
   }
 
   if (!isAuthorized) {
@@ -206,13 +206,13 @@ export default function DisciplineFlags() {
         </div>
         <div style={styles.section}>
           <div style={styles.authorizedErrorContainer}>
-            <div style={styles.authorizedErrorMessage}>⛔ Not Authorized</div>
+            <div style={styles.authorizedErrorMessage}>⛔ Accès non autorisé</div>
             <div style={styles.authorizedErrorDescription}>
-              You do not have permission to access this page.
+              Vous n’avez pas les droits pour accéder à cette page.
               <br />
-              Only RH_SENIOR and GRH roles can view discipline flags.
+              Seuls les rôles RH_SENIOR et GRH peuvent consulter les signalements disciplinaires.
             </div>
-            <div>Your current role: <strong>{user.role}</strong></div>
+            <div>Votre rôle actuel : <strong>{user.role}</strong></div>
           </div>
         </div>
       </div>
@@ -222,8 +222,8 @@ export default function DisciplineFlags() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Discipline Flags</h1>
-        <p style={styles.subtitle}>Warning history and discipline tracking for employees</p>
+        <h1 style={styles.title}>Signalements disciplinaires</h1>
+        <p style={styles.subtitle}>Historique des avertissements et suivi disciplinaire des employés</p>
       </div>
 
       {authorizedError && (
@@ -244,38 +244,38 @@ export default function DisciplineFlags() {
         {flags.length > 0 && (
           <div style={styles.filterGroup}>
             <div>
-              <label style={styles.filterLabel}>Search by Employee Name or Email</label>
+              <label style={styles.filterLabel}>Rechercher par nom ou e-mail</label>
               <input
                 style={styles.filterInput}
                 type="text"
-                placeholder="Enter name or email..."
+                placeholder="Saisir un nom ou un e-mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div style={{ fontSize: '12px', color: '#999' }}>
-              {filteredFlags.length} of {flags.length} record(s)
+              {filteredFlags.length} sur {flags.length} enregistrement(s)
             </div>
           </div>
         )}
 
         {flags.length === 0 ? (
           <div style={styles.emptyMessage}>
-            No discipline flags on record. All clear! ✓
+            Aucun signalement disciplinaire enregistré. Tout est en ordre ! ✓
           </div>
         ) : filteredFlags.length === 0 ? (
           <div style={styles.emptyMessage}>
-            No records match your search
+            Aucun enregistrement ne correspond à votre recherche
           </div>
         ) : (
           <div style={styles.tableWrapper}>
             <table style={styles.table}>
               <thead style={styles.tableHeader}>
                 <tr>
-                  <th style={styles.tableHeaderCell}>Employee Name</th>
-                  <th style={styles.tableHeaderCell}>Department</th>
-                  <th style={styles.tableHeaderCell}>Warning Count</th>
-                  <th style={styles.tableHeaderCell}>Month</th>
+                  <th style={styles.tableHeaderCell}>Nom de l’employé</th>
+                  <th style={styles.tableHeaderCell}>Département</th>
+                  <th style={styles.tableHeaderCell}>Nombre d’avertissements</th>
+                  <th style={styles.tableHeaderCell}>Mois</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,7 +294,7 @@ export default function DisciplineFlags() {
                     </td>
                     <td style={styles.tableCell}>
                       <span style={styles.warningBadge}>
-                        {flag.warning_count} warning{flag.warning_count !== 1 ? 's' : ''}
+                        {flag.warning_count} avertissement{flag.warning_count !== 1 ? 's' : ''}
                       </span>
                     </td>
                     <td style={styles.tableCell}>

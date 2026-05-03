@@ -86,7 +86,7 @@ export default function Documents() {
       const response = await api.get(endpoint);
       setDocuments(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load documents');
+      setError(err.response?.data?.error || 'Impossible de charger les documents');
     } finally {
       setLoading(false);
     }
@@ -117,11 +117,11 @@ export default function Documents() {
     setUploadSuccess(null);
 
     if (!formData.title || !formData.type || !formData.file) {
-      setUploadError('Please fill in title, type, and select a file');
+      setUploadError('Veuillez renseigner le titre, le type et sélectionner un fichier');
       return;
     }
     if (isChef && !formData.target_department) {
-      setUploadError('Please select a target department');
+      setUploadError('Veuillez sélectionner un département cible');
       return;
     }
 
@@ -136,7 +136,7 @@ export default function Documents() {
       data.append('file', formData.file);
 
       await api.post('/api/documents/', data);
-      setUploadSuccess('Document uploaded successfully');
+      setUploadSuccess('Document téléversé avec succès');
       setFormData({
         title: '',
         type: '',
@@ -155,7 +155,7 @@ export default function Documents() {
       const payload = typeof err.response?.data === 'object'
         ? JSON.stringify(err.response?.data)
         : err.response?.data;
-      setUploadError(detail || payload || 'Failed to upload document');
+      setUploadError(detail || payload || 'Impossible de téléverser le document');
     } finally {
       setUploading(false);
     }
@@ -165,7 +165,7 @@ export default function Documents() {
     if (!doc?.target_department) {
       setRowMessages(prev => ({
         ...prev,
-        [doc.id]: { type: 'error', text: 'Target department is required to send' }
+        [doc.id]: { type: 'error', text: 'Un département cible est requis pour l’envoi' }
       }));
       return;
     }
@@ -178,13 +178,13 @@ export default function Documents() {
       );
       setRowMessages(prev => ({
         ...prev,
-        [doc.id]: { type: 'success', text: 'Document sent successfully' }
+        [doc.id]: { type: 'success', text: 'Document envoyé avec succès' }
       }));
       setTimeout(() => setRowMessages(prev => ({ ...prev, [doc.id]: null })), 3000);
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [doc.id]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to send' }
+        [doc.id]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Impossible d’envoyer le document' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [doc.id]: null }));
@@ -196,7 +196,7 @@ export default function Documents() {
     if (!comment.trim()) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: 'Comment cannot be empty' }
+        [docId]: { type: 'error', text: 'Le commentaire ne peut pas être vide' }
       }));
       return;
     }
@@ -210,7 +210,7 @@ export default function Documents() {
       await fetchComments(docId);
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'success', text: 'Comment added' }
+        [docId]: { type: 'success', text: 'Commentaire ajouté' }
       }));
       setCommentInputs(prev => ({ ...prev, [docId]: '' }));
       setCommentPrivacy(prev => ({ ...prev, [docId]: false }));
@@ -219,7 +219,7 @@ export default function Documents() {
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to add comment' }
+        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Impossible d’ajouter le commentaire' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
@@ -231,7 +231,7 @@ export default function Documents() {
     if (!reply.trim()) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: 'Reply cannot be empty' }
+        [docId]: { type: 'error', text: 'La réponse ne peut pas être vide' }
       }));
       return;
     }
@@ -246,7 +246,7 @@ export default function Documents() {
       await fetchComments(docId);
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'success', text: 'Reply added' }
+        [docId]: { type: 'success', text: 'Réponse ajoutée' }
       }));
       setReplyInputs(prev => ({ ...prev, [parentId]: '' }));
       setReplyPrivacy(prev => ({ ...prev, [parentId]: false }));
@@ -255,7 +255,7 @@ export default function Documents() {
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Failed to add reply' }
+        [docId]: { type: 'error', text: err.response?.data?.detail || err.response?.data?.error || 'Impossible d’ajouter la réponse' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
@@ -297,13 +297,13 @@ export default function Documents() {
       );
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'success', text: 'Document validated' }
+        [docId]: { type: 'success', text: 'Document validé' }
       }));
       setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.error || 'Failed to validate' }
+        [docId]: { type: 'error', text: err.response?.data?.error || 'Impossible de valider le document' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
@@ -319,25 +319,104 @@ export default function Documents() {
       );
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'success', text: 'Document archived' }
+        [docId]: { type: 'success', text: 'Document archivé' }
       }));
       setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
     } catch (err) {
       setRowMessages(prev => ({
         ...prev,
-        [docId]: { type: 'error', text: err.response?.data?.error || 'Failed to archive' }
+        [docId]: { type: 'error', text: err.response?.data?.error || 'Impossible d’archiver le document' }
       }));
     } finally {
       setActionInProgress(prev => ({ ...prev, [docId]: null }));
     }
   };
 
+  const handleReject = async (docId) => {
+    const reason = prompt("Raison du refus :");
+    if (!reason) return;
+    
+    try {
+      setActionInProgress(prev => ({ ...prev, [docId]: 'reject' }));
+      await api.post(`/api/documents/${docId}/validate/reject/`, { reason });
+      setDocuments(docs =>
+        docs.map(doc => doc.id === docId ? { ...doc, status: 'REJECTED' } : doc)
+      );
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'success', text: 'Document refusé' }
+      }));
+      setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
+    } catch (err) {
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'error', text: err.response?.data?.error || 'Impossible de refuser le document' }
+      }));
+    } finally {
+      setActionInProgress(prev => ({ ...prev, [docId]: null }));
+    }
+  };
+
+  const handleDelete = async (docId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce document ?")) return;
+
+    try {
+      setActionInProgress(prev => ({ ...prev, [docId]: 'delete' }));
+      await api.delete(`/api/documents/${docId}/delete/`);
+      setDocuments(docs => docs.filter(doc => doc.id !== docId));
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'success', text: 'Document supprimé' }
+      }));
+      setTimeout(() => setRowMessages(prev => ({ ...prev, [docId]: null })), 3000);
+    } catch (err) {
+      setRowMessages(prev => ({
+        ...prev,
+        [docId]: { type: 'error', text: err.response?.data?.error || 'Impossible de supprimer le document' }
+      }));
+    } finally {
+      setActionInProgress(prev => ({ ...prev, [docId]: null }));
+    }
+  };
+
+  const handleOpenDocument = async (doc) => {
+    const url = doc.preview_url || doc.file_url;
+    if (!url) return;
+    try {
+      // Fetch with auth token so the Django API allows access
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!response.ok) {
+        // Fallback: open direct media URL (no auth needed for media files in dev)
+        if (doc.file_url) {
+          window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const win = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      // Revoke blob URL after the tab has loaded
+      if (win) {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      }
+    } catch {
+      // Network error fallback
+      if (doc.file_url) {
+        window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
-      DRAFT: { bg: '#f5f5f5', text: '#666', label: 'Draft' },
-      SENT: { bg: '#fff3cd', text: '#856404', label: 'Sent' },
-      VALIDATED: { bg: '#d4edda', text: '#155724', label: 'Validated' },
-      ARCHIVED: { bg: '#e2e3e5', text: '#383d41', label: 'Archived' }
+      DRAFT: { bg: '#f5f5f5', text: '#666', label: 'Brouillon' },
+      SENT: { bg: '#fff3cd', text: '#856404', label: 'Envoyé' },
+      VALIDATED: { bg: '#d4edda', text: '#155724', label: 'Validé' },
+      REJECTED: { bg: '#f8d7da', text: '#721c24', label: 'Refusé' },
+      ARCHIVED: { bg: '#e2e3e5', text: '#383d41', label: 'Archivé' }
     };
     return colors[status] || colors.DRAFT;
   };
@@ -527,6 +606,14 @@ export default function Documents() {
       backgroundColor: '#6c757d',
       color: 'white'
     },
+    rejectButton: {
+      backgroundColor: '#dc3545',
+      color: 'white'
+    },
+    deleteButton: {
+      backgroundColor: '#dc3545',
+      color: 'white'
+    },
     buttonDisabled: {
       backgroundColor: '#ccc',
       cursor: 'not-allowed'
@@ -647,19 +734,19 @@ export default function Documents() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading documents...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des documents...</div></div>;
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.title}>Documents</h1>
-        <p style={styles.subtitle}>Upload, manage, and track document workflows</p>
+        <p style={styles.subtitle}>Téléverser, gérer et suivre les circuits documentaires</p>
       </div>
 
       {/* Upload Section */}
       <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Upload Document</h2>
+        <h2 style={styles.sectionTitle}>Téléverser un document</h2>
 
         {uploadError && (
           <div style={{...styles.alertBanner, ...styles.errorBanner}}>
@@ -677,14 +764,14 @@ export default function Documents() {
 
         <form style={styles.form} onSubmit={handleUpload}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Title *</label>
+            <label style={styles.label}>Titre *</label>
             <input
               style={styles.input}
               type="text"
               name="title"
               value={formData.title}
               onChange={handleFormChange}
-              placeholder="Document title"
+              placeholder="Titre du document"
               required
             />
           </div>
@@ -697,13 +784,13 @@ export default function Documents() {
               name="type"
               value={formData.type}
               onChange={handleFormChange}
-              placeholder="e.g., Contract, Invoice, Report"
+              placeholder="ex. : Contrat, Facture, Rapport"
               required
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Category</label>
+            <label style={styles.label}>Catégorie</label>
             <select
               style={styles.select}
               name="category"
@@ -717,14 +804,14 @@ export default function Documents() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Source Department</label>
+            <label style={styles.label}>Département source</label>
             <select
               style={styles.select}
               name="source_department"
               value={formData.source_department}
               onChange={handleFormChange}
             >
-              <option value="">Optional</option>
+              <option value="">Optionnel</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>
                   {dept.name}
@@ -734,14 +821,14 @@ export default function Documents() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Target Department {isChef ? '*' : ''}</label>
+            <label style={styles.label}>Département cible {isChef ? '*' : ''}</label>
             <select
               style={styles.select}
               name="target_department"
               value={formData.target_department}
               onChange={handleFormChange}
             >
-              <option value="">Optional</option>
+              <option value="">Optionnel</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>
                   {dept.name}
@@ -751,7 +838,7 @@ export default function Documents() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>File *</label>
+            <label style={styles.label}>Fichier *</label>
             <input
               style={styles.fileInput}
               type="file"
@@ -767,7 +854,7 @@ export default function Documents() {
               type="submit"
               disabled={uploading}
             >
-              {uploading ? 'Uploading...' : 'Upload Document'}
+              {uploading ? 'Téléversement...' : 'Téléverser le document'}
             </button>
             <button
               style={styles.resetButton}
@@ -791,7 +878,7 @@ export default function Documents() {
 
       {/* Documents List Section */}
       <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>{isEmployee ? 'Documents Feed' : 'My Documents'}</h2>
+        <h2 style={styles.sectionTitle}>{isEmployee ? 'Fil de documents' : 'Mes documents'}</h2>
 
         {error && (
           <div style={{...styles.alertBanner, ...styles.errorBanner}}>
@@ -801,21 +888,21 @@ export default function Documents() {
         )}
 
         {documents.length === 0 ? (
-          <div style={styles.emptyMessage}>No documents yet. Upload one to get started!</div>
+          <div style={styles.emptyMessage}>Aucun document pour le moment. Téléversez-en un pour commencer !</div>
         ) : (
           <div style={styles.tableWrapper}>
             <table style={styles.table}>
               <thead style={styles.tableHeader}>
                 <tr>
-                  <th style={styles.tableHeaderCell}>Title</th>
+                  <th style={styles.tableHeaderCell}>Titre</th>
                   <th style={styles.tableHeaderCell}>Type</th>
-                  <th style={styles.tableHeaderCell}>Category</th>
-                  {!isEmployee && <th style={styles.tableHeaderCell}>Status</th>}
+                  <th style={styles.tableHeaderCell}>Catégorie</th>
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Statut</th>}
                   {!isEmployee && <th style={styles.tableHeaderCell}>Source</th>}
-                  {!isEmployee && <th style={styles.tableHeaderCell}>Target</th>}
-                  {isEmployee && <th style={styles.tableHeaderCell}>Uploaded By</th>}
-                  {isEmployee && <th style={styles.tableHeaderCell}>Sent At</th>}
-                  {!isEmployee && <th style={styles.tableHeaderCell}>Created</th>}
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Cible</th>}
+                  {isEmployee && <th style={styles.tableHeaderCell}>Téléversé par</th>}
+                  {isEmployee && <th style={styles.tableHeaderCell}>Envoyé le</th>}
+                  {!isEmployee && <th style={styles.tableHeaderCell}>Créé le</th>}
                   <th style={styles.tableHeaderCell}>Actions</th>
                 </tr>
               </thead>
@@ -824,7 +911,9 @@ export default function Documents() {
                   const statusInfo = getStatusColor(doc.status);
                   const canSend = doc.status === 'DRAFT' && !!doc.target_department;
                   const canValidate = isRHSeniorOrGRH && doc.status === 'SENT';
+                  const canReject = isRHSeniorOrGRH && doc.status === 'SENT';
                   const canArchive = isRHSeniorOrGRH && doc.status === 'VALIDATED';
+                  const canDelete = isRHSeniorOrGRH && doc.status === 'VALIDATED';
                   const isBusy = Boolean(actionInProgress[doc.id]);
 
                   return (
@@ -846,50 +935,69 @@ export default function Documents() {
                       {!isEmployee && <td style={styles.tableCell}>{formatDate(doc.created_at)}</td>}
                       <td style={styles.tableCell}>
                         <div>
-                          {doc.file_url && (
-                            <a
-                              href={doc.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{...styles.button, ...styles.sendButton, textDecoration: 'none'}}
+                          {(doc.preview_url || doc.file_url) && (
+                            <button
+                              style={{...styles.button, ...styles.sendButton}}
+                              onClick={() => handleOpenDocument(doc)}
+                              title="Consulter le document"
                             >
-                              View
-                            </a>
+                              Consulter
+                            </button>
                           )}
                           {canSend && (
                             <button
                               style={{...styles.button, ...styles.sendButton, ...(isBusy ? styles.buttonDisabled : {})}}
                               onClick={() => handleSend(doc)}
                               disabled={isBusy}
-                              title="Send document"
+                              title="Envoyer le document"
                             >
-                              {actionInProgress[doc.id] === 'send' ? '...' : 'Send'}
+                              {actionInProgress[doc.id] === 'send' ? '...' : 'Envoyer'}
                             </button>
                           )}
                           {canValidate && (
-                            <button
-                              style={{...styles.button, ...styles.validateButton, ...(isBusy ? styles.buttonDisabled : {})}}
-                              onClick={() => handleValidate(doc.id)}
-                              disabled={isBusy}
-                              title="Validate document"
-                            >
-                              {actionInProgress[doc.id] === 'validate' ? '...' : 'Validate'}
-                            </button>
+                            <>
+                              <button
+                                style={{...styles.button, ...styles.validateButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                                onClick={() => handleValidate(doc.id)}
+                                disabled={isBusy}
+                                title="Valider le document"
+                              >
+                                {actionInProgress[doc.id] === 'validate' ? '...' : 'Valider'}
+                              </button>
+                              <button
+                                style={{...styles.button, ...styles.rejectButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                                onClick={() => handleReject(doc.id)}
+                                disabled={isBusy}
+                                title="Refuser le document"
+                              >
+                                {actionInProgress[doc.id] === 'reject' ? '...' : 'Refuser'}
+                              </button>
+                            </>
                           )}
                           {canArchive && (
                             <button
                               style={{...styles.button, ...styles.archiveButton, ...(isBusy ? styles.buttonDisabled : {})}}
                               onClick={() => handleArchive(doc.id)}
                               disabled={isBusy}
-                              title="Archive document"
+                              title="Archiver le document"
                             >
-                              {actionInProgress[doc.id] === 'archive' ? '...' : 'Archive'}
+                              {actionInProgress[doc.id] === 'archive' ? '...' : 'Archiver'}
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              style={{...styles.button, ...styles.deleteButton, ...(isBusy ? styles.buttonDisabled : {})}}
+                              onClick={() => handleDelete(doc.id)}
+                              disabled={isBusy}
+                              title="Supprimer définitivement le document"
+                            >
+                              {actionInProgress[doc.id] === 'delete' ? '...' : 'Supprimer'}
                             </button>
                           )}
                           <button
                             style={{...styles.button, ...styles.commentButton}}
                             onClick={() => toggleComments(doc.id)}
-                            title="Add comment"
+                            title="Ajouter un commentaire"
                           >
                             💬
                           </button>
@@ -899,10 +1007,10 @@ export default function Documents() {
                           <div>
                             <div style={styles.commentsList}>
                               {commentsLoading[doc.id] && (
-                                <div style={styles.commentEmpty}>Loading comments...</div>
+                                <div style={styles.commentEmpty}>Chargement des commentaires...</div>
                               )}
                               {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).length === 0 && (
-                                <div style={styles.commentEmpty}>No comments yet.</div>
+                                <div style={styles.commentEmpty}>Aucun commentaire pour le moment.</div>
                               )}
                               {!commentsLoading[doc.id] && (commentsByDoc[doc.id] || []).map(comment => (
                                 <div
@@ -923,7 +1031,7 @@ export default function Documents() {
                                       onClick={() => toggleReply(comment.id)}
                                       type="button"
                                     >
-                                      Reply
+                                      Répondre
                                     </button>
                                   </div>
                                   <div style={styles.commentBody}>{comment.note}</div>
@@ -933,7 +1041,7 @@ export default function Documents() {
                                       <div style={styles.expandedRow}>
                                         <textarea
                                           style={styles.commentInput}
-                                          placeholder="Write a reply..."
+                                          placeholder="Rédigez une réponse..."
                                           value={replyInputs[comment.id] || ''}
                                           onChange={(e) => setReplyInputs(prev => ({ ...prev, [comment.id]: e.target.value }))}
                                         />
@@ -983,7 +1091,7 @@ export default function Documents() {
                             <div style={styles.expandedRow}>
                               <textarea
                                 style={styles.commentInput}
-                                placeholder="Add a comment..."
+                                placeholder="Ajouter un commentaire..."
                                 value={commentInputs[doc.id] || ''}
                                 onChange={(e) => setCommentInputs(prev => ({ ...prev, [doc.id]: e.target.value }))}
                               />
@@ -992,7 +1100,7 @@ export default function Documents() {
                                 onClick={() => handleComment(doc.id)}
                                 disabled={isBusy}
                               >
-                                {actionInProgress[doc.id] === 'comment' ? '...' : 'Post'}
+                                {actionInProgress[doc.id] === 'comment' ? '...' : 'Publier'}
                               </button>
                             </div>
                             <label style={styles.privacyToggle}>
@@ -1022,7 +1130,7 @@ export default function Documents() {
 
         {documents.length > 0 && (
           <div style={{ marginTop: '15px', fontSize: '12px', color: '#999' }}>
-            Total documents: {documents.length}
+            Total de documents : {documents.length}
           </div>
         )}
       </div>

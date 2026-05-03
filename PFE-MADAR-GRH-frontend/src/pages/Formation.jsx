@@ -30,7 +30,7 @@ export default function Formation() {
       setFormations(response.data);
       setError('');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load formations');
+      setError(err.response?.data?.detail || 'Impossible de charger les formations');
     } finally {
       setLoading(false);
     }
@@ -47,14 +47,14 @@ export default function Formation() {
     setSuccess('');
 
     if (!formData.nom.trim() || !formData.description.trim()) {
-      setError('Name and description are required');
+      setError('Le nom et la description sont obligatoires');
       return;
     }
 
     try {
       setSubmitting(true);
       const response = await api.post('/api/formations/create/', formData);
-      setSuccess('Formation request submitted successfully!');
+      setSuccess('Demande de formation soumise avec succès !');
       setFormData({ nom: '', description: '', reasons: '' });
       setShowModal(false);
       setError('');
@@ -64,7 +64,7 @@ export default function Formation() {
       console.error('Formation submission error:', err);
       console.error('Response data:', err.response?.data);
       console.error('Status:', err.response?.status);
-      setError(err.response?.data?.detail || err.message || 'Failed to submit formation request');
+      setError(err.response?.data?.detail || err.message || 'Impossible de soumettre la demande de formation');
     } finally {
       setSubmitting(false);
     }
@@ -81,7 +81,7 @@ export default function Formation() {
       setEmployees(response.data);
       setShowPeopleModal(true);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load employees');
+      setError(err.response?.data?.detail || 'Impossible de charger les employés');
     }
   };
 
@@ -98,11 +98,11 @@ export default function Formation() {
   const handleReviewParticipants = () => {
     const peopleRequired = selectedFormation?.approved_formation?.people_required || 0;
     if (selectedEmployees.length === 0) {
-      setError('Please select at least one employee');
+      setError('Veuillez sélectionner au moins un employé');
       return;
     }
     if (selectedEmployees.length > peopleRequired) {
-      setError(`You selected ${selectedEmployees.length} but only need ${peopleRequired}. Please adjust your selection.`);
+      setError(`Vous avez sélectionné ${selectedEmployees.length} participant(s) mais seulement ${peopleRequired} sont requis. Veuillez ajuster votre sélection.`);
       return;
     }
     setError('');
@@ -131,7 +131,7 @@ export default function Formation() {
       setError('');
       await fetchFormations();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to add participants');
+      setError(err.response?.data?.detail || 'Impossible d’ajouter des participants');
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +151,7 @@ export default function Formation() {
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading formations...</div>;
+    return <div style={styles.loading}>Chargement des formations...</div>;
   }
 
   return (
@@ -166,7 +166,7 @@ export default function Formation() {
             setSuccess('');
           }}
         >
-          + Demand Formation
+          + Demander une formation
         </button>
       </div>
 
@@ -175,7 +175,7 @@ export default function Formation() {
 
       <div style={styles.container}>
         {formations.length === 0 ? (
-          <div style={styles.empty}>No formations requested yet</div>
+          <div style={styles.empty}>Aucune formation demandée pour le moment</div>
         ) : (
           <div style={styles.listContainer}>
             {formations.map((formation) => (
@@ -193,16 +193,16 @@ export default function Formation() {
                 </div>
                 {formation.approved_formation && (
                   <div style={styles.reasonsSection}>
-                    <strong style={styles.reasonsLabel}>Approved Formation:</strong>
+                    <strong style={styles.reasonsLabel}>Formation approuvée :</strong>
                     <p style={styles.reasons}>{formation.approved_formation.name}</p>
                     <p style={{...styles.reasons, fontSize: '13px', color: '#666'}}>
-                      People Required: {formation.approved_formation.people_required}
+                      Participants requis : {formation.approved_formation.people_required}
                     </p>
                   </div>
                 )}
                 {formation.participants && formation.participants.length > 0 && (
                   <div style={styles.reasonsSection}>
-                    <strong style={styles.reasonsLabel}>Participants ({formation.participants.length}):</strong>
+                    <strong style={styles.reasonsLabel}>Participants ({formation.participants.length}) :</strong>
                     <ul style={{margin: '4px 0', paddingLeft: '20px'}}>
                       {formation.participants.map((p, idx) => (
                         <li key={idx} style={{fontSize: '14px', color: '#374151'}}>
@@ -214,14 +214,14 @@ export default function Formation() {
                 )}
                 <div style={styles.cardFooter}>
                   <small style={styles.date}>
-                    Requested: {new Date(formation.created_at).toLocaleDateString()}
+                    Demandée le : {new Date(formation.created_at).toLocaleDateString()}
                   </small>
                   {(formation.status === 'WAITING_FOR_PEOPLE' || formation.status === 'APPROVED') && (
                     <button
                       style={styles.addPeopleBtn}
                       onClick={() => handleAddPeople(formation)}
                     >
-                      {formation.status === 'APPROVED' ? 'Add More Participants' : 'Add Participants'}
+                      {formation.status === 'APPROVED' ? 'Ajouter plus de participants' : 'Ajouter des participants'}
                     </button>
                   )}
                 </div>
@@ -235,7 +235,7 @@ export default function Formation() {
         <div style={styles.overlay} onClick={() => !submitting && setShowModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h2>Request New Formation</h2>
+              <h2>Demander une nouvelle formation</h2>
               <button
                 style={styles.closeBtn}
                 onClick={() => !submitting && setShowModal(false)}
@@ -247,13 +247,13 @@ export default function Formation() {
 
             <form onSubmit={handleSubmit} style={styles.form}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Formation Name *</label>
+                <label style={styles.label}>Nom de la formation *</label>
                 <input
                   type="text"
                   name="nom"
                   value={formData.nom}
                   onChange={handleInputChange}
-                  placeholder="e.g., Advanced Management"
+                  placeholder="ex. : Gestion avancée"
                   style={styles.input}
                   disabled={submitting}
                 />
@@ -265,7 +265,7 @@ export default function Formation() {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  placeholder="Describe the formation content and objectives..."
+                  placeholder="Décrivez le contenu et les objectifs de la formation..."
                   style={styles.textarea}
                   rows={4}
                   disabled={submitting}
@@ -273,12 +273,12 @@ export default function Formation() {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Reasons (Optional)</label>
+                <label style={styles.label}>Raisons (optionnel)</label>
                 <textarea
                   name="reasons"
                   value={formData.reasons}
                   onChange={handleInputChange}
-                  placeholder="Explain why this formation is needed..."
+                  placeholder="Expliquez pourquoi cette formation est nécessaire..."
                   style={styles.textarea}
                   rows={4}
                   disabled={submitting}
@@ -340,10 +340,10 @@ export default function Formation() {
             {peopleStep === 'select' ? (
               <>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Select Employees (from your department)</label>
+                  <label style={styles.label}>Sélectionner des employés (de votre département)</label>
                   {employees.length === 0 ? (
                     <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
-                      No employees available
+                      Aucun employé disponible
                     </div>
                   ) : (
                     <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto'}}>
@@ -389,7 +389,7 @@ export default function Formation() {
                     onClick={() => setShowPeopleModal(false)}
                     disabled={submitting}
                   >
-                    Cancel
+                    Annuler
                   </button>
                   <button
                     type="button"
@@ -397,17 +397,17 @@ export default function Formation() {
                     onClick={handleReviewParticipants}
                     disabled={submitting || selectedEmployees.length === 0}
                   >
-                    Next - Review Selection ({selectedEmployees.length})
+                    Suivant — Confirmer la sélection ({selectedEmployees.length})
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <div style={{...styles.formGroup, background: '#fafafa', padding: '16px', borderRadius: '8px'}}>
-                  <label style={styles.label}>Review Selected Participants</label>
+                  <label style={styles.label}>Confirmer les participants sélectionnés</label>
                   {selectedEmployees.length === 0 ? (
                     <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
-                      No participants selected
+                      Aucun participant sélectionné
                     </div>
                   ) : (
                     <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
@@ -449,7 +449,7 @@ export default function Formation() {
                               onClick={() => handleRemoveParticipant(empId)}
                               disabled={submitting}
                             >
-                              Remove
+                              Retirer
                             </button>
                           </div>
                         ) : null;
@@ -465,7 +465,7 @@ export default function Formation() {
                     onClick={handleBackToSelect}
                     disabled={submitting}
                   >
-                    ← Back to Edit
+                    ← Retour
                   </button>
                   <button
                     type="button"
@@ -473,7 +473,7 @@ export default function Formation() {
                     onClick={handleSubmitParticipants}
                     disabled={submitting}
                   >
-                    {submitting ? 'Submitting...' : 'Confirm & Submit'}
+                    {submitting ? 'Soumission...' : 'Confirmer & Soumettre'}
                   </button>
                 </div>
               </>

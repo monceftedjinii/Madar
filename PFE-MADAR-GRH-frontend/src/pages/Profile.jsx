@@ -43,7 +43,7 @@ export default function Profile() {
       });
       setError('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load profile');
+      setError(err.response?.data?.error || 'Impossible de charger le profil');
     } finally {
       setLoading(false);
     }
@@ -79,13 +79,13 @@ export default function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      setSuccess('Profile updated successfully.');
+      setSuccess('Profil mis à jour avec succès.');
       setIsEditing(false);
       setSelectedFile(null);
       setPreviewUrl(null);
       await fetchProfile();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update profile');
+      setError(err.response?.data?.error || 'Impossible de mettre à jour le profil');
     }
   };
 
@@ -126,33 +126,33 @@ export default function Profile() {
     setSuccess('');
 
     if (!passwordForm.current_password || !passwordForm.new_password || !passwordForm.confirm_password) {
-      setError('Please fill all password fields');
+      setError('Veuillez remplir tous les champs du mot de passe');
       return;
     }
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      setError('New password and confirmation do not match');
+      setError('Le nouveau mot de passe et la confirmation ne correspondent pas');
       return;
     }
 
     try {
       setChangingPassword(true);
       const response = await api.post('/api/profile/change-password/', passwordForm);
-      setSuccess(response.data?.detail || 'Password changed successfully');
+      setSuccess(response.data?.detail || 'Mot de passe modifié avec succès');
       setPasswordForm({
         current_password: '',
         new_password: '',
         confirm_password: '',
       });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to change password');
+      setError(err.response?.data?.detail || 'Impossible de modifier le mot de passe');
     } finally {
       setChangingPassword(false);
     }
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading profile...</div>;
+    return <div style={styles.loading}>Chargement du profil...</div>;
   }
 
   const imageSrc =
@@ -168,7 +168,7 @@ export default function Profile() {
 
           <div style={styles.menuBox}>
             <button style={styles.menuItem} onClick={() => navigate('/dashboard')}>
-              Dashboard
+              Tableau de bord
             </button>
             <button
               style={{ ...styles.menuItem, ...(activeSection === 'account' ? styles.menuItemActive : {}) }}
@@ -179,7 +179,7 @@ export default function Profile() {
                 setSuccess('');
               }}
             >
-              Account Details
+              Détails du compte
             </button>
             <button
               style={{ ...styles.menuItem, ...(activeSection === 'password' ? styles.menuItemActive : {}) }}
@@ -191,16 +191,16 @@ export default function Profile() {
                 setIsEditing(false);
               }}
             >
-              Change Password
+              Modifier le mot de passe
             </button>
             <button style={styles.menuItem} type="button" onClick={handleLogout}>
-              Logout
+            Déconnexion
             </button>
           </div>
         </aside>
 
         <main style={styles.main}>
-          <h1 style={styles.title}>Account Settings</h1>
+          <h1 style={styles.title}>Paramètres du compte</h1>
 
           {error && <div style={styles.error}>{error}</div>}
           {success && <div style={styles.success}>{success}</div>}
@@ -208,12 +208,12 @@ export default function Profile() {
           {activeSection === 'account' ? (
           <form onSubmit={handleSubmit}>
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>Email address</label>
+              <label style={styles.label}>Adresse e-mail</label>
               <input type="email" value={profile?.email || ''} disabled style={styles.inputDisabled} />
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>First name</label>
+              <label style={styles.label}>Prénom</label>
               <input
                 type="text"
                 name="first_name"
@@ -225,7 +225,7 @@ export default function Profile() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>Last name</label>
+              <label style={styles.label}>Nom</label>
               <input
                 type="text"
                 name="last_name"
@@ -237,14 +237,14 @@ export default function Profile() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>Role</label>
+              <label style={styles.label}>Rôle</label>
               <input type="text" value={profile?.role || ''} disabled style={styles.inputDisabled} />
             </div>
 
             {profile?.employee_info && (
               <>
                 <div style={styles.fieldGroup}>
-                  <label style={styles.label}>Phone number</label>
+                  <label style={styles.label}>Numéro de téléphone</label>
                   <input
                     type="text"
                     name="phone_number"
@@ -256,7 +256,7 @@ export default function Profile() {
                 </div>
 
                 <div style={styles.fieldGroup}>
-                  <label style={styles.label}>Address</label>
+                  <label style={styles.label}>Adresse</label>
                   <input
                     type="text"
                     name="address"
@@ -291,7 +291,7 @@ export default function Profile() {
 
             {isEditing && (
               <div style={styles.fieldGroup}>
-                <label style={styles.label}>Profile picture</label>
+                <label style={styles.label}>Photo de profil</label>
                 <input type="file" accept="image/*" onChange={handleFileSelect} />
               </div>
             )}
@@ -299,15 +299,15 @@ export default function Profile() {
             <div style={styles.actions}>
               {!isEditing ? (
                 <button type="button" style={styles.primaryButton} onClick={() => setIsEditing(true)}>
-                  Edit Profile
+                  Modifier le profil
                 </button>
               ) : (
                 <>
                   <button type="button" style={styles.secondaryButton} onClick={cancelEdit}>
-                    Cancel
+                    Annuler
                   </button>
                   <button type="submit" style={styles.primaryButton}>
-                    Save
+                    Enregistrer
                   </button>
                 </>
               )}
@@ -316,7 +316,7 @@ export default function Profile() {
           ) : (
           <form onSubmit={handleChangePassword}>
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>Current password</label>
+              <label style={styles.label}>Mot de passe actuel</label>
               <input
                 type="password"
                 name="current_password"
@@ -327,7 +327,7 @@ export default function Profile() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>New password</label>
+              <label style={styles.label}>Nouveau mot de passe</label>
               <input
                 type="password"
                 name="new_password"
@@ -338,7 +338,7 @@ export default function Profile() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>Confirm new password</label>
+              <label style={styles.label}>Confirmer le nouveau mot de passe</label>
               <input
                 type="password"
                 name="confirm_password"
@@ -350,7 +350,7 @@ export default function Profile() {
 
             <div style={styles.actions}>
               <button type="submit" style={styles.primaryButton} disabled={changingPassword}>
-                {changingPassword ? 'Changing...' : 'Change Password'}
+                {changingPassword ? 'Modification...' : 'Modifier le mot de passe'}
               </button>
             </div>
           </form>

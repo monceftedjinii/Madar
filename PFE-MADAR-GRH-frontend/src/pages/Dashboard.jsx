@@ -19,69 +19,69 @@ function Dashboard({ user, setUser }) {
   }
 
   if (!user) {
-    return <div style={{ padding: '20px' }}>Loading...</div>
+    return <div style={{ padding: '20px' }}>Chargement...</div>
   }
 
   // Menu items by role
   const roleMenus = {
     EMPLOYEE: [
-      { label: 'Tasks', href: '/tasks' },
-      { label: 'Attendance', href: '/attendance' },
-      { label: 'Leaves', href: '/leaves' },
+      { label: 'Mes tâches', href: '/tasks' },
+      { label: 'Présence', href: '/attendance' },
+      { label: 'Congés', href: '/leaves' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Reports', href: '/reports' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Rapports', href: '/reports' },
+      { label: 'Profil', href: '/profile' },
     ],
     CHEF: [
-      { label: 'Employees', href: '/employees' },
-      { label: 'Leaves (Department)', href: '/leaves/department' },
-      { label: 'Assign Task', href: '/tasks/assign' },
-      { label: 'Formation', href: '/formation' },
+      { label: 'Employés', href: '/employees' },
+      { label: 'Congés (Département)', href: '/leaves/department' },
+      { label: 'Assigner une tâche', href: '/tasks/assign' },
+      { label: 'Formations', href: '/formation' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
-      { label: 'Reports', href: '/reports' },
+      { label: 'Rapports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Profil', href: '/profile' },
     ],
     RH_SIMPLE: [
-      { label: 'Absences (Yesterday)', href: '/absences/yesterday' },
-      { label: 'Leaves (Approvals)', href: '/leaves/department' },
-      { label: 'Leaves', href: '/leaves' },
+      { label: "Absences (d'hier)", href: '/absences/yesterday' },
+      { label: 'Congés (Approbations)', href: '/leaves/department' },
+      { label: 'Congés', href: '/leaves' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
-      { label: 'Reports', href: '/reports' },
+      { label: 'Rapports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Profil', href: '/profile' },
     ],
     RH_AGENT: [
-      { label: 'Leaves (Approvals)', href: '/leaves/department' },
+      { label: 'Congés (Approbations)', href: '/leaves/department' },
       { label: 'Formations', href: '/agent/formations' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
-      { label: 'Reports', href: '/reports' },
+      { label: 'Rapports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Profil', href: '/profile' },
     ],
     RH_SENIOR: [
-      { label: 'Discipline Flags', href: '/discipline/flags' },
-      { label: 'Leaves (Approvals)', href: '/leaves/department' },
+      { label: 'Signalements disciplinaires', href: '/discipline/flags' },
+      { label: 'Congés (Approbations)', href: '/leaves/department' },
       { label: 'Messages', href: '/messages' },
       { label: 'Documents', href: '/documents' },
-      { label: 'Reports', href: '/reports' },
+      { label: 'Rapports', href: '/reports' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Profil', href: '/profile' },
     ],
     GRH: [
-      { label: '📊 Analytics Dashboard', href: '/analytics' },
-      { label: 'Leaves (Approvals)', href: '/leaves/department' },
-      { label: 'Reports', href: '/reports' },
+      { label: '📊 Tableau de bord analytique', href: '/analytics' },
+      { label: 'Congés (Approbations)', href: '/leaves/department' },
+      { label: 'Rapports', href: '/reports' },
       { label: 'Documents', href: '/documents' },
-      { label: 'Employees', href: '/employees' },
+      { label: 'Employés', href: '/employees' },
       { label: 'Messages', href: '/messages' },
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Profile', href: '/profile' },
+      { label: 'Profil', href: '/profile' },
     ],
   }
 
@@ -91,13 +91,13 @@ function Dashboard({ user, setUser }) {
     <div style={styles.container}>
       <header style={styles.header}>
         <div>
-          <h1>MADAR Dashboard</h1>
+          <h1>MADAR — Tableau de bord</h1>
           <p style={styles.subtitle}>
-            Welcome <strong>{user.email}</strong> — Role: <strong>{user.role}</strong>
+            Bienvenue, <strong>{user.email}</strong> — Rôle : <strong>{user.role}</strong>
           </p>
         </div>
         <button onClick={handleLogout} style={styles.logoutBtn}>
-          Logout
+          Déconnexion
         </button>
       </header>
 
@@ -116,18 +116,18 @@ function Dashboard({ user, setUser }) {
                 ))}
               </ul>
             ) : (
-              <p>No menu items available</p>
+              <p>Aucun élément de menu disponible</p>
             )}
           </nav>
         </aside>
 
         <main style={styles.main}>
-          <h2>Features Coming Soon</h2>
+          <h2>Fonctionnalités à venir</h2>
           <p>
-            Your role is <strong>{user.role}</strong>. Feature pages will be implemented next.
+            Votre rôle est <strong>{user.role}</strong>. Les pages de fonctionnalités seront disponibles prochainement.
           </p>
           <div style={styles.infoBox}>
-            <h3>User Info:</h3>
+            <h3>Informations utilisateur :</h3>
             <pre>{JSON.stringify(user, null, 2)}</pre>
           </div>
         </main>

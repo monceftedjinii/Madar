@@ -16,6 +16,7 @@ const initialForm = {
   contract_type: "CDI",
   salary: "",
   attendance_pin: "",
+  role: "EMPLOYEE",
 };
 
 export default function RhEmployees() {
@@ -167,6 +168,22 @@ export default function RhEmployees() {
     }
   };
 
+  const changeRole = async (employeeId, newRole) => {
+    try {
+      setActionId(employeeId);
+      setFeedback("");
+      setErrorMessage("");
+      await axios.patch(`/api/employees/${employeeId}/role/`, { role: newRole });
+      setFeedback(`Rôle mis à jour avec succès : ${newRole}`);
+      await fetchData();
+    } catch (error) {
+      console.error("Erreur modification role:", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de modifier le rôle.");
+    } finally {
+      setActionId(null);
+    }
+  };
+
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
@@ -302,6 +319,23 @@ export default function RhEmployees() {
                   <option value="STAGE">STAGE</option>
                 </select>
               </div>
+              {!editingEmployeeId && (
+                <div>
+                  <p className="desc">Rôle</p>
+                  <select
+                    value={form.role}
+                    onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
+                    style={fieldStyle}
+                  >
+                    <option value="EMPLOYEE">Employé</option>
+                    <option value="CHEF">Chef de service</option>
+                    <option value="RH_SIMPLE">RH</option>
+                    <option value="RH_AGENT">RH Agent</option>
+                    <option value="RH_SENIOR">RH Senior</option>
+                    <option value="GRH">GRH</option>
+                  </select>
+                </div>
+              )}
               <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 {editingEmployeeId ? (
                   <button className="mode" onClick={resetForm} type="button">Annuler</button>
@@ -331,6 +365,7 @@ export default function RhEmployees() {
                   <th>Poste</th>
                   <th>Contrat</th>
                   <th>En ligne</th>
+                  <th>Rôle</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -353,6 +388,25 @@ export default function RhEmployees() {
                         <span className={`badge ${employee.is_online ? "badge-termine" : "badge-refuse"}`}>
                           {employee.is_online ? "En ligne" : "Hors ligne"}
                         </span>
+                      </td>
+                      <td>
+                        {canManageEmployees ? (
+                          <select
+                            value={employee.role || "EMPLOYEE"}
+                            disabled={actionId === employee.id}
+                            onChange={(e) => changeRole(employee.id, e.target.value)}
+                            style={{ ...fieldStyle, width: "auto", padding: "4px 8px", fontSize: 13 }}
+                          >
+                            <option value="EMPLOYEE">Employé</option>
+                            <option value="CHEF">Chef de service</option>
+                            <option value="RH_SIMPLE">RH</option>
+                            <option value="RH_AGENT">RH Agent</option>
+                            <option value="RH_SENIOR">RH Senior</option>
+                            <option value="GRH">GRH</option>
+                          </select>
+                        ) : (
+                          <span style={{ fontWeight: 600 }}>{employee.role || "-"}</span>
+                        )}
                       </td>
                       <td>
                         {canManageEmployees ? (

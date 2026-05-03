@@ -42,7 +42,7 @@ export default function AssignTask() {
       const response = await api.get('/api/employees/');
       setEmployees(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load employees');
+      setError(err.response?.data?.error || 'Impossible de charger les employés');
     } finally {
       setLoadingEmployees(false);
     }
@@ -97,7 +97,7 @@ export default function AssignTask() {
         due_date: formData.due_date
       });
 
-      setSuccess('Task assigned successfully');
+      setSuccess('Tâche assignée avec succès');
       setFormData({
         employee_id: '',
         title: '',
@@ -114,7 +114,7 @@ export default function AssignTask() {
       const errorMsg = err.response?.data?.detail || 
                        (typeof err.response?.data === 'object' ? JSON.stringify(err.response?.data) : err.response?.data) || 
                        err.message || 
-                       'Failed to assign task';
+                       'Impossible d’assigner la tâche';
       setError(errorMsg);
     } finally {
       setSubmitting(false);
@@ -501,13 +501,13 @@ export default function AssignTask() {
   };
 
   if (loadingEmployees) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading employees...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des employés...</div></div>;
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Assign Task</h1>
+        <h1 style={styles.title}>Assigner une tâche</h1>
       </div>
 
       {error && (
@@ -526,11 +526,11 @@ export default function AssignTask() {
 
       <div style={styles.mainContent}>
         <div style={styles.formPanel}>
-          <h2 style={styles.panelTitle}>New Task</h2>
+          <h2 style={styles.panelTitle}>Nouvelle tâche</h2>
           <form onSubmit={handleSubmit}>
             <div style={styles.formGroup}>
               <label style={styles.label}>
-                Employee <span style={styles.required}>*</span>
+                Employé <span style={styles.required}>*</span>
               </label>
               <select
                 style={{...styles.select, ...(loadingEmployees ? styles.selectDisabled : {})}}
@@ -539,7 +539,7 @@ export default function AssignTask() {
                 onChange={handleInputChange}
                 disabled={loadingEmployees}
               >
-                <option value="">Select an employee</option>
+                <option value="">Sélectionner un employé</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
                     {emp.first_name} {emp.last_name} ({emp.email})
@@ -550,7 +550,7 @@ export default function AssignTask() {
 
             <div style={styles.formGroup}>
               <label style={styles.label}>
-                Task Title <span style={styles.required}>*</span>
+                Titre de la tâche <span style={styles.required}>*</span>
               </label>
               <input
                 style={styles.input}
@@ -558,26 +558,26 @@ export default function AssignTask() {
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
-                placeholder="Enter task title"
+                placeholder="Saisir le titre de la tâche"
               />
             </div>
 
             <div style={styles.formGroup}>
               <label style={styles.label}>
-                Description <span style={{color: '#999'}}>(optional)</span>
+                Description <span style={{color: '#999'}}>(optionnel)</span>
               </label>
               <textarea
                 style={styles.textarea}
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Enter task description"
+                placeholder="Saisir la description de la tâche"
               />
             </div>
 
             <div style={styles.formGroup}>
               <label style={styles.label}>
-                Due Date <span style={styles.required}>*</span>
+                Date limite <span style={styles.required}>*</span>
               </label>
               <input
                 style={styles.input}
@@ -594,7 +594,7 @@ export default function AssignTask() {
                 type="submit"
                 disabled={submitting}
               >
-                {submitting ? 'Assigning...' : 'Assign Task'}
+                {submitting ? 'Assignation...' : 'Assigner la tâche'}
               </button>
               <button
                 style={styles.resetButton}
@@ -610,7 +610,7 @@ export default function AssignTask() {
                   setSuccess(null);
                 }}
               >
-                Clear
+                Effacer
               </button>
             </div>
           </form>
@@ -618,7 +618,7 @@ export default function AssignTask() {
 
         <div style={styles.historyPanel}>
           <div style={styles.historyHeader}>
-            <h2 style={styles.panelTitle}>Task History</h2>
+            <h2 style={styles.panelTitle}>Historique des tâches</h2>
             <button
               style={{...styles.exportButton, ...(exporting ? styles.exportButtonDisabled : {})}}
               onClick={() => {
@@ -640,7 +640,7 @@ export default function AssignTask() {
                 }}
                 onClick={() => setHistoryFilter(filter)}
               >
-                {filter === 'all' ? 'All' : filter === 'pending' ? 'Pending' : 'Done'}
+                {filter === 'all' ? 'Tout' : filter === 'pending' ? 'En attente' : 'Terminé'}
               </button>
             ))}
           </div>
@@ -649,16 +649,16 @@ export default function AssignTask() {
             <div style={styles.loadingMessage}>Loading...</div>
           ) : getFilteredHistory().length === 0 ? (
             <div style={styles.emptyState}>
-              {historyFilter === 'all' ? 'No tasks assigned yet' : `No ${historyFilter} tasks`}
+              {historyFilter === 'all' ? 'Aucune tâche assignée' : `Aucune tâche ${historyFilter === 'pending' ? 'en attente' : 'terminée'}`}
             </div>
           ) : (
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
-                  <th style={styles.tableHeaderCell}>Employee</th>
-                  <th style={styles.tableHeaderCell}>Title</th>
-                  <th style={{...styles.tableHeaderCell, ...styles.tableCellCenter}}>Status</th>
-                  <th style={{...styles.tableHeaderCell, ...styles.tableCellCenter}}>Completed</th>
+                  <th style={styles.tableHeaderCell}>Employé</th>
+                  <th style={styles.tableHeaderCell}>Titre</th>
+                  <th style={{...styles.tableHeaderCell, ...styles.tableCellCenter}}>Statut</th>
+                  <th style={{...styles.tableHeaderCell, ...styles.tableCellCenter}}>Terminé le</th>
                 </tr>
               </thead>
               <tbody>
@@ -681,7 +681,7 @@ export default function AssignTask() {
                         ...styles.statusBadge,
                         ...(task.status === 'TODO' ? styles.statusTodo : styles.statusDone)
                       }}>
-                        {task.status === 'TODO' ? 'Pending' : 'Done'}
+                        {task.status === 'TODO' ? 'En attente' : 'Terminé'}
                       </span>
                     </td>
                     <td style={{...styles.tableCell, ...styles.tableCellCenter}}>
@@ -700,9 +700,9 @@ export default function AssignTask() {
       {exportOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Export Tasks</div>
+            <div style={styles.modalTitle}>Exporter les tâches</div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>From Date</label>
+              <label style={styles.modalLabel}>Date de début</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -711,7 +711,7 @@ export default function AssignTask() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>To Date</label>
+              <label style={styles.modalLabel}>Date de fin</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -720,26 +720,26 @@ export default function AssignTask() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Status</label>
+              <label style={styles.modalLabel}>Statut</label>
               <select
                 style={styles.modalInput}
                 value={exportStatus}
                 onChange={(e) => setExportStatus(e.target.value)}
               >
-                <option value="">All</option>
-                <option value="assigned">Assigned</option>
-                <option value="overdue">Overdue</option>
-                <option value="done">Done</option>
+                <option value="">Tous</option>
+                <option value="assigned">Assigné</option>
+                <option value="overdue">En retard</option>
+                <option value="done">Terminé</option>
               </select>
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Employee</label>
+              <label style={styles.modalLabel}>Employé</label>
               <select
                 style={styles.modalInput}
                 value={exportEmployeeId}
                 onChange={(e) => setExportEmployeeId(e.target.value)}
               >
-                <option value="">All</option>
+                <option value="">Tous</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
                     {emp.first_name} {emp.last_name}
@@ -769,7 +769,7 @@ export default function AssignTask() {
                 onClick={handleExport}
                 disabled={exporting}
               >
-                {exporting ? 'Exporting...' : 'Download'}
+                {exporting ? 'Exportation...' : 'Télécharger'}
               </button>
               <button
                 style={{
@@ -779,7 +779,7 @@ export default function AssignTask() {
                 onClick={() => setExportOpen(false)}
                 disabled={exporting}
               >
-                Cancel
+                Annuler
               </button>
             </div>
           </div>

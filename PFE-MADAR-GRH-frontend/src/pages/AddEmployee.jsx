@@ -58,7 +58,7 @@ export default function AddEmployee() {
     e.preventDefault();
     
     if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.email.trim() || !formData.department) {
-      setError('First name, last name, email, and department are required');
+      setError('Le prénom, le nom, l’e-mail et le département sont obligatoires');
       return;
     }
 
@@ -71,7 +71,7 @@ export default function AddEmployee() {
       
       if (response.data.success) {
         setCreatedEmployee(response.data);
-        setSuccess('Employee created successfully!');
+        setSuccess('Employé créé avec succès !');
         
         // Reset form
         setFormData({
@@ -88,8 +88,8 @@ export default function AddEmployee() {
         });
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create employee');
-      console.error('Create employee error:', err);
+      setError(err.response?.data?.detail || 'Impossible de créer l’employé');
+      console.error('Erreur lors de la création de l’employé :', err);
     } finally {
       setLoading(false);
     }
@@ -225,7 +225,7 @@ export default function AddEmployee() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.header}>➕ Add New Employee</h1>
+      <h1 style={styles.header}>➕ Ajouter un employé</h1>
 
       {error && <div style={styles.errorMsg}>⚠️ {error}</div>}
       {success && <div style={styles.successMsg}>✓ {success}</div>}
@@ -233,35 +233,35 @@ export default function AddEmployee() {
       {!createdEmployee ? (
         <form style={styles.form} onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>First Name:</label>
+            <label style={styles.label}>Prénom :</label>
             <input
               type="text"
               name="first_name"
               style={styles.input}
               value={formData.first_name}
               onChange={handleChange}
-              placeholder="John"
+              placeholder="Mohamed"
               required
               disabled={loading}
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Last Name:</label>
+            <label style={styles.label}>Nom :</label>
             <input
               type="text"
               name="last_name"
               style={styles.input}
               value={formData.last_name}
               onChange={handleChange}
-              placeholder="Doe"
+              placeholder="Benali"
               required
               disabled={loading}
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Email:</label>
+            <label style={styles.label}>Adresse e-mail :</label>
             <input
               type="email"
               name="email"
@@ -275,7 +275,7 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Phone Number:</label>
+            <label style={styles.label}>Numéro de téléphone :</label>
             <input
               type="text"
               name="phone_number"
@@ -288,7 +288,7 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Address:</label>
+            <label style={styles.label}>Adresse :</label>
             <input
               type="text"
               name="address"
@@ -309,7 +309,7 @@ export default function AddEmployee() {
               onChange={handleChange}
               disabled={loading}
             >
-              <option value="">-- Select Poste --</option>
+              <option value="">-- Sélectionner un poste --</option>
               {positions.map((position) => (
                 <option key={position.id} value={position.id}>{position.name}</option>
               ))}
@@ -317,7 +317,7 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Department:</label>
+            <label style={styles.label}>Département :</label>
             <select
               name="department"
               style={styles.select}
@@ -326,7 +326,7 @@ export default function AddEmployee() {
               required
               disabled={loading}
             >
-              <option value="">-- Select Department --</option>
+              <option value="">-- Sélectionner un département --</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>
                   {dept.name}
@@ -352,7 +352,7 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Salary:</label>
+            <label style={styles.label}>Salaire :</label>
             <input
               type="number"
               name="salary"
@@ -366,14 +366,14 @@ export default function AddEmployee() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Attendance PIN (optional):</label>
+            <label style={styles.label}>Code PIN de présence (optionnel) :</label>
             <input
               type="text"
               name="attendance_pin"
               style={styles.input}
               value={formData.attendance_pin}
               onChange={handleChange}
-              placeholder="4-digit PIN"
+              placeholder="Code PIN à 4 chiffres"
               disabled={loading}
             />
           </div>
@@ -396,58 +396,58 @@ export default function AddEmployee() {
               })}
               disabled={loading}
             >
-              Clear
+              Effacer
             </button>
             <button
               type="submit"
               style={{ ...styles.btn, ...styles.primaryBtn }}
               disabled={loading}
             >
-              {loading ? '⏳ Creating...' : '✨ Create Employee'}
+              {loading ? '⏳ Création...' : '✨ Créer l’employé'}
             </button>
           </div>
         </form>
       ) : (
         <div>
           <div style={styles.credentialsBox}>
-            <h3 style={{ marginTop: 0, color: '#007bff' }}>🎉 Employee Created Successfully!</h3>
+            <h3 style={{ marginTop: 0, color: '#007bff' }}>🎉 Employé créé avec succès !</h3>
             
             <div style={styles.credentialRow}>
-              <span style={styles.credentialLabel}>Name:</span>
+              <span style={styles.credentialLabel}>Nom :</span>
               <div style={styles.credentialValue}>
                 {createdEmployee.employee.first_name} {createdEmployee.employee.last_name}
               </div>
             </div>
 
             <div style={styles.credentialRow}>
-              <span style={styles.credentialLabel}>Poste:</span>
+              <span style={styles.credentialLabel}>Poste :</span>
               <div style={styles.credentialValue}>
                 {createdEmployee.employee.position || '-'}
               </div>
             </div>
 
             <div style={styles.credentialRow}>
-              <span style={styles.credentialLabel}>Email:</span>
+              <span style={styles.credentialLabel}>E-mail :</span>
               <div style={styles.credentialValue}>
                 {createdEmployee.credentials.email}
               </div>
             </div>
 
             <div style={styles.credentialRow}>
-              <span style={styles.credentialLabel}>Temporary Password:</span>
+              <span style={styles.credentialLabel}>Mot de passe temporaire :</span>
               <div style={styles.credentialValue}>
                 {createdEmployee.credentials.temporary_password}
                 <button 
                   style={styles.copyBtn}
                   onClick={() => copyToClipboard(createdEmployee.credentials.temporary_password)}
                 >
-                  📋 Copy
+                  📋 Copier
                 </button>
               </div>
             </div>
 
             <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #b3d9ff', fontSize: '13px', color: '#333' }}>
-              <strong>⚠️ Important:</strong> Share these credentials with the new employee. They can log in with the email and temporary password, and should change their password after first login.
+              <strong>⚠️ Important :</strong> Partagez ces identifiants avec le nouvel employé. Il peut se connecter avec l’e-mail et le mot de passe temporaire, et devra changer son mot de passe après la première connexion.
             </div>
           </div>
 
@@ -456,7 +456,7 @@ export default function AddEmployee() {
               style={{ ...styles.btn, ...styles.primaryBtn }}
               onClick={() => setCreatedEmployee(null)}
             >
-              ➕ Add Another Employee
+              ➕ Ajouter un autre employé
             </button>
           </div>
         </div>

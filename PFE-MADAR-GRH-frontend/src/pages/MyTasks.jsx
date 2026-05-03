@@ -29,7 +29,7 @@ export default function MyTasks() {
       const response = await api.get('/api/tasks/me/');
       setTasks(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load tasks');
+      setError(err.response?.data?.error || 'Impossible de charger les tâches');
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ export default function MyTasks() {
         task.id === taskId ? { ...task, status: 'DONE' } : task
       ));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to mark task as done');
+      setError(err.response?.data?.error || 'Impossible de marquer la tâche comme terminée');
     } finally {
       setMarking(null);
     }
@@ -325,7 +325,7 @@ export default function MyTasks() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading tasks...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des tâches...</div></div>;
   }
 
   return (
@@ -333,8 +333,8 @@ export default function MyTasks() {
       <div style={styles.header}>
         <div style={styles.headerActions}>
           <div>
-            <h1 style={styles.title}>My Tasks</h1>
-            <p style={styles.subtitle}>Total: {tasks.length} | Done: {tasks.filter(t => t.status === 'DONE').length}</p>
+            <h1 style={styles.title}>Mes tâches</h1>
+            <p style={styles.subtitle}>Total : {tasks.length} | Terminées : {tasks.filter(t => t.status === 'DONE').length}</p>
           </div>
           <button
             style={{...styles.exportButton, ...(exporting ? styles.exportButtonDisabled : {})}}
@@ -344,7 +344,7 @@ export default function MyTasks() {
             }}
             disabled={exporting}
           >
-            Export
+            Exporter
           </button>
         </div>
       </div>
@@ -352,16 +352,16 @@ export default function MyTasks() {
       {error && (
         <div style={styles.errorBanner}>
           <span>{error}</span>
-          <button style={styles.retryButton} onClick={fetchTasks}>Retry</button>
+          <button style={styles.retryButton} onClick={fetchTasks}>Réessayer</button>
         </div>
       )}
 
       {exportOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Export Tasks</div>
+            <div style={styles.modalTitle}>Exporter les tâches</div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>From Date</label>
+              <label style={styles.modalLabel}>Date de début</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -370,7 +370,7 @@ export default function MyTasks() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>To Date</label>
+              <label style={styles.modalLabel}>Date de fin</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -379,16 +379,16 @@ export default function MyTasks() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Status</label>
+              <label style={styles.modalLabel}>Statut</label>
               <select
                 style={styles.modalInput}
                 value={exportStatus}
                 onChange={(e) => setExportStatus(e.target.value)}
               >
-                <option value="">All</option>
-                <option value="assigned">Assigned</option>
-                <option value="overdue">Overdue</option>
-                <option value="done">Done</option>
+                <option value="">Tous</option>
+                <option value="assigned">Assigné</option>
+                <option value="overdue">En retard</option>
+                <option value="done">Terminé</option>
               </select>
             </div>
             <div style={styles.modalField}>
@@ -413,7 +413,7 @@ export default function MyTasks() {
                 onClick={handleExport}
                 disabled={exporting}
               >
-                {exporting ? 'Exporting...' : 'Download'}
+                {exporting ? 'Exportation...' : 'Télécharger'}
               </button>
               <button
                 style={{
@@ -423,7 +423,7 @@ export default function MyTasks() {
                 onClick={() => setExportOpen(false)}
                 disabled={exporting}
               >
-                Cancel
+                Annuler
               </button>
             </div>
           </div>
@@ -431,7 +431,7 @@ export default function MyTasks() {
       )}
 
       {tasks.length === 0 && !error ? (
-        <div style={styles.emptyMessage}>No tasks assigned yet</div>
+        <div style={styles.emptyMessage}>Aucune tâche assignée pour le moment</div>
       ) : (
         <div style={styles.tasksList}>
           {tasks.map(task => (
@@ -453,9 +453,9 @@ export default function MyTasks() {
                   <span style={{...styles.statusBadge, ...(task.status === 'DONE' ? styles.statusBadgeDone : {})}}>
                     {task.status}
                   </span>
-                  <span>Assigned By: {getAssignerName(task.assigned_by)}</span>
-                  <span>Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</span>
-                  <span>Assigned: {new Date(task.created_at).toLocaleDateString()}</span>
+                  <span>Assignée par : {getAssignerName(task.assigned_by)}</span>
+                  <span>Échéance : {task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</span>
+                  <span>Assignée le : {new Date(task.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               {task.status === 'TODO' && (
@@ -465,7 +465,7 @@ export default function MyTasks() {
                     onClick={() => markAsDone(task.id)}
                     disabled={marking === task.id}
                   >
-                    {marking === task.id ? 'Marking...' : 'Mark as Done'}
+                    {marking === task.id ? 'Traitement...' : 'Marquer comme terminée'}
                   </button>
                 </div>
               )}

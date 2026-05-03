@@ -2,7 +2,7 @@
 # Central re-export: keeps config/urls.py intact (no changes needed there).
 
 from .auth import ping, rbac_test, whoami, token_obtain_pair, logout
-from .employees import employees_list, services_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password
+from .employees import employees_list, services_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password, update_employee_role
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, update_chef_task, delete_chef_task, submit_task_work, review_task_submission, mark_task_done
 from .attendance import attendance_check_in, attendance_check_out, attendance_me, attendance_team
@@ -36,6 +36,7 @@ from .documents import (
 	validate_document,
 	reject_document_validation,
 	archive_document,
+	delete_document,
 )
 from .reports import reports_summary, export_attendance_report, export_leaves_report, export_tasks_report
 from .evaluations import evaluation_criteria_list, my_evaluations, chef_evaluations, rh_evaluations
@@ -70,7 +71,7 @@ __all__ = [
 	# auth
 	'ping', 'rbac_test', 'whoami', 'token_obtain_pair',
 	# employees
-	'employees_list', 'departments_list', 'positions_list', 'create_employee', 'update_employee', 'delete_employee', 'reset_employee_password',
+	'employees_list', 'departments_list', 'positions_list', 'create_employee', 'update_employee', 'delete_employee', 'reset_employee_password', 'update_employee_role',
 	# profile
 	'get_profile', 'update_profile', 'change_password',
 	# tasks
@@ -91,7 +92,7 @@ __all__ = [
 	# documents
 	'upload_document', 'document_detail', 'send_document', 'modify_document', 'download_document', 'preview_document', 'list_documents_scoped',
 	'documents_feed', 'documents_mine', 'comment_document',
-	'document_comments', 'validate_document', 'reject_document_validation', 'archive_document',
+	'document_comments', 'validate_document', 'reject_document_validation', 'archive_document', 'delete_document',
 	# reports
 	'reports_summary', 'export_attendance_report', 'export_leaves_report', 'export_tasks_report',
 	# evaluations

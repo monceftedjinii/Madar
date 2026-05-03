@@ -59,7 +59,7 @@ export default function MyAttendance() {
       });
       setRecords(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load attendance');
+      setError(err.response?.data?.error || 'Impossible de charger la présence');
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export default function MyAttendance() {
       await api.post(endpoint, { pin: pinValue });
       setActionMessage({
         type: 'success',
-        text: pendingAction === 'check-in' ? 'Checked in successfully' : 'Checked out successfully'
+        text: pendingAction === 'check-in' ? 'Pointage arrivée enregistré' : 'Pointage départ enregistré'
       });
       closePinModal();
       setTimeout(() => {
@@ -107,7 +107,7 @@ export default function MyAttendance() {
       }, 2000);
     } catch (err) {
       const detail = err.response?.data?.detail || err.response?.data?.error;
-      setPinError(detail || 'Invalid PIN');
+      setPinError(detail || 'Code PIN invalide');
     } finally {
       setActionInProgress(null);
     }
@@ -150,7 +150,7 @@ export default function MyAttendance() {
       downloadBlob(response.data, filename);
       setExportOpen(false);
     } catch (err) {
-      setExportError('Failed to export attendance');
+      setExportError('Impossible d’exporter la présence');
     } finally {
       setExporting(false);
     }
@@ -425,19 +425,19 @@ export default function MyAttendance() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading attendance...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement de la présence...</div></div>;
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>My Attendance</h1>
-        <p style={styles.subtitle}>Check in/out and view your attendance history</p>
+        <h1 style={styles.title}>Ma présence</h1>
+        <p style={styles.subtitle}>Pointage arrivée/départ et historique de présence</p>
       </div>
 
       {/* Check-in/Check-out Section */}
       <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Daily Check-in/Check-out</h2>
+        <h2 style={styles.sectionTitle}>Pointage quotidien</h2>
         <div style={styles.buttonGroup}>
           <button
             style={{
@@ -448,7 +448,7 @@ export default function MyAttendance() {
             onClick={() => openPinModal('check-in')}
             disabled={actionInProgress !== null}
           >
-            {actionInProgress === 'check-in' ? 'Checking in...' : '✓ Check In'}
+            {actionInProgress === 'check-in' ? 'Pointage en cours...' : '✓ Pointer arrivée'}
           </button>
           <button
             style={{
@@ -459,7 +459,7 @@ export default function MyAttendance() {
             onClick={() => openPinModal('check-out')}
             disabled={actionInProgress !== null}
           >
-            {actionInProgress === 'check-out' ? 'Checking out...' : '✗ Check Out'}
+            {actionInProgress === 'check-out' ? 'Pointage en cours...' : '✗ Pointer départ'}
           </button>
         </div>
 
@@ -482,7 +482,7 @@ export default function MyAttendance() {
       {pinModalOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Enter 4-digit PIN</div>
+            <div style={styles.modalTitle}>Entrez votre code PIN à 4 chiffres</div>
             <input
               style={styles.modalInput}
               type="password"
@@ -507,7 +507,7 @@ export default function MyAttendance() {
                 onClick={confirmPin}
                 disabled={pinValue.length !== 4 || actionInProgress}
               >
-                Confirm
+                Confirmer
               </button>
               <button
                 style={{
@@ -517,7 +517,7 @@ export default function MyAttendance() {
                 onClick={closePinModal}
                 disabled={actionInProgress}
               >
-                Cancel
+                Annuler
               </button>
             </div>
           </div>
@@ -527,15 +527,15 @@ export default function MyAttendance() {
       {exportOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Export Attendance</div>
+            <div style={styles.modalTitle}>Exporter la présence</div>
             <div style={styles.exportField}>
-              <label style={styles.exportLabel}>Employee</label>
+              <label style={styles.exportLabel}>Employé</label>
               <select
                 style={styles.exportSelect}
                 value={exportEmployeeId}
                 onChange={(e) => setExportEmployeeId(e.target.value)}
               >
-                <option value="">All</option>
+                <option value="">Tous</option>
                 {exportEmployees.map(emp => (
                   <option key={emp.id} value={emp.id}>
                     {emp.first_name} {emp.last_name}
@@ -565,7 +565,7 @@ export default function MyAttendance() {
                 onClick={handleExport}
                 disabled={exporting}
               >
-                {exporting ? 'Exporting...' : 'Download'}
+                {exporting ? 'Exportation...' : 'Télécharger'}
               </button>
               <button
                 style={{
@@ -575,7 +575,7 @@ export default function MyAttendance() {
                 onClick={() => setExportOpen(false)}
                 disabled={exporting}
               >
-                Cancel
+                Annuler
               </button>
             </div>
           </div>
@@ -584,12 +584,12 @@ export default function MyAttendance() {
 
       {/* Attendance History Section */}
       <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Attendance History</h2>
+        <h2 style={styles.sectionTitle}>Historique de présence</h2>
 
         {/* Date Filters */}
         <div style={styles.filterGroup}>
           <div>
-            <label style={styles.filterLabel}>From Date</label>
+            <label style={styles.filterLabel}>Date de début</label>
             <input
               style={styles.filterInput}
               type="date"
@@ -598,7 +598,7 @@ export default function MyAttendance() {
             />
           </div>
           <div>
-            <label style={styles.filterLabel}>To Date</label>
+            <label style={styles.filterLabel}>Date de fin</label>
             <input
               style={styles.filterInput}
               type="date"
@@ -610,7 +610,7 @@ export default function MyAttendance() {
             style={styles.filterButton}
             onClick={() => handleFilterChange(fromDate, toDate)}
           >
-            Apply Filter
+            Appliquer le filtre
           </button>
         </div>
 
@@ -630,14 +630,14 @@ export default function MyAttendance() {
         )}
 
         {records.length === 0 ? (
-          <div style={styles.emptyMessage}>No attendance records for the selected period</div>
+          <div style={styles.emptyMessage}>Aucun enregistrement de présence pour la période sélectionnée</div>
         ) : (
           <table style={styles.table}>
             <thead style={styles.tableHeader}>
               <tr>
                 <th style={styles.tableHeaderCell}>Date</th>
-                <th style={styles.tableHeaderCell}>Check In Time</th>
-                <th style={styles.tableHeaderCell}>Check Out Time</th>
+                <th style={styles.tableHeaderCell}>Heure d’arrivée</th>
+                <th style={styles.tableHeaderCell}>Heure de départ</th>
               </tr>
             </thead>
             <tbody>
@@ -653,7 +653,7 @@ export default function MyAttendance() {
         )}
 
         <div style={{ marginTop: '15px', fontSize: '12px', color: '#999' }}>
-          Showing {records.length} record(s) from {fromDate} to {toDate}
+          Affichage de {records.length} enregistrement(s) du {fromDate} au {toDate}
         </div>
       </div>
     </div>

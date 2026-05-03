@@ -21,7 +21,7 @@ function Notifications() {
       const response = await api.get('/api/notifications/')
       setNotifications(response.data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load notifications')
+      setError(err.response?.data?.detail || 'Impossible de charger les notifications')
     } finally {
       setLoading(false)
     }
@@ -39,7 +39,7 @@ function Notifications() {
         )
       )
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to mark as read')
+      setError(err.response?.data?.detail || 'Impossible de marquer comme lu')
     } finally {
       setMarking(null)
     }
@@ -70,7 +70,7 @@ function Notifications() {
   if (loading) {
     return <div style={styles.container}>
       <h1>Notifications</h1>
-      <div style={styles.loading}>Loading notifications...</div>
+      <div style={styles.loading}>Chargement des notifications...</div>
     </div>
   }
 
@@ -79,7 +79,7 @@ function Notifications() {
       <h1>Notifications</h1>
       <div style={styles.error}>{error}</div>
       <button onClick={fetchNotifications} style={styles.retryBtn}>
-        Retry
+        Réessayer
       </button>
     </div>
   }
@@ -88,7 +88,7 @@ function Notifications() {
     return <div style={styles.container}>
       <h1>Notifications</h1>
       <div style={styles.emptyState}>
-        <p>No notifications yet</p>
+        <p>Aucune notification pour le moment</p>
       </div>
     </div>
   }
@@ -98,8 +98,8 @@ function Notifications() {
       <h1>Notifications</h1>
       
       <div style={styles.summary}>
-        Total: {notifications.length} | 
-        Unread: {notifications.filter(n => !n.is_read).length}
+        Total : {notifications.length} | 
+        Non lues : {notifications.filter(n => !n.is_read).length}
       </div>
 
       <div style={styles.listContainer}>
@@ -119,7 +119,7 @@ function Notifications() {
               >
                 {notif.title}
               </button>
-              {!notif.is_read && <span style={styles.badge}>UNREAD</span>}
+              {!notif.is_read && <span style={styles.badge}>NON LUE</span>}
             </div>
 
             <p style={styles.message}>{notif.message}</p>
@@ -138,7 +138,7 @@ function Notifications() {
                     ...(marking === notif.id ? styles.markReadBtnLoading : {}),
                   }}
                 >
-                  {marking === notif.id ? 'Marking...' : 'Mark as Read'}
+                  {marking === notif.id ? 'Traitement...' : 'Marquer comme lu'}
                 </button>
               )}
             </div>

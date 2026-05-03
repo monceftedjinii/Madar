@@ -20,7 +20,7 @@ export default function AbsencesYesterday() {
       const response = await api.get('/api/absences/yesterday/');
       setAbsences(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load absences');
+      setError(err.response?.data?.error || 'Impossible de charger les absences');
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function AbsencesYesterday() {
 
       setRowMessages(prev => ({
         ...prev,
-        [employeeId]: { type: 'success', text: 'Warning issued successfully' }
+        [employeeId]: { type: 'success', text: 'Avertissement émis avec succès' }
       }));
 
       // Clear comment after success
@@ -62,7 +62,7 @@ export default function AbsencesYesterday() {
         ...prev,
         [employeeId]: {
           type: 'error',
-          text: err.response?.data?.error || 'Failed to issue warning'
+          text: err.response?.data?.error || 'Impossible d’émettre un avertissement'
         }
       }));
     } finally {
@@ -228,15 +228,15 @@ export default function AbsencesYesterday() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading absences...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des absences...</div></div>;
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Absences Yesterday</h1>
-        <p style={styles.subtitle}>Employees who were absent on {formatYesterdayDate()}</p>
-        <p style={styles.dateInfo}>Date: {getYesterdayDate()}</p>
+        <h1 style={styles.title}>Absences d’hier</h1>
+        <p style={styles.subtitle}>Employés absents le {formatYesterdayDate()}</p>
+        <p style={styles.dateInfo}>Date : {getYesterdayDate()}</p>
       </div>
 
       {error && (
@@ -249,16 +249,16 @@ export default function AbsencesYesterday() {
       <div style={styles.section}>
         {absences.length === 0 ? (
           <div style={styles.emptyMessage}>
-            No absences reported yesterday. Great job! 🎉
+            Aucune absence signalée hier. Bravo ! 🎉
           </div>
         ) : (
           <div style={styles.tableWrapper}>
             <table style={styles.table}>
               <thead style={styles.tableHeader}>
                 <tr>
-                  <th style={styles.tableHeaderCell}>Employee Name</th>
-                  <th style={styles.tableHeaderCell}>Department</th>
-                  <th style={styles.tableHeaderCell}>Comment (optional)</th>
+                  <th style={styles.tableHeaderCell}>Nom de l’employé</th>
+                  <th style={styles.tableHeaderCell}>Département</th>
+                  <th style={styles.tableHeaderCell}>Commentaire (optionnel)</th>
                   <th style={styles.tableHeaderCell}>Action</th>
                 </tr>
               </thead>
@@ -279,7 +279,7 @@ export default function AbsencesYesterday() {
                     <td style={styles.tableCell}>
                       <textarea
                         style={styles.commentInput}
-                        placeholder="Add optional comment"
+                        placeholder="Ajouter un commentaire optionnel"
                         value={comments[absence.employee.id] || ''}
                         onChange={(e) =>
                           setComments(prev => ({
@@ -298,7 +298,7 @@ export default function AbsencesYesterday() {
                         onClick={() => handleIssueWarning(absence.employee.id)}
                         disabled={submitting[absence.employee.id]}
                       >
-                        {submitting[absence.employee.id] ? 'Issuing...' : 'Issue Warning'}
+                        {submitting[absence.employee.id] ? 'Traitement...' : 'Émettre un avertissement'}
                       </button>
                       {rowMessages[absence.employee.id] && (
                         <span
@@ -321,7 +321,7 @@ export default function AbsencesYesterday() {
         )}
 
         <div style={{ marginTop: '15px', fontSize: '12px', color: '#999' }}>
-          Total absent employees: {absences.length}
+          Total d’employés absents : {absences.length}
         </div>
       </div>
     </div>

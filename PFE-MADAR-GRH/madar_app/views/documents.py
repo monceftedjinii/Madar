@@ -793,3 +793,15 @@ def archive_document(request, pk):
 	doc.save()
 	_create_doc_history(doc, DocumentHistory.Action.ARCHIVED, request.user)
 	return Response({'id': doc.id, 'status': doc.status})
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, CanValidateDocument])
+def delete_document(request, pk):
+	"""Delete a document completely from the database (RH_SENIOR/GRH only)."""
+	try:
+		doc = Document.objects.get(id=pk)
+	except Document.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	doc.delete()
+	return Response({'detail': 'document deleted'}, status=status.HTTP_204_NO_CONTENT)

@@ -45,7 +45,7 @@ export default function MyLeaves() {
         setFormData(prev => ({ ...prev, type: prev.type || types[0].code }));
       }
     } catch (err) {
-      setError('Failed to load leave types');
+      setError('Impossible de charger les types de congés');
     }
   };
 
@@ -60,20 +60,20 @@ export default function MyLeaves() {
       let blocked = null;
       for (const leave of response.data) {
         if (leave.status === 'PENDING') {
-          blocked = 'You already have a pending leave request.';
+          blocked = 'Vous avez déjà une demande de congé en attente.';
           break;
         }
         if (leave.status === 'ACCEPTED') {
           const endDate = new Date(leave.end_date);
           if (endDate >= today) {
-            blocked = `You have an ongoing approved leave until ${leave.end_date}.`;
+            blocked = `Vous avez un congé approuvé en cours jusqu’au ${leave.end_date}.`;
             break;
           }
         }
       }
       setBlockedReason(blocked);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load leaves');
+      setError(err.response?.data?.error || 'Impossible de charger les congés');
     } finally {
       setLoading(false);
     }
@@ -114,19 +114,19 @@ export default function MyLeaves() {
 
     // Validate required fields
     if (!formData.start_date || !formData.end_date || !formData.reason) {
-      setError('Please fill in all required fields');
+      setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     // Validate dates
     if (new Date(formData.start_date) > new Date(formData.end_date)) {
-      setError('Start date must be before end date');
+      setError('La date de début doit être antérieure à la date de fin');
       return;
     }
 
     const selectedType = leaveTypes.find(t => t.code === formData.type);
     if (selectedType?.requires_attachment && !formData.attachment) {
-      setError('Attachment is required for this leave type');
+      setError('Une pièce jointe est requise pour ce type de congé');
       return;
     }
 
@@ -144,7 +144,7 @@ export default function MyLeaves() {
       console.log([...data.entries()]);
 
       await api.post('/api/leaves/', data);
-      setSuccess('Leave request submitted successfully');
+      setSuccess('Demande de congé soumise avec succès');
       setFormData({
         start_date: '',
         end_date: '',
@@ -159,7 +159,7 @@ export default function MyLeaves() {
     } catch (err) {
       // Show backend error message clearly
       const detail = err.response?.data?.detail || err.response?.data?.error;
-      setError(detail || JSON.stringify(err.response?.data) || 'Failed to submit leave request');
+      setError(detail || JSON.stringify(err.response?.data) || 'Impossible de soumettre la demande de congé');
     } finally {
       setSubmitting(false);
     }
@@ -209,7 +209,7 @@ export default function MyLeaves() {
       downloadBlob(response.data, filename);
       setExportOpen(false);
     } catch (err) {
-      setExportError('Failed to export leave history');
+      setExportError('Impossible d’exporter l’historique des congés');
     } finally {
       setExporting(false);
     }
@@ -484,7 +484,7 @@ export default function MyLeaves() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading leaves...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des congés...</div></div>;
   }
 
   return (
@@ -492,8 +492,8 @@ export default function MyLeaves() {
       <div style={styles.header}>
         <div style={styles.headerActions}>
           <div>
-            <h1 style={styles.title}>My Leave Requests</h1>
-            <p style={styles.subtitle}>Total: {leaves.length} | Pending: {leaves.filter(l => l.status === 'PENDING').length}</p>
+            <h1 style={styles.title}>Mes demandes de congé</h1>
+            <p style={styles.subtitle}>Total : {leaves.length} | En attente : {leaves.filter(l => l.status === 'PENDING').length}</p>
           </div>
           <button
             style={{...styles.exportButton, ...(exporting ? styles.exportButtonDisabled : {})}}
@@ -503,7 +503,7 @@ export default function MyLeaves() {
             }}
             disabled={exporting}
           >
-            Export
+            Exporter
           </button>
         </div>
       </div>
@@ -525,9 +525,9 @@ export default function MyLeaves() {
       {exportOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Export Leave History</div>
+            <div style={styles.modalTitle}>Exporter l’historique des congés</div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>From Date</label>
+              <label style={styles.modalLabel}>Date de début</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -536,7 +536,7 @@ export default function MyLeaves() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>To Date</label>
+              <label style={styles.modalLabel}>Date de fin</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -545,20 +545,20 @@ export default function MyLeaves() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Status</label>
+              <label style={styles.modalLabel}>Statut</label>
               <select
                 style={styles.modalInput}
                 value={exportStatus}
                 onChange={(e) => setExportStatus(e.target.value)}
               >
-                <option value="">All</option>
-                <option value="PENDING">Pending</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="REFUSED">Refused</option>
+                <option value="">Tous</option>
+                <option value="PENDING">En attente</option>
+                <option value="ACCEPTED">Accepté</option>
+                <option value="REFUSED">Refusé</option>
               </select>
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Leave Type</label>
+              <label style={styles.modalLabel}>Type de congé</label>
               <select
                 style={styles.modalInput}
                 value={exportType}
@@ -592,7 +592,7 @@ export default function MyLeaves() {
                 onClick={handleExport}
                 disabled={exporting}
               >
-                {exporting ? 'Exporting...' : 'Download'}
+                {exporting ? 'Exportation...' : 'Télécharger'}
               </button>
               <button
                 style={{
@@ -602,7 +602,7 @@ export default function MyLeaves() {
                 onClick={() => setExportOpen(false)}
                 disabled={exporting}
               >
-                Cancel
+                Annuler
               </button>
             </div>
           </div>
@@ -612,7 +612,7 @@ export default function MyLeaves() {
       <div style={styles.section}>
         {/* Create Leave Form */}
         <div style={styles.sectionCard}>
-          <h2 style={styles.sectionTitle}>Create Leave Request</h2>
+          <h2 style={styles.sectionTitle}>Créer une demande de congé</h2>
           {blockedReason && (
             <div style={{...styles.alertBanner, ...styles.errorBanner}}>
               <span>{blockedReason}</span>
@@ -621,7 +621,7 @@ export default function MyLeaves() {
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Start Date <span style={styles.required}>*</span></label>
+                <label style={styles.label}>Date de début <span style={styles.required}>*</span></label>
                 <input
                   style={styles.input}
                   type="date"
@@ -634,7 +634,7 @@ export default function MyLeaves() {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>End Date <span style={styles.required}>*</span></label>
+                <label style={styles.label}>Date de fin <span style={styles.required}>*</span></label>
                 <input
                   style={styles.input}
                   type="date"
@@ -647,7 +647,7 @@ export default function MyLeaves() {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Leave Type <span style={styles.required}>*</span></label>
+                <label style={styles.label}>Type de congé <span style={styles.required}>*</span></label>
                 <select
                   style={styles.select}
                   name="type"
@@ -663,7 +663,7 @@ export default function MyLeaves() {
 
               {leaveTypes.find((lt) => lt.code === formData.type)?.requires_attachment && (
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Attachment <span style={styles.required}>*</span></label>
+                  <label style={styles.label}>Pièce jointe <span style={styles.required}>*</span></label>
                   <input
                     style={styles.input}
                     type="file"
@@ -676,13 +676,13 @@ export default function MyLeaves() {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Reason <span style={styles.required}>*</span></label>
+              <label style={styles.label}>Motif <span style={styles.required}>*</span></label>
               <textarea
                 style={styles.textarea}
                 name="reason"
                 value={formData.reason}
                 onChange={handleInputChange}
-                placeholder="Explain your leave request"
+                placeholder="Expliquez votre demande de congé"
                 required
                 disabled={!!blockedReason}
               />
@@ -694,7 +694,7 @@ export default function MyLeaves() {
                 type="submit"
                 disabled={submitting || !!blockedReason}
               >
-                {submitting ? 'Submitting...' : 'Submit Request'}
+                {submitting ? 'Soumission...' : 'Soumettre la demande'}
               </button>
               <button
                 style={styles.resetButton}
@@ -711,7 +711,7 @@ export default function MyLeaves() {
                 }}
                 disabled={!!blockedReason}
               >
-                Clear
+                Effacer
               </button>
             </div>
           </form>
@@ -719,9 +719,9 @@ export default function MyLeaves() {
 
         {/* Leaves List */}
         <div style={styles.sectionCard}>
-          <h2 style={styles.sectionTitle}>Leave History</h2>
+          <h2 style={styles.sectionTitle}>Historique des congés</h2>
           {leaves.length === 0 ? (
-            <div style={styles.emptyMessage}>No leave requests yet</div>
+            <div style={styles.emptyMessage}>Aucune demande de congé pour le moment</div>
           ) : (
             <div style={styles.leavesList}>
               {leaves.map(leave => {
@@ -743,19 +743,19 @@ export default function MyLeaves() {
                       </div>
                     </div>
                     <div style={styles.leaveBody}>
-                      <div><strong>Dates:</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
-                      <div><strong>Days:</strong> {(new Date(leave.end_date) - new Date(leave.start_date)) / (1000 * 60 * 60 * 24) + 1}</div>
-                      <div><strong>Reason:</strong> {leave.reason}</div>
+                      <div><strong>Dates :</strong> {new Date(leave.start_date).toLocaleDateString()} → {new Date(leave.end_date).toLocaleDateString()}</div>
+                      <div><strong>Jours :</strong> {(new Date(leave.end_date) - new Date(leave.start_date)) / (1000 * 60 * 60 * 24) + 1}</div>
+                      <div><strong>Motif :</strong> {leave.reason}</div>
                       {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.chef_comment && (
-                        <div><strong>Chef Comment:</strong> {leave.chef_comment}</div>
+                        <div><strong>Commentaire du chef :</strong> {leave.chef_comment}</div>
                       )}
                       {Array.isArray(leave.workflow) && leave.workflow.length > 0 && (
                         <div><strong>Workflow:</strong> {leave.workflow.map(step => `${step.validation_order}:${step.validator_role}-${step.decision}`).join(' | ')}</div>
                       )}
                       {(leave.status === 'ACCEPTED' || leave.status === 'REFUSED') && leave.decided_at && (
-                        <div style={{ fontSize: '12px', color: '#999' }}>Decided: {new Date(leave.decided_at).toLocaleDateString()}</div>
+                        <div style={{ fontSize: '12px', color: '#999' }}>Décidé le : {new Date(leave.decided_at).toLocaleDateString()}</div>
                       )}
-                      {leave.submitted_at && <div style={{ fontSize: '12px', color: '#999' }}>Submitted: {new Date(leave.submitted_at).toLocaleDateString()}</div>}
+                      {leave.submitted_at && <div style={{ fontSize: '12px', color: '#999' }}>Soumis le : {new Date(leave.submitted_at).toLocaleDateString()}</div>}
                     </div>
                   </div>
                 );

@@ -29,7 +29,7 @@ function AnalyticsDashboard() {
       setDashboard(response.data)
     } catch (err) {
       console.error('Error fetching dashboard:', err)
-      setError(err.response?.data?.error || 'Failed to load dashboard')
+      setError(err.response?.data?.error || 'Impossible de charger le tableau de bord')
     } finally {
       setLoading(false)
     }
@@ -63,21 +63,21 @@ function AnalyticsDashboard() {
       setDashboard(response.data)
     } catch (err) {
       console.error('Error refreshing dashboard:', err)
-      setError('Failed to refresh dashboard')
+      setError('Impossible d’actualiser le tableau de bord')
     }
   }
 
   return (
     <div className="analytics-container">
       <header className="analytics-header">
-        <h1>📊 Analytics Dashboard</h1>
+        <h1>📊 Tableau de bord analytique</h1>
         <div className="header-controls">
           <button
             onClick={handleRefresh}
             className="btn btn-primary"
             disabled={loading}
           >
-            {loading ? '⏳ Loading...' : '🔄 Refresh'}
+            {loading ? '⏳ Chargement...' : '🔄 Actualiser'}
           </button>
           <label className="auto-refresh">
             <input
@@ -85,16 +85,16 @@ function AnalyticsDashboard() {
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
             />
-            Auto-refresh every 5 min
+            Actualisation automatique toutes les 5 min
           </label>
         </div>
       </header>
 
       <div className="filters-section">
-        <h3>Filters</h3>
+        <h3>Filtres</h3>
         <div className="filters-grid">
           <div className="filter-group">
-            <label>Start Date</label>
+            <label>Date de début</label>
             <input
               type="date"
               name="start_date"
@@ -103,7 +103,7 @@ function AnalyticsDashboard() {
             />
           </div>
           <div className="filter-group">
-            <label>End Date</label>
+            <label>Date de fin</label>
             <input
               type="date"
               name="end_date"
@@ -112,23 +112,23 @@ function AnalyticsDashboard() {
             />
           </div>
           <div className="filter-group">
-            <label>Service ID</label>
+            <label>ID du service</label>
             <input
               type="text"
               name="service_id"
-              placeholder="e.g., RH, IT"
+              placeholder="ex. : RH, IT"
               value={filters.service_id}
               onChange={handleFilterChange}
             />
           </div>
           <div className="filter-group">
-            <label>Contract Type</label>
+            <label>Type de contrat</label>
             <select
               name="contract_type"
               value={filters.contract_type}
               onChange={handleFilterChange}
             >
-              <option value="">All</option>
+              <option value="">Tous</option>
               <option value="CDI">CDI</option>
               <option value="CDD">CDD</option>
               <option value="STAGE">STAGE</option>
@@ -136,32 +136,32 @@ function AnalyticsDashboard() {
           </div>
         </div>
         <button onClick={fetchDashboard} className="btn btn-secondary">
-          Apply Filters
+          Appliquer les filtres
         </button>
       </div>
 
       {error && (
         <div className="error-box">
-          <strong>❌ Error:</strong> {error}
+          <strong>❌ Erreur :</strong> {error}
         </div>
       )}
 
       {loading && !dashboard ? (
         <div className="loading-spinner">
-          <p>Loading dashboard...</p>
+          <p>Chargement du tableau de bord...</p>
         </div>
       ) : dashboard ? (
         <>
           <div className="period-info">
             <p>
-              📅 Period: <strong>{dashboard.period.start_date}</strong> to{' '}
+              📅 Période : <strong>{dashboard.period.start_date}</strong> au 
               <strong>{dashboard.period.end_date}</strong>
             </p>
             <p>
-              Last Updated: <strong>{new Date(dashboard.last_updated).toLocaleString()}</strong>
+              Dernière mise à jour : <strong>{new Date(dashboard.last_updated).toLocaleString()}</strong>
             </p>
             <p>
-              Refresh Strategy: <strong>{dashboard.refresh_strategy}</strong>
+              Stratégie d’actualisation : <strong>{dashboard.refresh_strategy}</strong>
             </p>
           </div>
 
@@ -183,7 +183,7 @@ function AnalyticsDashboard() {
                 </div>
               ))
             ) : (
-              <p>No widgets available</p>
+              <p>Aucun widget disponible</p>
             )}
           </div>
         </>

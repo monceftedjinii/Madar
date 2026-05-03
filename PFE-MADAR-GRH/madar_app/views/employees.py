@@ -69,6 +69,7 @@ def employees_list(request):
 			'position_id': e.position.id if e.position else None,
 			'email': e.email,
 			'is_online': _is_user_online(related_user),
+			'role': related_user.role if related_user else None,
 			'phone_number': e.phone_number if not for_messaging else None,
 			'address': e.address if not for_messaging else None,
 			'contract_type': e.contract_type if not for_messaging else None,
@@ -133,7 +134,8 @@ def create_employee(request):
 	contract_type = request.data.get('contract_type', 'CDI')
 	salary = request.data.get('salary', '0.00')
 	attendance_pin = request.data.get('attendance_pin', '')
-	
+	role = request.data.get('role', RoleChoices.EMPLOYEE)
+
 	# Validation
 	if not all([first_name, last_name, email, service_code]):
 		return Response(
@@ -141,6 +143,14 @@ def create_employee(request):
 			status=status.HTTP_400_BAD_REQUEST
 		)
 	
+	# Validate role
+	valid_roles = [r.value for r in RoleChoices]
+	if role not in valid_roles:
+		return Response(
+			{'detail': f'role invalide. Valeurs acceptées: {", ".join(valid_roles)}'},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+
 	# Validate salary is numeric
 	try:
 		float(salary)
@@ -177,7 +187,7 @@ def create_employee(request):
 	user = User.objects.create_user(
 		email=email,
 		password=temp_password,
-		role=RoleChoices.EMPLOYEE
+		role=role
 	)
 	print(f"[API] Created User account for {email}")
 	
@@ -383,5 +393,39 @@ def reset_employee_password(request, pk):
 		'credentials': {
 			'email': user.email,
 			'temporary_password': new_password,
+		}
+	})
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated, IsGRH])
+def update_employee_role(request, pk):
+	"""Update the role of the User account linked to an employee (GRH only)."""
+	try:
+		employee = Employee.objects.get(id=pk)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	new_role = request.data.get('role', '').strip()
+	valid_roles = [r.value for r in RoleChoices]
+	if new_role not in valid_roles:
+		return Response(
+			{'detail': f'role invalide. Valeurs acceptées: {", ".join(valid_roles)}'},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+
+	user = User.objects.filter(email=employee.email).first()
+	if not user:
+		return Response({'detail': 'Aucun compte utilisateur lié à cet employé.'}, status=status.HTTP_404_NOT_FOUND)
+
+	user.role = new_role
+	user.save(update_fields=['role'])
+
+	return Response({
+		'success': True,
+		'detail': f'Rôle mis à jour avec succès.',
+		'user': {
+			'email': user.email,
+			'role': user.role,
 		}
 	})

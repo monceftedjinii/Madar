@@ -15,23 +15,23 @@ export default function Employees() {
 
   const handleDeleteEmployee = async (employee) => {
     const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.email;
-    const confirmed = window.confirm(`Delete employee ${fullName}? This cannot be undone.`);
+    const confirmed = window.confirm(`Supprimer l’employé ${fullName} ? Cette action est irréversible.`);
     if (!confirmed) return;
 
     try {
       setError(null);
       setSuccess(null);
       await api.delete(`/api/employees/${employee.id}/delete/`);
-      setSuccess(`Employee ${fullName} deleted successfully.`);
+      setSuccess(`Employé ${fullName} supprimé avec succès.`);
       fetchEmployees();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete employee');
+      setError(err.response?.data?.detail || 'Impossible de supprimer l’employé');
     }
   };
 
   const handleResetPassword = async (employee) => {
     const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.email;
-    const confirmed = window.confirm(`Generate a new password for ${fullName}?`);
+    const confirmed = window.confirm(`Générer un nouveau mot de passe pour ${fullName} ?`);
     if (!confirmed) return;
 
     try {
@@ -40,46 +40,46 @@ export default function Employees() {
       const response = await api.post(`/api/employees/${employee.id}/reset-password/`);
       const creds = response.data?.credentials;
       const message = creds
-        ? `New password for ${creds.email}: ${creds.temporary_password}`
-        : `Password reset successfully for ${fullName}`;
+        ? `Nouveau mot de passe pour ${creds.email} : ${creds.temporary_password}`
+        : `Mot de passe réinitialisé avec succès pour ${fullName}`;
       setSuccess(message);
       if (creds?.temporary_password) {
         window.alert(message);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to reset password');
+      setError(err.response?.data?.detail || 'Impossible de réinitialiser le mot de passe');
     }
   };
 
   const handleEditEmployee = async (employee) => {
-    const first_name = window.prompt('First name', employee.first_name || '');
+    const first_name = window.prompt('Prénom', employee.first_name || '');
     if (first_name === null) return;
 
-    const last_name = window.prompt('Last name', employee.last_name || '');
+    const last_name = window.prompt('Nom', employee.last_name || '');
     if (last_name === null) return;
 
     const email = window.prompt('Email', employee.email || '');
     if (email === null) return;
 
-    const phone_number = window.prompt('Phone Number', employee.phone_number || '');
+    const phone_number = window.prompt('Numéro de téléphone', employee.phone_number || '');
     if (phone_number === null) return;
 
-    const address = window.prompt('Address', employee.address || '');
+    const address = window.prompt('Adresse', employee.address || '');
     if (address === null) return;
 
     const position = window.prompt('Poste / Position', employee.position || '');
     if (position === null) return;
 
-    const contract_type = window.prompt('Type de Contrat (CDI, CDD, STAGE)', employee.contract_type || 'CDI');
+    const contract_type = window.prompt('Type de contrat (CDI, CDD, STAGE)', employee.contract_type || 'CDI');
     if (contract_type === null) return;
 
-    const salary = window.prompt('Salary', String(employee.salary || '0.00'));
+    const salary = window.prompt('Salaire', String(employee.salary || '0.00'));
     if (salary === null) return;
 
-    const attendance_pin = window.prompt('Attendance PIN (optional)', employee.attendance_pin || '');
+    const attendance_pin = window.prompt('Code PIN de présence (optionnel)', employee.attendance_pin || '');
     if (attendance_pin === null) return;
 
-    const departmentInput = window.prompt('Department ID', String(employee.department?.id || ''));
+    const departmentInput = window.prompt('ID du département', String(employee.department?.id || ''));
     if (departmentInput === null) return;
 
     try {
@@ -97,10 +97,10 @@ export default function Employees() {
         attendance_pin,
         department: Number(departmentInput),
       });
-      setSuccess('Employee updated successfully.');
+      setSuccess('Employé mis à jour avec succès.');
       fetchEmployees();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to update employee');
+      setError(err.response?.data?.detail || 'Impossible de mettre à jour l’employé');
     }
   };
 
@@ -115,7 +115,7 @@ export default function Employees() {
       const response = await api.get('/api/employees/');
       setEmployees(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load employees');
+      setError(err.response?.data?.error || 'Impossible de charger les employés');
     } finally {
       setLoading(false);
     }
@@ -321,12 +321,12 @@ export default function Employees() {
     <div style={styles.container}>
       <div style={styles.header}>
         <div style={styles.headerText}>
-          <h1 style={styles.title}>Employees</h1>
-          <p style={styles.subtitle}>View all employees in your department</p>
+          <h1 style={styles.title}>Employés</h1>
+          <p style={styles.subtitle}>Voir tous les employés de votre département</p>
         </div>
         {canAddEmployee && (
           <Link to="/employees/add" style={styles.addButton}>
-            + Add Employee
+            + Ajouter un employé
           </Link>
         )}
       </div>
@@ -347,11 +347,11 @@ export default function Employees() {
 
       {/* Search Filter */}
       <div style={styles.filterSection}>
-        <label style={styles.filterLabel}>Search by Name, Email or Poste</label>
+        <label style={styles.filterLabel}>Rechercher par Nom, E-mail ou Poste</label>
         <input
           style={styles.filterInput}
           type="text"
-          placeholder="Enter employee name, email or poste..."
+          placeholder="Saisir le nom, l’e-mail ou le poste de l’employé..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -360,25 +360,25 @@ export default function Employees() {
       {/* Table */}
       <div style={styles.tableSection}>
         {loading ? (
-          <div style={styles.loadingMessage}>Loading employees...</div>
+          <div style={styles.loadingMessage}>Chargement des employés...</div>
         ) : filteredEmployees.length === 0 ? (
           <div style={styles.emptyMessage}>
-            {searchTerm ? 'No employees match your search.' : 'No employees found.'}
+            {searchTerm ? 'Aucun employé ne correspond à votre recherche.' : 'Aucun employé trouvé.'}
           </div>
         ) : (
           <>
             <table style={styles.table}>
               <thead style={styles.tableHeader}>
                 <tr>
-                  <th style={styles.tableHeaderCell}>Full Name</th>
-                  <th style={styles.tableHeaderCell}>Status</th>
-                  <th style={styles.tableHeaderCell}>Phone</th>
-                  <th style={styles.tableHeaderCell}>Address</th>
+                  <th style={styles.tableHeaderCell}>Nom complet</th>
+                  <th style={styles.tableHeaderCell}>Statut</th>
+                  <th style={styles.tableHeaderCell}>Téléphone</th>
+                  <th style={styles.tableHeaderCell}>Adresse</th>
                   <th style={styles.tableHeaderCell}>Poste</th>
                   <th style={styles.tableHeaderCell}>Contrat</th>
                   <th style={styles.tableHeaderCell}>Date d'embauche</th>
-                  <th style={styles.tableHeaderCell}>Email</th>
-                  <th style={styles.tableHeaderCell}>Department</th>
+                  <th style={styles.tableHeaderCell}>E-mail</th>
+                  <th style={styles.tableHeaderCell}>Département</th>
                   {canManageEmployees && <th style={styles.tableHeaderCell}>Actions</th>}
                 </tr>
               </thead>
@@ -400,7 +400,7 @@ export default function Employees() {
                           ...(emp.is_online ? styles.onlineBadge : styles.offlineBadge),
                         }}
                       >
-                        {emp.is_online ? '● Online' : '○ Offline'}
+                        {emp.is_online ? '● En ligne' : '○ Hors ligne'}
                       </span>
                     </td>
                     <td style={styles.tableCell}>{emp.phone_number || '-'}</td>
@@ -418,19 +418,19 @@ export default function Employees() {
                           style={{ ...styles.actionBtn, ...styles.editBtn }}
                           onClick={() => handleEditEmployee(emp)}
                         >
-                          Edit
+                          Modifier
                         </button>
                         <button
                           style={{ ...styles.actionBtn, ...styles.resetBtn }}
                           onClick={() => handleResetPassword(emp)}
                         >
-                          Reset Password
+                          Réinitialiser le mot de passe
                         </button>
                         <button
                           style={{ ...styles.actionBtn, ...styles.deleteBtn }}
                           onClick={() => handleDeleteEmployee(emp)}
                         >
-                          Delete
+                          Supprimer
                         </button>
                       </td>
                     )}
@@ -439,7 +439,7 @@ export default function Employees() {
               </tbody>
             </table>
             <div style={{...styles.resultInfo, ...styles.resultCount}}>
-              Showing {filteredEmployees.length} of {employees.length} total employees
+              Affichage de {filteredEmployees.length} sur {employees.length} employés au total
             </div>
           </>
         )}

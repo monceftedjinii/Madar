@@ -519,7 +519,7 @@ export default function DepartmentLeaves() {
   };
 
   if (loading) {
-    return <div style={styles.container}><div style={styles.loadingMessage}>Loading leaves...</div></div>;
+    return <div style={styles.container}><div style={styles.loadingMessage}>Chargement des congés...</div></div>;
   }
 
   return (
@@ -540,7 +540,7 @@ export default function DepartmentLeaves() {
             }}
             disabled={exporting}
           >
-            Export
+            Exporter
           </button>
         </div>
       </div>
@@ -591,7 +591,7 @@ export default function DepartmentLeaves() {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Export Leave History</div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>From Date</label>
+              <label style={styles.modalLabel}>Date de début</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -600,7 +600,7 @@ export default function DepartmentLeaves() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>To Date</label>
+              <label style={styles.modalLabel}>Date de fin</label>
               <input
                 style={styles.modalInput}
                 type="date"
@@ -609,16 +609,16 @@ export default function DepartmentLeaves() {
               />
             </div>
             <div style={styles.modalField}>
-              <label style={styles.modalLabel}>Status</label>
+              <label style={styles.modalLabel}>Statut</label>
               <select
                 style={styles.modalInput}
                 value={exportStatus}
                 onChange={(e) => setExportStatus(e.target.value)}
               >
-                <option value="">All</option>
-                <option value="PENDING">Pending</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="REFUSED">Refused</option>
+                <option value="">Tous</option>
+                <option value="PENDING">En attente</option>
+                <option value="ACCEPTED">Accepté</option>
+                <option value="REFUSED">Refusé</option>
               </select>
             </div>
             <div style={styles.modalField}>
@@ -656,7 +656,7 @@ export default function DepartmentLeaves() {
                 onClick={handleExport}
                 disabled={exporting}
               >
-                {exporting ? 'Exporting...' : 'Download'}
+                {exporting ? 'Exportation...' : 'Télécharger'}
               </button>
               <button
                 style={{

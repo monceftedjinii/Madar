@@ -35,7 +35,7 @@ export default function Reports() {
       });
       setMetrics(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load reports');
+      setError(err.response?.data?.error || 'Impossible de charger les rapports');
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function Reports() {
     if (fromDate && toDate) {
       fetchMetrics(fromDate, toDate);
     } else {
-      setError('Please select both from and to dates');
+      setError('Veuillez sélectionner les deux dates');
     }
   };
 
@@ -225,15 +225,15 @@ export default function Reports() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Reports & Summary</h1>
-        <p style={styles.subtitle}>View system metrics and statistics</p>
+        <h1 style={styles.title}>Rapports &amp; Résumé</h1>
+        <p style={styles.subtitle}>Consulter les métriques et statistiques du système</p>
       </div>
 
       {/* Filter Section */}
       <div style={styles.filterSection}>
         <div style={styles.filterGroup}>
           <div style={styles.filterField}>
-            <label style={styles.label}>From Date</label>
+            <label style={styles.label}>Date de début</label>
             <input
               style={styles.input}
               type="date"
@@ -243,7 +243,7 @@ export default function Reports() {
           </div>
 
           <div style={styles.filterField}>
-            <label style={styles.label}>To Date</label>
+            <label style={styles.label}>Date de fin</label>
             <input
               style={styles.input}
               type="date"
@@ -257,12 +257,12 @@ export default function Reports() {
             onClick={handleApplyFilter}
             disabled={loading}
           >
-            {loading ? 'Loading...' : 'Apply Filter'}
+            {loading ? 'Chargement...' : 'Appliquer le filtre'}
           </button>
         </div>
         {fromDate && toDate && (
           <div style={styles.dateInfo}>
-            Showing metrics from {formatDate(fromDate)} to {formatDate(toDate)}
+            Affichage des métriques du {formatDate(fromDate)} au {formatDate(toDate)}
           </div>
         )}
       </div>
@@ -275,7 +275,7 @@ export default function Reports() {
       )}
 
       {loading && (
-        <div style={styles.loadingMessage}>Loading metrics...</div>
+        <div style={styles.loadingMessage}>Chargement des métriques...</div>
       )}
 
       {!loading && metrics && (
@@ -283,32 +283,32 @@ export default function Reports() {
           {/* Key Metrics Cards */}
           <div style={styles.metricsGrid}>
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Total Employees</div>
+              <div style={styles.metricLabel}>Total employés</div>
               <div style={styles.metricValue}>{metrics.employees_count || 0}</div>
             </div>
 
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Attendance Days</div>
+              <div style={styles.metricLabel}>Jours de présence</div>
               <div style={styles.metricValue}>{metrics.attendance_days_count || 0}</div>
             </div>
 
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Warnings Issued</div>
+              <div style={styles.metricLabel}>Avertissements émis</div>
               <div style={styles.metricValue}>{metrics.warnings_count || 0}</div>
             </div>
 
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Discipline Flags</div>
+              <div style={styles.metricLabel}>Signalements disciplinaires</div>
               <div style={styles.metricValue}>{metrics.discipline_flags_count || 0}</div>
             </div>
 
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Documents Created</div>
+              <div style={styles.metricLabel}>Documents créés</div>
               <div style={styles.metricValue}>{metrics.documents_created || 0}</div>
             </div>
 
             <div style={styles.metricCard}>
-              <div style={styles.metricLabel}>Documents Validated</div>
+              <div style={styles.metricLabel}>Documents validés</div>
               <div style={styles.metricValue}>{metrics.documents_validated || 0}</div>
             </div>
           </div>
@@ -316,29 +316,29 @@ export default function Reports() {
           {/* Leave Requests Table */}
           {metrics.leaves_pending !== undefined && (
             <div style={styles.metricsTable}>
-              <div style={styles.tableTitle}>Leave Requests Summary</div>
+              <div style={styles.tableTitle}>Résumé des demandes de congé</div>
               <table style={styles.table}>
                 <thead style={styles.tableHeader}>
                   <tr>
-                    <th style={styles.tableHeaderCell}>Status</th>
-                    <th style={styles.tableHeaderCell}>Count</th>
+                    <th style={styles.tableHeaderCell}>Statut</th>
+                    <th style={styles.tableHeaderCell}>Nombre</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr style={styles.tableRow}>
-                    <td style={styles.tableCell}>Pending</td>
+                    <td style={styles.tableCell}>En attente</td>
                     <td style={styles.tableCell}>
                       <strong>{metrics.leaves_pending || 0}</strong>
                     </td>
                   </tr>
                   <tr style={styles.tableRow}>
-                    <td style={styles.tableCell}>Accepted</td>
+                    <td style={styles.tableCell}>Accepté</td>
                     <td style={styles.tableCell}>
                       <strong>{metrics.leaves_accepted || 0}</strong>
                     </td>
                   </tr>
                   <tr style={styles.tableRow}>
-                    <td style={styles.tableCell}>Refused</td>
+                    <td style={styles.tableCell}>Refusé</td>
                     <td style={styles.tableCell}>
                       <strong>{metrics.leaves_refused || 0}</strong>
                     </td>
@@ -350,7 +350,7 @@ export default function Reports() {
 
           {/* Summary Info */}
           <div style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>
-            Last updated: {new Date().toLocaleString()}
+            Dernière mise à jour : {new Date().toLocaleString()}
           </div>
         </>
       )}
