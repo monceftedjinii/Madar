@@ -84,7 +84,7 @@ class CanIssueWarnings(HasRole):
     ]
 
 class CanUploadDocument(permissions.BasePermission):
-    """Only EMPLOYEE, RH_SIMPLE, CHEF, GRH can upload documents."""
+    """Only EMPLOYEE, RH_SIMPLE, RH_AGENT, CHEF, GRH can upload documents."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
@@ -92,6 +92,7 @@ class CanUploadDocument(permissions.BasePermission):
         return request.user.role in [
             RoleChoices.EMPLOYEE,
             RoleChoices.RH_SIMPLE,
+            RoleChoices.RH_AGENT,
             RoleChoices.CHEF,
             RoleChoices.GRH
         ]
