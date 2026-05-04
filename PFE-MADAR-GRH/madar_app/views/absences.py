@@ -58,7 +58,7 @@ def absences_yesterday(request):
 		end_date__gte=yesterday
 	).values_list('employee_id', flat=True)
 
-	qs = Employee.objects.exclude(id__in=attended_ids).exclude(id__in=onleave_ids)
+	qs = Employee.objects.select_related('service').exclude(id__in=attended_ids).exclude(id__in=onleave_ids)
 	data = [
 		{
 			'id': e.id,
@@ -155,7 +155,7 @@ def discipline_flags(request):
 	"""Return discipline flags for the current month where warning count >= 3."""
 	today = timezone.now().date()
 	month_start = today.replace(day=1)
-	qs = DisciplineFlag.objects.filter(month=month_start, warning_count__gte=3).order_by('-warning_count')
+	qs = DisciplineFlag.objects.select_related('employee').filter(month=month_start, warning_count__gte=3).order_by('-warning_count')
 	data = [
 		{
 			'employee_id': f.employee.id,

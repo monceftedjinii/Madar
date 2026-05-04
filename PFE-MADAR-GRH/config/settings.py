@@ -77,13 +77,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+import dj_database_url
+import os
 
+DATABASES = {
+    'default': dj_database_url.config(
+        default="postgresql://mahdzyy:YUMRJFh7UmNCPqjrPbSh3lkaoqmKMcZZ@dpg-d7rnvf3rjlhs73fssflg-a.ohio-postgres.render.com:5432/madar_grh",
+        ssl_require=True,
+        conn_max_age=600
+    )
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

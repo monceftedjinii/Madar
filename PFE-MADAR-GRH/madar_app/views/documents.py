@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.http import FileResponse
 import mimetypes
 import os
@@ -52,7 +52,10 @@ def _serialize_document(doc, request):
 	if doc.created_by:
 		name = f"{doc.created_by.first_name} {doc.created_by.last_name}".strip()
 		created_by_name = name or doc.created_by.email
-	current_version = doc.current_version
+	if hasattr(doc, '_prefetched_current_version'):
+		current_version = doc._prefetched_current_version[0] if doc._prefetched_current_version else None
+	else:
+		current_version = doc.current_version
 	file_field = current_version.file_path if current_version and current_version.file_path else doc.file
 	file_name = os.path.basename(file_field.name) if file_field else None
 	return {
@@ -412,6 +415,9 @@ def list_documents_scoped(request):
 	else:
 		qs = Document.objects.none()
 
+	qs = qs.select_related('doc_type', 'source_service', 'target_service', 'created_by').prefetch_related(
+		Prefetch('versions', queryset=DocumentVersion.objects.filter(is_current=True), to_attr='_prefetched_current_version')
+	)
 	data = [_serialize_document(d, request) for d in qs.order_by('-created_at')]
 	return Response(data)
 
@@ -428,7 +434,9 @@ def documents_feed(request):
 	except Employee.DoesNotExist:
 		return Response([], status=status.HTTP_200_OK)
 
-	qs = Document.objects.filter(
+	qs = Document.objects.select_related('doc_type', 'source_service', 'target_service', 'created_by').prefetch_related(
+		Prefetch('versions', queryset=DocumentVersion.objects.filter(is_current=True), to_attr='_prefetched_current_version')
+	).filter(
 		target_service_id=emp.service_id,
 		status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED],
 		confidentiality_level=Document.ConfidentialityLevel.PUBLIC,
@@ -450,7 +458,9 @@ def documents_mine(request):
 	except Employee.DoesNotExist:
 		return Response([], status=status.HTTP_200_OK)
 
-	qs = Document.objects.filter(
+	qs = Document.objects.select_related('doc_type', 'source_service', 'target_service', 'created_by').prefetch_related(
+		Prefetch('versions', queryset=DocumentVersion.objects.filter(is_current=True), to_attr='_prefetched_current_version')
+	).filter(
 		source_service_id=chef_emp.service_id
 	).order_by('-created_at')
 

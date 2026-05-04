@@ -85,19 +85,26 @@ class RhDashboardService:
             .annotate(total=Count("id"))
             .order_by("-total", "service__nomService")[:6]
         )
-        leave_breakdown = {
-            "pending": pending_leaves_qs.count(),
-            "accepted": LeaveRequest.objects.filter(
-                status=LeaveRequest.Status.ACCEPTED,
-                created_at__date__gte=self.period_start,
-                created_at__date__lte=self.today,
-            ).count(),
-            "refused": LeaveRequest.objects.filter(
-                status=LeaveRequest.Status.REFUSED,
-                created_at__date__gte=self.period_start,
-                created_at__date__lte=self.today,
-            ).count(),
-        }
+        
+        pending_leaves = list(pending_leaves_qs)
+        visible_documents = list(visible_documents_qs)
+        documents_to_validate = list(documents_to_validate_qs)
+        formation_requests = list(formation_requests_qs)
+        evaluations = list(evaluations_qs)
+        warnings = list(warnings_qs)
+        notifications = list(notifications_qs)
+
+        leave_counts = LeaveRequest.objects.filter(
+            created_at__date__gte=self.period_start,
+            created_at__date__lte=self.today,
+        ).values('status').annotate(total=Count('id'))
+
+        leave_breakdown = {"pending": len(pending_leaves), "accepted": 0, "refused": 0}
+        for item in leave_counts:
+            if item['status'] == LeaveRequest.Status.ACCEPTED:
+                leave_breakdown['accepted'] = item['total']
+            elif item['status'] == LeaveRequest.Status.REFUSED:
+                leave_breakdown['refused'] = item['total']
 
         recent_employees = sorted(
             [item for item in employees if item.hired_at],
@@ -119,18 +126,18 @@ class RhDashboardService:
                 "avatar": self._avatar_url(),
                 "employeesCount": len(employees),
                 "onlineCount": online_count,
-                "pendingLeaves": pending_leaves_qs.count(),
-                "documentsToValidate": documents_to_validate_qs.count(),
+                "pendingLeaves": len(pending_leaves),
+                "documentsToValidate": len(documents_to_validate),
             },
             "stats": [
                 {"id": "employees", "label": "Employes", "value": len(employees), "helper": "Effectif total visible"},
                 {"id": "online", "label": "En ligne", "value": online_count, "helper": "Actifs maintenant"},
-                {"id": "leaves", "label": "Conges a traiter", "value": pending_leaves_qs.count(), "helper": "Etape RH en attente"},
-                {"id": "documents", "label": "Documents visibles", "value": visible_documents_qs.count(), "helper": "Dans le scope RH"},
-                {"id": "validations", "label": "Docs a valider", "value": documents_to_validate_qs.count(), "helper": "Validation en cours"},
-                {"id": "formations", "label": "Demandes formation", "value": formation_requests_qs.count(), "helper": "Cycle RH formation"},
-                {"id": "evaluations", "label": "Evaluations", "value": evaluations_qs.count(), "helper": "Sur la periode"},
-                {"id": "alerts", "label": "Alertes absences", "value": warnings_qs.count(), "helper": "A surveiller"},
+                {"id": "leaves", "label": "Conges a traiter", "value": len(pending_leaves), "helper": "Etape RH en attente"},
+                {"id": "documents", "label": "Documents visibles", "value": len(visible_documents), "helper": "Dans le scope RH"},
+                {"id": "validations", "label": "Docs a valider", "value": len(documents_to_validate), "helper": "Validation en cours"},
+                {"id": "formations", "label": "Demandes formation", "value": len(formation_requests), "helper": "Cycle RH formation"},
+                {"id": "evaluations", "label": "Evaluations", "value": len(evaluations), "helper": "Sur la periode"},
+                {"id": "alerts", "label": "Alertes absences", "value": len(warnings), "helper": "A surveiller"},
             ],
             "charts": {
                 "services": {
@@ -160,7 +167,7 @@ class RhDashboardService:
                     "startDate": item.start_date.isoformat(),
                     "endDate": item.end_date.isoformat(),
                 }
-                for item in pending_leaves_qs[:6]
+                for item in pending_leaves[:6]
             ],
             "documents": [
                 {
@@ -171,7 +178,7 @@ class RhDashboardService:
                     "targetService": item.target_service.nomService if item.target_service else "-",
                     "createdAt": item.created_at.isoformat() if item.created_at else None,
                 }
-                for item in visible_documents_qs[:6]
+                for item in visible_documents[:6]
             ],
             "formations": [
                 {
@@ -181,7 +188,7 @@ class RhDashboardService:
                     "requestedBy": item.requested_by.email,
                     "createdAt": item.created_at.isoformat(),
                 }
-                for item in formation_requests_qs[:6]
+                for item in formation_requests[:6]
             ],
             "evaluations": [
                 {
@@ -191,7 +198,7 @@ class RhDashboardService:
                     "period": item.period,
                     "date": item.evaluation_date.isoformat(),
                 }
-                for item in evaluations_qs[:6]
+                for item in evaluations[:6]
             ],
             "notifications": [
                 {
@@ -201,7 +208,7 @@ class RhDashboardService:
                     "isRead": item.is_read,
                     "createdAt": item.created_at.isoformat(),
                 }
-                for item in notifications_qs[:5]
+                for item in notifications[:5]
             ],
         }
 

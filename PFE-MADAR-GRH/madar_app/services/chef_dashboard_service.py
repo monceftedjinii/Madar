@@ -66,11 +66,8 @@ class ChefDashboardService:
             .select_related("employee", "type")
             .order_by("-created_at")
         )
-        notifications_qs = Notification.objects.filter(
-            user=self.user,
-            created_at__date__gte=self.period_start,
-            created_at__date__lte=self.today,
-        ).order_by("-created_at")
+        leaves = list(leaves_qs)
+        notifications = list(notifications_qs)
 
         today_attendance = Attendance.objects.filter(
             employee__in=team_members,
@@ -84,25 +81,17 @@ class ChefDashboardService:
             1 for item in attendance_by_employee.values() if item.check_in_time and item.check_out_time
         )
 
-        tasks = []
-        submitted_count = 0
-        revision_count = 0
-        done_count = 0
-        late_count = 0
+        tasks = list(tasks_qs)
+        submitted_count = sum(1 for t in tasks if t.status == Task.Status.SUBMITTED)
+        revision_count = sum(1 for t in tasks if t.status == Task.Status.REVISION)
+        done_count = sum(1 for t in tasks if t.status == Task.Status.DONE)
+        late_count = sum(1 for t in tasks if t.status != Task.Status.DONE and t.due_date and t.due_date < self.today)
 
-        for task in tasks_qs:
+        task_dicts = []
+        for task in tasks:
             status_label = self._task_status_label(task)
-            if task.status == Task.Status.SUBMITTED:
-                submitted_count += 1
-            if task.status == Task.Status.REVISION:
-                revision_count += 1
-            if task.status == Task.Status.DONE:
-                done_count += 1
-            if task.status != Task.Status.DONE and task.due_date and task.due_date < self.today:
-                late_count += 1
-
             employee_name = f"{task.assigned_to.first_name} {task.assigned_to.last_name}".strip() or task.assigned_to.email
-            tasks.append(
+            task_dicts.append(
                 {
                     "id": task.id,
                     "name": task.title,
@@ -115,7 +104,7 @@ class ChefDashboardService:
                 }
             )
 
-        pending_leaves_count = leaves_qs.filter(status=LeaveRequest.Status.PENDING).count()
+        pending_leaves_count = sum(1 for l in leaves if l.status == LeaveRequest.Status.PENDING)
 
         return {
             "header": {
@@ -140,7 +129,7 @@ class ChefDashboardService:
             "stats": [
                 {"id": "team", "label": "Employes du service", "value": len(team_members), "helper": "Equipe geree"},
                 {"id": "online", "label": "En ligne", "value": online_count, "helper": "Disponibles maintenant"},
-                {"id": "tasks", "label": "Taches assignees", "value": len(tasks), "helper": "Sur le mois selectionne"},
+                {"id": "tasks", "label": "Taches assignees", "value": len(task_dicts), "helper": "Sur le mois selectionne"},
                 {"id": "submitted", "label": "Travaux remis", "value": submitted_count, "helper": "A relire par le chef"},
                 {"id": "revision", "label": "Corrections", "value": revision_count, "helper": "Demandes de reprise"},
                 {"id": "late", "label": "Taches en retard", "value": late_count, "helper": "Suivi des delais"},
@@ -154,7 +143,7 @@ class ChefDashboardService:
                     completed_attendance_count,
                 ],
                 "tasks": {
-                    "todo": max(len(tasks) - done_count - submitted_count - revision_count, 0),
+                    "todo": max(len(task_dicts) - done_count - submitted_count - revision_count, 0),
                     "submitted": submitted_count,
                     "revision": revision_count,
                     "done": done_count,
@@ -172,7 +161,7 @@ class ChefDashboardService:
                 }
                 for member in team_members
             ],
-            "tasks": tasks[:8],
+            "tasks": task_dicts[:8],
             "leaves": [
                 {
                     "id": leave.id,
@@ -182,7 +171,7 @@ class ChefDashboardService:
                     "startDate": leave.start_date.isoformat(),
                     "endDate": leave.end_date.isoformat(),
                 }
-                for leave in leaves_qs[:6]
+                for leave in leaves[:6]
             ],
             "notifications": [
                 {
@@ -192,7 +181,7 @@ class ChefDashboardService:
                     "isRead": item.is_read,
                     "createdAt": item.created_at.isoformat(),
                 }
-                for item in notifications_qs[:5]
+                for item in notifications[:5]
             ],
         }
 
