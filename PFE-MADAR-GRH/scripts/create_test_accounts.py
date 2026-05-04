@@ -1,6 +1,6 @@
 """
 Script de création de comptes de test pour le projet MADAR GRH.
-Couvre tous les rôles : EMPLOYEE, CHEF, RH_SIMPLE, RH_AGENT, RH_SENIOR, GRH
+Couvre tous les rôles restants : EMPLOYEE, CHEF, RH_SIMPLE, RH_AGENT, GRH
 
 Exécution :
     python manage.py shell < scripts/create_test_accounts.py
@@ -195,20 +195,6 @@ user, emp, st = create_test_user(
     salary=65000,
 )
 test_accounts.append(("GRH", "grh@madar.dz", "Madar@2025", st))
-
-# ── RH_SENIOR ────────────────────────────────────────────────────────────────
-user, emp, st = create_test_user(
-    email="rh.senior@madar.dz",
-    password="Madar@2025",
-    first_name="Amira",
-    last_name="Ouali",
-    role=RoleChoices.RH_SENIOR,
-    service_code="RH",
-    job_intitule="Responsable RH",
-    position_name="Responsable RH",
-    salary=52000,
-)
-test_accounts.append(("RH_SENIOR", "rh.senior@madar.dz", "Madar@2025", st))
 
 # ── RH_AGENT ─────────────────────────────────────────────────────────────────
 user, emp, st = create_test_user(

@@ -13,7 +13,6 @@ class RoleChoices(models.TextChoices):
     CHEF = 'CHEF', 'Chef'
     RH_SIMPLE = 'RH_SIMPLE', 'RH'
     RH_AGENT = 'RH_AGENT', 'RH Agent'
-    RH_SENIOR = 'RH_SENIOR', 'Senior RH'
     GRH = 'GRH', 'GRH'
    
 
@@ -72,10 +71,6 @@ class User(AbstractUser):
     @property
     def is_rh_simple(self):
         return self.role == RoleChoices.RH_SIMPLE
-
-    @property
-    def is_rh_senior(self):
-        return self.role == RoleChoices.RH_SENIOR
 
     @property
     def is_grh(self):
@@ -697,7 +692,7 @@ class ValidationWorkflow(models.Model):
             if self.validator.role != self.validator_role:
                 if not (
                     self.validator_role == RoleChoices.RH_SIMPLE and
-                    self.validator.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR}
+                    self.validator.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
                 ):
                     errors['validator'] = 'validator role does not match validator_role for this workflow step'
 
@@ -1652,12 +1647,12 @@ class DocumentAccess(models.Model):
             pass
         
         # GRH and RH roles have access to all documents
-        if user.role in ['GRH', 'RH_SENIOR', 'RH_AGENT', 'RH_SIMPLE']:
+        if user.role in ['GRH', 'RH_AGENT', 'RH_SIMPLE']:
             return {'allowed': True, 'reason': f'User has {user.role} role'}
         
         # MODIFY and DELETE actions require higher permissions
         if action in [DocumentAccess.Action.MODIFY, DocumentAccess.Action.DELETE]:
-            if user.role not in ['GRH', 'RH_SENIOR', 'CHEF']:
+            if user.role not in ['GRH', 'CHEF']:
                 return {'allowed': False, 'reason': 'Insufficient permissions for modify/delete'}
         
         # Default: deny access

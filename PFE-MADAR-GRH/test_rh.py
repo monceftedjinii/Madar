@@ -3,7 +3,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 from django.contrib.auth import get_user_model
 User = get_user_model()
-u = User.objects.filter(role='RH_SENIOR').first()
+u = User.objects.filter(role='GRH').first()
 from madar_app.services import RhDashboardService
 from django.db import connection
 

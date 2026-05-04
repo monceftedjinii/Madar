@@ -141,7 +141,7 @@ def _can_access_comments(user, document):
 			)
 		except Employee.DoesNotExist:
 			return False
-	if user.role in [RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+	if user.role in [RoleChoices.RH_AGENT, RoleChoices.GRH]:
 		return True
 	if user.role == RoleChoices.EMPLOYEE:
 		try:
@@ -171,7 +171,7 @@ def _employee_from_user(user):
 
 
 def _initialize_validation_workflow(document):
-	"""Create a default two-step workflow (RH_SIMPLE -> RH_SENIOR/GRH) if none exists."""
+	"""Create a default two-step workflow (RH_SIMPLE -> GRH) if none exists."""
 	if document.validations.exists():
 		return
 
@@ -182,9 +182,7 @@ def _initialize_validation_workflow(document):
 		if rh_emp:
 			validators.append(rh_emp)
 
-	drh_user = User.objects.filter(role=RoleChoices.RH_SENIOR).order_by('id').first()
-	if not drh_user:
-		drh_user = User.objects.filter(role=RoleChoices.GRH).order_by('id').first()
+	drh_user = User.objects.filter(role=RoleChoices.GRH).order_by('id').first()
 	if drh_user:
 		drh_emp = _employee_from_user(drh_user)
 		if drh_emp and (not validators or drh_emp.id != validators[-1].id):
@@ -380,8 +378,6 @@ def list_documents_scoped(request):
 	role = request.user.role
 
 	if role == RoleChoices.GRH:
-		qs = Document.objects.all()
-	elif role == RoleChoices.RH_SENIOR:
 		qs = Document.objects.all()
 	elif role == RoleChoices.RH_SIMPLE:
 		qs = Document.objects.filter(
@@ -790,7 +786,7 @@ def preview_document(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def archive_document(request, pk):
-	"""Archive a document (RH_SENIOR/GRH only, status → ARCHIVED)."""
+	"""Archive a document (GRH only, status → ARCHIVED)."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
@@ -807,7 +803,7 @@ def archive_document(request, pk):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def delete_document(request, pk):
-	"""Delete a document completely from the database (RH_SENIOR/GRH only)."""
+	"""Delete a document completely from the database (GRH only)."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:

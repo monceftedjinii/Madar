@@ -108,7 +108,7 @@ class FormationRhAccessTests(APITestCase):
 		self.chef = User.objects.create_user(email='chef.form@example.com', password='chefpass', role=RoleChoices.CHEF)
 		Employee.objects.create(first_name='Chef', last_name='Form', email='chef.form@example.com', hired_at='2020-01-01', service=self.service, salary='2000')
 		self.rh_simple = User.objects.create_user(email='rhs.form@example.com', password='rhpass', role=RoleChoices.RH_SIMPLE)
-		self.rh_senior = User.objects.create_user(email='rhsenior.form@example.com', password='rhpass', role=RoleChoices.RH_SENIOR)
+		self.rh_senior = User.objects.create_user(email='rhsenior.form@example.com', password='rhpass', role=RoleChoices.GRH)
 		self.rh_agent = User.objects.create_user(email='rhagent.form@example.com', password='rhpass', role=RoleChoices.RH_AGENT)
 		self.grh = User.objects.create_user(email='grh.form@example.com', password='grhpass', role=RoleChoices.GRH)
 
@@ -208,7 +208,7 @@ class EmployeeScopeTests(APITestCase):
 		# RH senior manager in service A
 		self.rh_senior_email = 'rhsenior.scope@example.com'
 		self.rh_senior_pass = 'rhseniorpass'
-		User.objects.create_user(email=self.rh_senior_email, password=self.rh_senior_pass, role=RoleChoices.RH_SENIOR)
+		User.objects.create_user(email=self.rh_senior_email, password=self.rh_senior_pass, role=RoleChoices.GRH)
 		Employee.objects.create(first_name='RH', last_name='Senior', email=self.rh_senior_email, hired_at='2020-01-01', service=self.d1, salary='2100')
 
 		# regular employee user mapped to a1
@@ -294,7 +294,7 @@ class TaskTests(APITestCase):
 		Employee.objects.create(first_name='Chef', last_name='Guy', email='chef2@example.com', hired_at='2020-01-01', service=self.d1, salary='2000')
 
 		# RH senior manager in service A
-		self.rh_senior = User.objects.create_user(email='rhsenior.task@example.com', password='rhpass', role=RoleChoices.RH_SENIOR, first_name='RH', last_name='Senior')
+		self.rh_senior = User.objects.create_user(email='rhsenior.task@example.com', password='rhpass', role=RoleChoices.GRH, first_name='RH', last_name='Senior')
 		Employee.objects.create(first_name='RH', last_name='Senior', email='rhsenior.task@example.com', hired_at='2020-01-01', service=self.d1, salary='2200')
 
 		# employee user for a1
@@ -956,7 +956,7 @@ class AbsenceDisciplineTests(APITestCase):
 		self.other_emp = Employee.objects.create(first_name='Outside', last_name='User', email=self.other_emp_email, hired_at='2020-01-01', service=self.d_other, salary='1000')
 		# RH_SIMPLE and RH_SENIOR users
 		self.rh_simple = User.objects.create_user(email='rhsimple@example.com', password='rhsimple', role=RoleChoices.RH_SIMPLE)
-		self.rh_senior = User.objects.create_user(email='rhsenior@example.com', password='rhsenior', role=RoleChoices.RH_SENIOR)
+		self.rh_senior = User.objects.create_user(email='rhsenior@example.com', password='rhsenior', role=RoleChoices.GRH)
 		self.chef = User.objects.create_user(email='chef.warning@example.com', password='chefpass', role=RoleChoices.CHEF)
 		self.chef_emp = Employee.objects.create(first_name='Chef', last_name='Warning', email='chef.warning@example.com', hired_at='2020-01-01', service=self.d, salary='2000')
 
@@ -1211,7 +1211,7 @@ class NotificationTests(APITestCase):
 		from .models import Notification
 		# RH_SIMPLE and RH_SENIOR
 		rh_simple = User.objects.create_user(email='rhsimple2@example.com', password='rhsimple', role=RoleChoices.RH_SIMPLE)
-		rh_senior = User.objects.create_user(email='rhsenior2@example.com', password='rhsenior', role=RoleChoices.RH_SENIOR)
+		rh_senior = User.objects.create_user(email='rhsenior2@example.com', password='rhsenior', role=RoleChoices.GRH)
 		
 		today = timezone.now().date()
 		month_start = today.replace(day=1)
@@ -1301,7 +1301,7 @@ class DocumentTests(APITestCase):
 		self.rh_senior_user = User.objects.create_user(
 			email='rh_senior@example.com',
 			password='rhspass123',
-			role='RH_SENIOR'
+			role='GRH'
 		)
 
 		self.grh_user = User.objects.create_user(

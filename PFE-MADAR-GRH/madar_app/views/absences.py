@@ -135,10 +135,10 @@ def create_warning(request):
 	flag.warning_count += 1
 	flag.save()
 
-	# Notify RH_SENIOR if flag reaches 3
+	# Notify GRH if flag reaches 3
 	if flag.warning_count >= 3:
-		rh_senior_users = User.objects.filter(role=RoleChoices.RH_SENIOR)
-		for rh_user in rh_senior_users:
+		grh_users = User.objects.filter(role=RoleChoices.GRH)
+		for rh_user in grh_users:
 			notify(
 				rh_user,
 				'Discipline Flag',

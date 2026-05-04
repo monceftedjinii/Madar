@@ -36,14 +36,12 @@ class RhDashboardService:
     RH_ROLES = {
         RoleChoices.RH_SIMPLE,
         RoleChoices.RH_AGENT,
-        RoleChoices.RH_SENIOR,
         RoleChoices.GRH,
     }
 
     ROLE_LABELS = {
         RoleChoices.RH_SIMPLE: "RH",
         RoleChoices.RH_AGENT: "Agent RH",
-        RoleChoices.RH_SENIOR: "RH Senior",
         RoleChoices.GRH: "GRH",
     }
 
@@ -213,7 +211,7 @@ class RhDashboardService:
         }
 
     def _pending_leaves_queryset(self):
-        if self.user.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR}:
+        if self.user.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT}:
             expected_role = RoleChoices.RH_SIMPLE
         else:
             expected_role = RoleChoices.GRH
@@ -233,7 +231,7 @@ class RhDashboardService:
         queryset = Document.objects.select_related("source_service", "target_service", "doc_type").order_by("-created_at")
         if self.user.role == RoleChoices.RH_SIMPLE:
             return queryset.filter(created_by=self.user, doc_type__category="RH")
-        if self.user.role in {RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR, RoleChoices.GRH}:
+        if self.user.role in {RoleChoices.RH_AGENT, RoleChoices.GRH}:
             return queryset
         return queryset.none()
 

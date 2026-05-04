@@ -476,7 +476,7 @@ Response:
 All endpoints require `IsAuthenticated`.
 
 Additional permissions:
-- **Admin endpoints** (`/api/admin/*`): Require role in `['GRH', 'RH_SIMPLE', 'RH_SENIOR']`
+- **Admin endpoints** (`/api/admin/*`): Require role in `['GRH', 'RH_SIMPLE']`
 - **Message ownership**: Users can only access/delete their own messages
 - **Draft ownership**: Users can only manage their own drafts
 - **Report moderation**: Only admins can resolve reports

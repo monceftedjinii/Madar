@@ -370,10 +370,10 @@ def create_warning(request):
 	flag.warning_count = flag.warning_count + 1
 	flag.save()
 
-	# notify RH_SENIOR if flag reaches 3
+	# notify GRH if flag reaches 3
 	if flag.warning_count >= 3:
-		rh_senior_users = User.objects.filter(role=RoleChoices.RH_SENIOR)
-		for rh_user in rh_senior_users:
+		grh_users = User.objects.filter(role=RoleChoices.GRH)
+		for rh_user in grh_users:
 			notify(rh_user, 'Discipline Flag', f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.')
 
 	return Response({'id': aw.id, 'warning_count': flag.warning_count}, status=status.HTTP_201_CREATED)
@@ -622,9 +622,6 @@ def list_documents_scoped(request):
 	if request.user.role == RoleChoices.GRH:
 		# GRH sees all
 		qs = Document.objects.all()
-	elif request.user.role == RoleChoices.RH_SENIOR:
-		# RH_SENIOR sees all (for validation)
-		qs = Document.objects.all()
 	elif request.user.role == RoleChoices.RH_SIMPLE:
 		# RH_SIMPLE sees only RH documents they created
 		qs = Document.objects.filter(created_by=request.user, doc_type__category=DocumentType.Category.RH)
@@ -678,7 +675,7 @@ def comment_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	# Permission: creator, chef of source or target dept, RH_SENIOR, GRH
+	# Permission: creator, chef of source or target dept, GRH
 	can_comment = request.user.id == doc.created_by_id
 
 	if not can_comment and request.user.role == RoleChoices.CHEF:
@@ -689,7 +686,7 @@ def comment_document(request, pk):
 		except Employee.DoesNotExist:
 			pass
 
-	if not can_comment and request.user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+	if not can_comment and request.user.role == RoleChoices.GRH:
 		can_comment = True
 
 	if not can_comment:
@@ -706,7 +703,7 @@ def comment_document(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def validate_document(request, pk):
-	"""Validate a document (RH_SENIOR/GRH only, status -> VALIDATED)."""
+	"""Validate a document (GRH only, status -> VALIDATED)."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
@@ -730,7 +727,7 @@ def validate_document(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, CanValidateDocument])
 def archive_document(request, pk):
-	"""Archive a document (RH_SENIOR/GRH only, status -> ARCHIVED)."""
+	"""Archive a document (GRH only, status -> ARCHIVED)."""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
@@ -779,7 +776,7 @@ def get_employee_scope(user):
 			return emp.department_id
 		except Employee.DoesNotExist:
 			return None
-	elif user.role in [RoleChoices.RH_SIMPLE, RoleChoices.RH_SENIOR, RoleChoices.GRH]:
+	elif user.role in [RoleChoices.RH_SIMPLE, RoleChoices.GRH]:
 		return None  # Global
 	return None  # EMPLOYEE is handled separately
 

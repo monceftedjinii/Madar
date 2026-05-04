@@ -120,7 +120,7 @@ def my_evaluations(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def rh_evaluations(request):
-    if request.user.role not in {"RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"}:
+    if request.user.role not in {"RH_SIMPLE", "RH_AGENT", "GRH"}:
         return Response({"detail": "Acces RH requis."}, status=status.HTTP_403_FORBIDDEN)
 
     evaluations = (

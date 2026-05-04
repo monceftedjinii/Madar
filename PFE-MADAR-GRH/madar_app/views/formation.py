@@ -10,7 +10,6 @@ def _is_rh_or_grh(user):
     return user.role in [
         RoleChoices.RH_SIMPLE,
         RoleChoices.RH_AGENT,
-        RoleChoices.RH_SENIOR,
         RoleChoices.GRH,
     ]
 

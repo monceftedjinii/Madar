@@ -676,7 +676,7 @@ def blocked_users_list(request):
 @permission_classes([IsAuthenticated])
 def admin_reports_list(request):
     """Admin: List all message reports (GRH + RH staff only)."""
-    if not (request.user.role in ['GRH', 'RH_SIMPLE', 'RH_SENIOR']):
+    if not (request.user.role in ['GRH', 'RH_SIMPLE']):
         return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
     
     unresolved_only = request.query_params.get('unresolved', 'true').lower() == 'true'
@@ -712,7 +712,7 @@ def admin_reports_list(request):
 @permission_classes([IsAuthenticated])
 def admin_resolve_report(request, pk):
     """Admin: Resolve a report (optionally hide/delete message or block sender)."""
-    if not (request.user.role in ['GRH', 'RH_SIMPLE', 'RH_SENIOR']):
+    if not (request.user.role in ['GRH', 'RH_SIMPLE']):
         return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
@@ -784,7 +784,7 @@ def announcements_list(request):
 @permission_classes([IsAuthenticated])
 def create_announcement(request):
     """Admin: Create internal announcement."""
-    if not (request.user.role in ['GRH', 'RH_SIMPLE', 'RH_SENIOR']):
+    if not (request.user.role in ['GRH', 'RH_SIMPLE']):
         return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
     
     title = request.data.get('title', '').strip()
@@ -826,7 +826,7 @@ def create_announcement(request):
 @permission_classes([IsAuthenticated])
 def messaging_settings(request):
     """Admin: Get messaging settings."""
-    if not (request.user.role in ['GRH', 'RH_SIMPLE', 'RH_SENIOR']):
+    if not (request.user.role in ['GRH', 'RH_SIMPLE']):
         return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
     
     settings = get_messaging_settings()
@@ -841,7 +841,7 @@ def messaging_settings(request):
 @permission_classes([IsAuthenticated])
 def update_messaging_settings(request):
     """Admin: Update messaging settings."""
-    if not (request.user.role in ['GRH', 'RH_SIMPLE', 'RH_SENIOR']):
+    if not (request.user.role in ['GRH', 'RH_SIMPLE']):
         return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
     
     settings = get_messaging_settings()

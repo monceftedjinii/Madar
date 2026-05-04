@@ -38,7 +38,7 @@ class IsChef(HasRole):
 
 
 class IsServiceManager(HasRole):
-    allowed_roles = [RoleChoices.CHEF, RoleChoices.RH_SENIOR]
+    allowed_roles = [RoleChoices.CHEF, RoleChoices.GRH]
 
 
 class IsEmployee(HasRole):
@@ -55,7 +55,6 @@ class CanUseAttendance(HasRole):
         RoleChoices.CHEF,
         RoleChoices.RH_SIMPLE,
         RoleChoices.RH_AGENT,
-        RoleChoices.RH_SENIOR,
         RoleChoices.GRH,
     ]
 
@@ -65,14 +64,13 @@ class IsRHSimple(HasRole):
 
 
 class IsRHSenior(HasRole):
-    allowed_roles = [RoleChoices.RH_SENIOR]
+    allowed_roles = [RoleChoices.GRH]
 
 
 class IsRH(HasRole):
     allowed_roles = [
         RoleChoices.RH_SIMPLE,
         RoleChoices.RH_AGENT,
-        RoleChoices.RH_SENIOR,
         RoleChoices.GRH,
     ]
 
@@ -82,12 +80,11 @@ class CanIssueWarnings(HasRole):
         RoleChoices.CHEF,
         RoleChoices.RH_SIMPLE,
         RoleChoices.RH_AGENT,
-        RoleChoices.RH_SENIOR,
         RoleChoices.GRH,
     ]
 
 class CanUploadDocument(permissions.BasePermission):
-    """Only EMPLOYEE, RH_SIMPLE, RH_SENIOR, CHEF, GRH can upload documents."""
+    """Only EMPLOYEE, RH_SIMPLE, CHEF, GRH can upload documents."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
@@ -95,16 +92,15 @@ class CanUploadDocument(permissions.BasePermission):
         return request.user.role in [
             RoleChoices.EMPLOYEE,
             RoleChoices.RH_SIMPLE,
-            RoleChoices.RH_SENIOR,
             RoleChoices.CHEF,
             RoleChoices.GRH
         ]
 
 
 class CanValidateDocument(permissions.BasePermission):
-    """Only RH_SENIOR and GRH can validate documents."""
+    """Only GRH can validate documents."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.role in [RoleChoices.RH_SENIOR, RoleChoices.GRH]
+        return request.user.role in [RoleChoices.GRH]

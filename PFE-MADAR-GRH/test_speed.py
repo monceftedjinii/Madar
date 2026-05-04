@@ -4,7 +4,7 @@ django.setup()
 from django.test import Client
 from django.contrib.auth import get_user_model
 User = get_user_model()
-u = User.objects.filter(role='RH_SENIOR').first() or User.objects.first()
+u = User.objects.filter(role='GRH').first() or User.objects.first()
 client = Client(SERVER_NAME='localhost')
 client.force_login(u)
 

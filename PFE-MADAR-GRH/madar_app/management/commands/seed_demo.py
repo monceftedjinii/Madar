@@ -47,7 +47,6 @@ class Command(BaseCommand):
             'emp@example.com': ('EMPLOYEE', 'emppass123', 'Employee', 'User'),
             'chef@example.com': ('CHEF', 'chefpass123', 'Chef', 'Manager'),
             'rh_simple@example.com': ('RH_SIMPLE', 'rhpass123', 'RH', 'Officer'),
-            'rh_senior@example.com': ('RH_SENIOR', 'rhspass123', 'RH', 'Manager'),
             'grh@example.com': ('GRH', 'grhpass123', 'GRH', 'Director'),
         }
 
@@ -116,22 +115,6 @@ class Command(BaseCommand):
         if not rh_simple_emp.attendance_pin:
             rh_simple_emp.attendance_pin = '1234'
             rh_simple_emp.save()
-
-        rh_senior_user = created_users['rh_senior@example.com']
-        rh_senior_emp, _ = Employee.objects.get_or_create(
-            email='rh_senior@example.com',
-            defaults={
-                'first_name': 'RH',
-                'last_name': 'Manager',
-                'position': positions['Responsable RH'],
-                'service': dept_hr,
-                'hired_at': datetime.now().date(),
-                'salary': Decimal('75000.00'),
-            }
-        )
-        if not rh_senior_emp.attendance_pin:
-            rh_senior_emp.attendance_pin = '1234'
-            rh_senior_emp.save()
 
         grh_user = created_users['grh@example.com']
         grh_emp, _ = Employee.objects.get_or_create(
@@ -248,6 +231,5 @@ class Command(BaseCommand):
         self.stdout.write('  EMPLOYEE: emp@example.com / emppass123')
         self.stdout.write('  CHEF:     chef@example.com / chefpass123')
         self.stdout.write('  RH_SIMPLE:     rh_simple@example.com / rhpass123')
-        self.stdout.write('  RH_SENIOR:     rh_senior@example.com / rhspass123')
         self.stdout.write('  GRH:      grh@example.com / grhpass123')
 

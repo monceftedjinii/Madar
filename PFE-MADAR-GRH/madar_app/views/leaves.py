@@ -234,7 +234,6 @@ def department_pending_leaves(request):
 		RoleChoices.CHEF,
 		RoleChoices.RH_SIMPLE,
 		RoleChoices.RH_AGENT,
-		RoleChoices.RH_SENIOR,
 	}:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -430,7 +429,7 @@ def my_leave_balances(request):
 
 def _role_matches(expected_role, user_role):
 	if expected_role == RoleChoices.RH_SIMPLE:
-		return user_role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR}
+		return user_role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
 	return expected_role == user_role
 
 
@@ -492,7 +491,7 @@ def _notify_step_validators(leave_request, step):
 		emails = Employee.objects.filter(service=leave_request.employee.service).values_list('email', flat=True)
 		validators = User.objects.filter(role=RoleChoices.CHEF, email__in=emails)
 	elif step.validator_role == RoleChoices.RH_SIMPLE:
-		validators = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.RH_SENIOR])
+		validators = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH])
 	else:
 		validators = User.objects.none()
 
