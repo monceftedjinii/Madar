@@ -124,10 +124,20 @@ export default function RhDocuments() {
   const [commentText, setCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [showArchives, setShowArchives] = useState(false);
 
   const canValidate = role === "GRH";
   const canUpload = role === "RH_SIMPLE" || role === "RH_AGENT" || role === "GRH";
   const isGrh = role === "GRH";
+
+  const visibleDocuments = useMemo(
+    () => documents.filter((item) => item.status !== "ARCHIVED"),
+    [documents]
+  );
+  const archivedDocuments = useMemo(
+    () => documents.filter((item) => item.status === "ARCHIVED"),
+    [documents]
+  );
 
   const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
     dark
@@ -163,12 +173,12 @@ export default function RhDocuments() {
   }, []);
 
   const stats = useMemo(() => {
-    const total = documents.length;
-    const drafts = documents.filter((item) => item.status === "DRAFT").length;
-    const sent = documents.filter((item) => item.status === "SENT").length;
-    const validated = documents.filter((item) => item.status === "VALIDATED").length;
+    const total = visibleDocuments.length;
+    const drafts = visibleDocuments.filter((item) => item.status === "DRAFT").length;
+    const sent = visibleDocuments.filter((item) => item.status === "SENT").length;
+    const validated = visibleDocuments.filter((item) => item.status === "VALIDATED").length;
     return { total, drafts, sent, validated };
-  }, [documents]);
+  }, [visibleDocuments]);
 
   const onFieldChange = (event) => {
     const { name, value, files } = event.target;
@@ -306,6 +316,7 @@ export default function RhDocuments() {
       setErrorMessage(error?.response?.data?.detail || "Impossible d'archiver ce document.");
     } finally {
       setActionId(null);
+      setConfirmDialog(null);
     }
   };
 
@@ -406,8 +417,15 @@ export default function RhDocuments() {
                   >
                     Actualiser les documents
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchives((prev) => !prev)}
+                    className="rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+                  >
+                    {showArchives ? "Masquer les archives" : `Voir les archives (${archivedDocuments.length})`}
+                  </button>
                   <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
-                    {documents.length} document{documents.length > 1 ? "s" : ""} visible{documents.length > 1 ? "s" : ""}
+                    {visibleDocuments.length} document{visibleDocuments.length > 1 ? "s" : ""} visible{visibleDocuments.length > 1 ? "s" : ""}
                   </div>
                 </div>
               </div>
@@ -450,9 +468,20 @@ export default function RhDocuments() {
                     Documents visibles
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                    Les statuts, services et actions sont regroupes en cartes plus simples a lire qu'un tableau dense.
+                    Les documents archives sont retires de cette liste et restent caches jusqu'au clic sur "Voir les archives".
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowArchives((prev) => !prev)}
+                  className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
+                    dark
+                      ? "border border-slate-700 bg-slate-900 text-slate-100 hover:border-slate-500"
+                      : "border border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                  }`}
+                >
+                  {showArchives ? "Masquer les archives" : `Voir les archives (${archivedDocuments.length})`}
+                </button>
               </div>
 
               {loading ? (
@@ -461,7 +490,7 @@ export default function RhDocuments() {
                     <div key={item} className={`h-44 animate-pulse rounded-[28px] ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />
                   ))}
                 </div>
-              ) : documents.length === 0 ? (
+              ) : visibleDocuments.length === 0 ? (
                 <div className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucun document</p>
                   <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
@@ -470,7 +499,7 @@ export default function RhDocuments() {
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {documents.map((doc) => {
+                  {visibleDocuments.map((doc) => {
                     const theme = getStatusTheme(doc.status, dark);
                     return (
                       <article
@@ -484,6 +513,7 @@ export default function RhDocuments() {
                             <div className="flex flex-wrap items-center gap-3">
                               <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
                               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Document #{doc.id}</p>
+                              <span className="text-xs font-semibold text-slate-500">Cree le {formatDateTime(doc.created_at)}</span>
                               <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
                                 {statusLabels[doc.status] || doc.status}
                               </span>
@@ -587,6 +617,64 @@ export default function RhDocuments() {
                   })}
                 </div>
               )}
+
+              {showArchives ? (
+                <div className="mt-8 border-t border-slate-200/20 pt-8">
+                  <div className="mb-5 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Section archive</p>
+                      <h3 className={`mt-2 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                        Documents archives
+                      </h3>
+                    </div>
+                    <span className="text-sm text-slate-500">{archivedDocuments.length} document(s)</span>
+                  </div>
+
+                  {archivedDocuments.length === 0 ? (
+                    <div className={`rounded-[24px] border border-dashed px-6 py-8 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                      <p className="text-sm text-slate-500">Aucun document archive.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {archivedDocuments.map((doc) => {
+                        const theme = getStatusTheme(doc.status, dark);
+                        return (
+                          <article
+                            key={`archive-${doc.id}`}
+                            className={`rounded-[24px] border p-5 ${
+                              dark ? "border-slate-800 bg-slate-950/65" : "border-slate-200 bg-slate-50/70"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
+                                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Document #{doc.id}</p>
+                                  <span className="text-xs font-semibold text-slate-500">Cree le {formatDateTime(doc.created_at)}</span>
+                                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
+                                    {statusLabels[doc.status] || doc.status}
+                                  </span>
+                                </div>
+                                <h4 className={`mt-3 text-lg font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{doc.title}</h4>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">
+                                  {doc.doc_type} • archive le {formatDateTime(doc.archived_at || doc.updated_at)} • cree le {formatDateTime(doc.created_at)}
+                                </p>
+                              </div>
+                              <button
+                                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                                onClick={() => openDocument(doc)}
+                                type="button"
+                              >
+                                Consulter
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </section>
 
             <aside className="grid gap-6">

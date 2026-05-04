@@ -8,6 +8,28 @@ from django.utils import timezone
 import hashlib
 
 
+class ServiceChoices(models.TextChoices):
+    """Service/Department choices for User assignments."""
+    RH = 'RH', 'RH'
+    INFORMATIQUE = 'INFORMATIQUE', 'Informatique'
+    FINANCE = 'FINANCE', 'Finance'
+    SALES = 'SALES', 'Sales'
+    OTHER = 'OTHER', 'Other'
+
+
+class EmployeeRoleChoices(models.TextChoices):
+    """Employee role choices. Some are service-specific."""
+    # RH Service specific roles
+    RH = 'RH', 'RH'
+    RH_FORMATION = 'RH_FORMATION', 'RH Formation'
+    RH_CONGE = 'RH_CONGE', 'RH Congé'
+    DRH = 'DRH', 'DRH (Director RH)'
+    # General roles
+    EMPLOYEE = 'EMPLOYEE', 'Employee'
+    CHEF = 'CHEF', 'Chef'
+
+
+# Kept for backward compatibility during migration
 class RoleChoices(models.TextChoices):
     EMPLOYEE = 'EMPLOYEE', 'Employee'
     CHEF = 'CHEF', 'Chef'
@@ -47,7 +69,8 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     username = None
     email = models.EmailField('email address', unique=True)
-    role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.EMPLOYEE)
+    role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.EMPLOYEE, null=True, blank=True)
+    service = models.CharField(max_length=20, choices=ServiceChoices.choices, null=True, blank=True, verbose_name="Service/Department")
     attendance_pin_hash = models.CharField(max_length=128, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     last_seen = models.DateTimeField(null=True, blank=True)
@@ -75,6 +98,37 @@ class User(AbstractUser):
     @property
     def is_grh(self):
         return self.role == RoleChoices.GRH
+    
+    @property
+    def is_rh_service(self):
+        """Check if user is assigned to RH service (new schema)."""
+        return self.service == ServiceChoices.RH
+    
+    @property
+    def is_rh(self):
+        """Check if user is in RH (works for both old and new schema)."""
+        # New schema check
+        if self.service == ServiceChoices.RH:
+            return True
+        # Old schema check (for backward compat during migration)
+        return self.role in [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH]
+    
+    @property
+    def is_rh_agent(self):
+        """Check if user has RH_AGENT old role (for backward compat)."""
+        return self.role == RoleChoices.RH_AGENT
+    
+    def get_employee_profile(self):
+        """Get related Employee profile by email."""
+        try:
+            return Employee.objects.select_related('service').get(email=self.email)
+        except Employee.DoesNotExist:
+            return None
+    
+    def get_employee_role(self):
+        """Get user's role in Employee profile (new schema)."""
+        emp = self.get_employee_profile()
+        return emp.role if emp else None
 
 
 class Service(models.Model):
@@ -310,6 +364,7 @@ class Employee(models.Model):
     contract_type = models.CharField(max_length=10, choices=ContractType.choices, default=ContractType.CDI)
     hired_at = models.DateField(auto_now_add=True)
     service = models.ForeignKey(Service, on_delete=models.CASCADE, to_field='code', null=True, blank=True)
+    role = models.CharField(max_length=20, choices=EmployeeRoleChoices.choices, null=True, blank=True, verbose_name="Role")
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     attendance_pin = models.CharField(max_length=4, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)

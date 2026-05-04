@@ -8,7 +8,7 @@ from django.http import FileResponse
 import mimetypes
 import os
 from ..models import (
-	Employee, User, RoleChoices, Service,
+	Employee, User, RoleChoices, Service, ServiceChoices, EmployeeRoleChoices,
 	Document, DocumentType, DocumentHistory,
 	DocumentVersion, DocumentValidation, DocumentAccess
 )
@@ -44,6 +44,23 @@ def _resolve_service(value):
 		# Fall back to name match
 		return Service.objects.filter(nomService=value).first()
 	return None
+
+
+def _fallback_rh_service():
+	"""Best-effort fallback service for RH-created documents."""
+	# Prefer exact code matches commonly used for RH services.
+	for code in ['RH', 'GRH', 'DRH']:
+		service = Service.objects.filter(code__iexact=code).first()
+		if service:
+			return service
+
+	# Then try by service name containing RH.
+	service = Service.objects.filter(nomService__icontains='RH').order_by('code').first()
+	if service:
+		return service
+
+	# Final fallback: any available service to avoid blocking RH creation flows.
+	return Service.objects.order_by('code').first()
 
 
 def _serialize_document(doc, request):
@@ -119,7 +136,12 @@ def _check_document_file_access(request, doc, action):
 
 def _employee_public_access_required(user, document):
 	"""Employees can only access received documents when they are public."""
-	if not user or user.role != RoleChoices.EMPLOYEE:
+	# Check if user is an EMPLOYEE (old schema) or has no RH service (new schema)
+	is_employee = (
+		user.role == RoleChoices.EMPLOYEE or  # old schema
+		(user.service != ServiceChoices.RH)  # new schema: not in RH service
+	)
+	if not user or not is_employee:
 		return False
 	if document.created_by_id == user.id:
 		return False
@@ -132,7 +154,13 @@ def _can_access_comments(user, document):
 		return False
 	if user.id == document.created_by_id:
 		return True
-	if user.role == RoleChoices.CHEF:
+	
+	# CHEF role check (works for both old and new schema)
+	is_chef = (
+		user.role == RoleChoices.CHEF or  # old schema
+		(user.service != ServiceChoices.RH and user.get_employee_role() == EmployeeRoleChoices.CHEF)  # new schema
+	)
+	if is_chef:
 		try:
 			chef_emp = Employee.objects.get(email=user.email)
 			return (
@@ -141,9 +169,21 @@ def _can_access_comments(user, document):
 			)
 		except Employee.DoesNotExist:
 			return False
-	if user.role in [RoleChoices.RH_AGENT, RoleChoices.GRH]:
+	
+	# RH role check (RH_AGENT, GRH or RH service members)
+	is_rh = (
+		user.role in [RoleChoices.RH_AGENT, RoleChoices.GRH] or  # old schema
+		user.service == ServiceChoices.RH  # new schema
+	)
+	if is_rh:
 		return True
-	if user.role == RoleChoices.EMPLOYEE:
+	
+	# EMPLOYEE role check
+	is_employee = (
+		user.role == RoleChoices.EMPLOYEE or  # old schema
+		(user.service != ServiceChoices.RH and user.get_employee_role() == EmployeeRoleChoices.EMPLOYEE)  # new schema
+	)
+	if is_employee:
 		try:
 			emp = Employee.objects.get(email=user.email)
 			return (
@@ -233,19 +273,32 @@ def upload_document(request):
 			doc_type.save()
 
 	source_service = _resolve_service(request.data.get('source_service'))
-	if not source_service:
-		try:
-			user_emp = Employee.objects.get(email=request.user.email)
-			source_service = user_emp.service
-		except Employee.DoesNotExist:
-			return Response({'detail': 'source_service is required'}, status=status.HTTP_400_BAD_REQUEST)
-
 	target_service = _resolve_service(request.data.get('target_service'))
-	if request.user.role == RoleChoices.CHEF and not target_service:
+
+	if not source_service:
+		user_emp = Employee.objects.filter(email=request.user.email).select_related('service').first()
+		if user_emp and user_emp.service:
+			source_service = user_emp.service
+
+	# RH users can create without manually setting source_service in the UI.
+	rh_roles = {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
+	is_rh_user = request.user.role in rh_roles or request.user.service == ServiceChoices.RH
+	if not source_service and is_rh_user:
+		source_service = target_service or _fallback_rh_service()
+
+	if not source_service:
+		return Response({'detail': 'source_service is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	is_chef = request.user.role == RoleChoices.CHEF or (request.user.service != ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+	if is_chef and not target_service:
 		return Response({'detail': 'target_service is required'}, status=status.HTTP_400_BAD_REQUEST)
 
 	# Employees and chefs can only upload for their own service
-	if request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF]:
+	is_employee_or_chef = (
+		request.user.role in [RoleChoices.EMPLOYEE, RoleChoices.CHEF] or
+		(request.user.service != ServiceChoices.RH and request.user.get_employee_role() in [EmployeeRoleChoices.EMPLOYEE, EmployeeRoleChoices.CHEF])
+	)
+	if is_employee_or_chef:
 		try:
 			emp = Employee.objects.get(email=request.user.email)
 			if source_service and emp.service_id != source_service.code:
@@ -254,7 +307,6 @@ def upload_document(request):
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
 
 	# All RH roles (RH_SIMPLE, RH_AGENT, GRH) can only upload RH documents
-	rh_roles = {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
 	if request.user.role in rh_roles and doc_type.category != DocumentType.Category.RH:
 		return Response({'detail': 'RH roles can only upload RH documents'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -377,16 +429,23 @@ def document_detail(request, pk):
 @permission_classes([IsAuthenticated])
 def list_documents_scoped(request):
 	"""List documents scoped to the user's role and service."""
+	# Support both old and new schema
 	role = request.user.role
+	service = request.user.service
+	
+	# Check if user is GRH (old schema: role==GRH, new schema: service==RH and role==DRH)
+	is_grh = role == RoleChoices.GRH or (service == ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.DRH)
+	is_rh_simple = role == RoleChoices.RH_SIMPLE or (service == ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.RH)
+	is_rh_agent = role == RoleChoices.RH_AGENT or (service == ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.RH_FORMATION)
 
-	if role == RoleChoices.GRH:
+	if is_grh:
 		qs = Document.objects.all()
-	elif role == RoleChoices.RH_SIMPLE:
+	elif is_rh_simple:
 		qs = Document.objects.filter(
 			created_by=request.user,
 			doc_type__category=DocumentType.Category.RH
 		)
-	elif role == RoleChoices.RH_AGENT:
+	elif is_rh_agent:
 		qs = Document.objects.all()
 	elif role == RoleChoices.CHEF:
 		try:
@@ -424,7 +483,9 @@ def list_documents_scoped(request):
 @permission_classes([IsAuthenticated])
 def documents_feed(request):
 	"""Employee feed: documents sent to the employee's service."""
-	if request.user.role != RoleChoices.EMPLOYEE:
+	# Check if user is an EMPLOYEE
+	is_employee = request.user.role == RoleChoices.EMPLOYEE or (request.user.service != ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.EMPLOYEE)
+	if not is_employee:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	try:
@@ -448,7 +509,9 @@ def documents_feed(request):
 @permission_classes([IsAuthenticated])
 def documents_mine(request):
 	"""Chef history: documents posted from the chef's service."""
-	if request.user.role != RoleChoices.CHEF:
+	# Check if user is a CHEF
+	is_chef = request.user.role == RoleChoices.CHEF or (request.user.service != ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+	if not is_chef:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	try:
@@ -814,8 +877,9 @@ def delete_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	# Allow deletion if the user is GRH or the creator of the document
-	if not (request.user.role == RoleChoices.GRH or doc.created_by_id == request.user.id):
+	# Allow deletion if the user is GRH (old or new schema) or the creator of the document
+	is_grh = request.user.role == RoleChoices.GRH or (request.user.service == ServiceChoices.RH and request.user.get_employee_role() == EmployeeRoleChoices.DRH)
+	if not (is_grh or doc.created_by_id == request.user.id):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.delete()

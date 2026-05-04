@@ -147,6 +147,7 @@ export default function RhArchive() {
                           <div className="flex flex-wrap items-center gap-3">
                             <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Document #{doc.id}</p>
+                            <span className="text-xs font-semibold text-slate-500">Cree le {formatDateTime(doc.created_at)}</span>
                             <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
                               {statusLabels[doc.status] || doc.status}
                             </span>

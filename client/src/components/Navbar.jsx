@@ -179,7 +179,6 @@ export default function Navbar(props) {
               ...(!isGrh ? [{ to: "/rh/leaves", label: "Validation RH" }] : []),
               { to: "/rh/absences", label: isGrh ? "Absences globales" : "Absences RH" },
               { to: "/rh/documents", label: isGrh ? "Documents globaux" : "Documents RH" },
-                            { to: "/rh/archive", label: isGrh ? "Archive globale" : "Archive RH" },
               ...(canUseRhFormations ? [{ to: "/rh/formations", label: isGrh ? "Formations globales" : "Formations RH" }] : []),
               { to: "/rh/evaluations", label: isGrh ? "Évaluations globales" : "Évaluations RH" },
               { to: "/rh/reports", label: isGrh ? "Pilotage et rapports" : "Rapports RH" },

@@ -81,11 +81,10 @@ import dj_database_url
 import os
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default="postgresql://mahdzyy:YUMRJFh7UmNCPqjrPbSh3lkaoqmKMcZZ@dpg-d7rnvf3rjlhs73fssflg-a.ohio-postgres.render.com:5432/madar_grh",
-        ssl_require=True,
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 # Password validation

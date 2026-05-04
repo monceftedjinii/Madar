@@ -2,7 +2,11 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from .models import User, Employee, Position, Job, Service, Affectation
+from django import forms
+from .models import (
+	User, Employee, Position, Job, Service, Affectation,
+	ServiceChoices, EmployeeRoleChoices, RoleChoices
+)
 from .models import Task
 from .models import Attendance
 from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
@@ -12,35 +16,92 @@ from .models import Message, MessageAttachment, Draft, BlockedUser, MessageRepor
 import secrets
 
 
+class EmployeeRoleForm(forms.ModelForm):
+	"""Custom form that shows conditional role choices based on user's service."""
+	
+	class Meta:
+		model = Employee
+		fields = '__all__'
+	
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		
+		# Get the related user to check their service
+		if self.instance and self.instance.email:
+			try:
+				user = User.objects.get(email=self.instance.email)
+				# If user is in RH service, show RH-specific roles
+				if user.service == ServiceChoices.RH:
+					self.fields['role'].choices = [
+						('', '---------'),
+						(EmployeeRoleChoices.RH, EmployeeRoleChoices.RH.label),
+						(EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.RH_FORMATION.label),
+						(EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.RH_CONGE.label),
+						(EmployeeRoleChoices.DRH, EmployeeRoleChoices.DRH.label),
+					]
+				else:
+					# For non-RH users, show only EMPLOYEE or CHEF
+					self.fields['role'].choices = [
+						('', '---------'),
+						(EmployeeRoleChoices.EMPLOYEE, EmployeeRoleChoices.EMPLOYEE.label),
+						(EmployeeRoleChoices.CHEF, EmployeeRoleChoices.CHEF.label),
+					]
+			except User.DoesNotExist:
+				# If no user found, show all roles
+				pass
+	
+	def clean(self):
+		"""Validate that the role is appropriate for the user's service."""
+		cleaned_data = super().clean()
+		role = cleaned_data.get('role')
+		
+		if self.instance and self.instance.email and role:
+			try:
+				user = User.objects.get(email=self.instance.email)
+				# RH roles should only be assigned to RH service users
+				rh_roles = {EmployeeRoleChoices.RH, EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.DRH}
+				if role in rh_roles and user.service != ServiceChoices.RH:
+					raise forms.ValidationError(f"RH roles can only be assigned to users in RH service.")
+				# Non-RH roles should only be assigned to non-RH users
+				if role in {EmployeeRoleChoices.EMPLOYEE, EmployeeRoleChoices.CHEF} and user.service == ServiceChoices.RH:
+					raise forms.ValidationError(f"EMPLOYEE/CHEF roles can only be assigned to non-RH users.")
+			except User.DoesNotExist:
+				raise forms.ValidationError("User not found for this employee email.")
+		
+		return cleaned_data
+
+
 
 class CustomUserCreationForm(UserCreationForm):
 	class Meta:
 		model = User
-		fields = ('email', 'role')
+		fields = ('email', 'service')
 
 
 class CustomUserChangeForm(UserChangeForm):
 	class Meta:
 		model = User
-		fields = ('email', 'role')
+		fields = ('email', 'role', 'service')
 
 
 class UserAdmin(BaseUserAdmin):
 	add_form = CustomUserCreationForm
 	form = CustomUserChangeForm
 	model = User
-	list_display = ('email', 'role', 'is_staff', 'is_superuser')
-	list_filter = ('role', 'is_staff')
+	list_display = ('email', 'service', 'role', 'is_staff', 'is_superuser')
+	list_filter = ('service', 'is_staff')
 	ordering = ('email',)
 	search_fields = ('email',)
 	fieldsets = (
-		(None, {'fields': ('email', 'password', 'role')}),
+		(None, {'fields': ('email', 'password')}),
+		('Department Assignment', {'fields': ('service',)}),
+		('Legacy Role (Backward Compat)', {'fields': ('role',), 'classes': ('collapse',)}),
 		('Permissions', {'fields': ('is_staff', 'is_superuser', 'is_active')}),
 	)
 	add_fieldsets = (
 		(None, {
 			'classes': ('wide',),
-			'fields': ('email', 'role', 'password1', 'password2', 'is_staff', 'is_superuser'),
+			'fields': ('email', 'service', 'password1', 'password2', 'is_staff', 'is_superuser'),
 		}),
 	)
 
@@ -138,13 +199,29 @@ class AffectationAdmin(admin.ModelAdmin):
 	status_badge.short_description = 'Statut'
 
 
+@admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'service', 'attendance_pin', 'user_status')
+	form = EmployeeRoleForm
+	list_display = ('email', 'first_name', 'last_name', 'phone_number', 'profile_preview', 'position', 'contract_type', 'user_service_display', 'role', 'attendance_pin', 'user_status')
 	search_fields = ('email', 'first_name', 'last_name', 'phone_number', 'address', 'position__name')
-	list_filter = ('service', 'position', 'contract_type')
-	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'service', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
-	readonly_fields = ('profile_preview', 'user_login_info', 'hired_at')
+	list_filter = ('role', 'position', 'contract_type')
+	fields = ('first_name', 'last_name', 'email', 'phone_number', 'address', 'profile_picture', 'profile_preview', 'position', 'contract_type', 'user_service_display', 'role', 'hired_at', 'salary', 'attendance_pin', 'user_login_info')
+	readonly_fields = ('profile_preview', 'user_login_info', 'hired_at', 'user_service_display')
 	actions = ['reset_user_password']
+
+	def user_service_display(self, obj):
+		"""Display the employee's related user's service department."""
+		try:
+			user = User.objects.get(email=obj.email)
+			if user.service:
+				return format_html(
+					'<span style="background-color: #007bff; color: white; padding: 4px 8px; border-radius: 3px;">{}</span>',
+					user.get_service_display() if hasattr(user, 'get_service_display') else user.service
+				)
+			return format_html('<span style="color: #999;">Not assigned</span>')
+		except User.DoesNotExist:
+			return format_html('<span style="color: #ccc;">No user</span>')
+	user_service_display.short_description = 'User Service/Department'
 
 	def profile_preview(self, obj):
 		if obj.profile_picture:
@@ -272,7 +349,6 @@ class ValidationWorkflowAdmin(admin.ModelAdmin):
 	readonly_fields = ('created_at', 'updated_at', 'decided_at')
 
 
-admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Task)
 admin.site.register(Attendance)
 admin.site.register(LeaveRequest)
