@@ -564,9 +564,10 @@ def upload_document(request):
 		except Employee.DoesNotExist:
 			return Response({'detail': 'user has no employee record'}, status=status.HTTP_403_FORBIDDEN)
 
-	# RH_SIMPLE can only upload RH documents
-	if request.user.role == RoleChoices.RH_SIMPLE and doc_type.category != DocumentType.Category.RH:
-		return Response({'detail': 'RH_SIMPLE can only upload RH documents'}, status=status.HTTP_403_FORBIDDEN)
+	# All RH roles (RH_SIMPLE, RH_AGENT, GRH) can only upload RH documents
+	rh_roles = {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
+	if request.user.role in rh_roles and doc_type.category != DocumentType.Category.RH:
+		return Response({'detail': 'RH roles can only upload RH documents'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc = Document.objects.create(
 		title=title,
