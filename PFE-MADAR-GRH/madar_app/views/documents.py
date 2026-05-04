@@ -803,13 +803,20 @@ def archive_document(request, pk):
 	return Response({'id': doc.id, 'status': doc.status})
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated, CanValidateDocument])
+@permission_classes([IsAuthenticated])
 def delete_document(request, pk):
-	"""Delete a document completely from the database (GRH only)."""
+	"""Delete a document completely from the database.
+
+	Allowed: GRH users or the document creator.
+	"""
 	try:
 		doc = Document.objects.get(id=pk)
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	# Allow deletion if the user is GRH or the creator of the document
+	if not (request.user.role == RoleChoices.GRH or doc.created_by_id == request.user.id):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	doc.delete()
 	return Response({'detail': 'document deleted'}, status=status.HTTP_204_NO_CONTENT)

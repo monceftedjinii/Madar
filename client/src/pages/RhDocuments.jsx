@@ -113,6 +113,7 @@ export default function RhDocuments() {
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [role, setRole] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
@@ -122,9 +123,10 @@ export default function RhDocuments() {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
-  const canValidate = role === "RH_SENIOR" || role === "GRH";
-  const canUpload = role === "RH_SIMPLE" || role === "RH_SENIOR" || role === "GRH";
+  const canValidate = role === "GRH";
+  const canUpload = role === "RH_SIMPLE" || role === "RH_AGENT" || role === "GRH";
   const isGrh = role === "GRH";
 
   const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
@@ -145,6 +147,7 @@ export default function RhDocuments() {
       setDocuments(Array.isArray(docsResponse.data) ? docsResponse.data : []);
       setServices(Array.isArray(servicesResponse.data) ? servicesResponse.data : []);
       setRole(meResponse.data?.role || "");
+      setUserEmail(meResponse.data?.email || "");
     } catch (error) {
       console.error("Erreur chargement documents RH:", error);
       setDocuments([]);
@@ -306,6 +309,42 @@ export default function RhDocuments() {
     }
   };
 
+  const deleteDocument = async (documentId) => {
+    try {
+      setActionId(documentId);
+      setFeedback("");
+      setErrorMessage("");
+      await axios.delete(`/api/documents/${documentId}/delete/`);
+      setFeedback("Document supprime avec succes.");
+      await fetchData();
+      if (selectedDocument?.id === documentId) {
+        setSelectedDocument(null);
+      }
+    } catch (error) {
+      console.error("Erreur suppression document RH:", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de supprimer ce document.");
+    } finally {
+      setActionId(null);
+      setConfirmDialog(null);
+    }
+  };
+
+  const confirmDelete = (documentId) => {
+    setConfirmDialog({ type: "delete", documentId });
+  };
+
+  const confirmArchive = (documentId) => {
+    setConfirmDialog({ type: "archive", documentId });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmDialog) return;
+    if (confirmDialog.type === "delete") {
+      await deleteDocument(confirmDialog.documentId);
+    } else if (confirmDialog.type === "archive") {
+      await archiveDocument(confirmDialog.documentId);
+    }
+  };
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
@@ -489,11 +528,58 @@ export default function RhDocuments() {
                                 </button>
                               </>
                             ) : null}
+                                  {confirmDialog && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                                      <div className={`rounded-[28px] border p-6 max-w-sm ${dark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"}`}>
+                                        <h3 className={`text-lg font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                                          {confirmDialog.type === "delete" ? "Supprimer le document ?" : "Archiver le document ?"}
+                                        </h3>
+                                        <p className="mt-3 text-sm text-slate-500">
+                                          {confirmDialog.type === "delete"
+                                            ? "Cette action supprimera definitivement le document. Etes-vous sur ?"
+                                            : "Etes-vous sur de vouloir archiver ce document ?"}
+                                        </p>
+                                        <div className="mt-6 flex gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => setConfirmDialog(null)}
+                                            className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
+                                          >
+                                            Non
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={handleConfirm}
+                                            disabled={actionId === confirmDialog.documentId}
+                                            className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold text-white transition ${confirmDialog.type === "delete" ? "bg-red-600 hover:bg-red-500" : "bg-sky-600 hover:bg-sky-500"} disabled:opacity-60`}
+                                          >
+                                            {actionId === confirmDialog.documentId ? "En cours..." : "Oui"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                             {canValidate && doc.status === "VALIDATED" ? (
                               <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => archiveDocument(doc.id)} type="button">
                                 Archiver
                               </button>
                             ) : null}
+                            {(() => {
+                              const canManage = isGrh || doc.created_by === userEmail;
+                              if (doc.status === "DRAFT" && canManage) {
+                                return (
+                                  <>
+                                    <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => confirmArchive(doc.id)} type="button">
+                                      Archiver
+                                    </button>
+                                    <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-red-500 hover:text-red-300" : "border-slate-300 bg-white text-slate-700 hover:border-red-400 hover:text-red-600"}`} disabled={actionId === doc.id} onClick={() => confirmDelete(doc.id)} type="button">
+                                      Supprimer
+                                    </button>
+                                  </>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
                       </article>

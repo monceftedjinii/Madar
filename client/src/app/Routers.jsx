@@ -22,6 +22,7 @@ import ChefEvaluations from "../pages/ChefEvaluations";
 import RhLeaves from "../pages/RhLeaves";
 import RhAbsences from "../pages/RhAbsences";
 import RhDocuments from "../pages/RhDocuments";
+import RhArchive from "../pages/RhArchive";
 import RhFormations from "../pages/RhFormations";
 import RhReports from "../pages/RhReports";
 import RhEmployees from "../pages/RhEmployees";
@@ -57,6 +58,7 @@ export default function Routers() {
           <Route path="/rh/leaves" element={<RhLeaves />} />
           <Route path="/rh/absences" element={<RhAbsences />} />
           <Route path="/rh/documents" element={<RhDocuments />} />
+                    <Route path="/rh/archive" element={<RhArchive />} />
           <Route path="/rh/formations" element={<RhFormations />} />
           <Route path="/rh/reports" element={<RhReports />} />
           <Route path="/rh/employees" element={<RhEmployees />} />
