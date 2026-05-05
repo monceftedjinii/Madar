@@ -9,12 +9,12 @@ import hashlib
 
 
 class ServiceChoices(models.TextChoices):
-    """Service/Department choices for User assignments."""
-    RH = 'RH', 'RH'
-    INFORMATIQUE = 'INFORMATIQUE', 'Informatique'
-    FINANCE = 'FINANCE', 'Finance'
+    """Service/Department choices for User assignments — must match Service model codes."""
+    HR = 'HR', 'HR'
+    FIN = 'FIN', 'Finance'
+    IT = 'IT', 'IT'
+    OPS = 'OPS', 'Operations'
     SALES = 'SALES', 'Sales'
-    OTHER = 'OTHER', 'Other'
 
 
 class EmployeeRoleChoices(models.TextChoices):
@@ -23,7 +23,7 @@ class EmployeeRoleChoices(models.TextChoices):
     RH = 'RH', 'RH'
     RH_FORMATION = 'RH_FORMATION', 'RH Formation'
     RH_CONGE = 'RH_CONGE', 'RH Congé'
-    DRH = 'DRH', 'DRH (Director RH)'
+    DRH = 'DRH', 'DRH (Directeur RH)'
     # General roles
     EMPLOYEE = 'EMPLOYEE', 'Employee'
     CHEF = 'CHEF', 'Chef'
@@ -102,13 +102,13 @@ class User(AbstractUser):
     @property
     def is_rh_service(self):
         """Check if user is assigned to RH service (new schema)."""
-        return self.service == ServiceChoices.RH
+        return self.service == ServiceChoices.HR
     
     @property
     def is_rh(self):
         """Check if user is in RH (works for both old and new schema)."""
         # New schema check
-        if self.service == ServiceChoices.RH:
+        if self.service == ServiceChoices.HR:
             return True
         # Old schema check (for backward compat during migration)
         return self.role in [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH]
@@ -1080,7 +1080,6 @@ class Document(models.Model):
 
     class ConfidentialityLevel(models.TextChoices):
         PUBLIC = 'PUBLIC', 'Public'
-        INTERNAL = 'INTERNAL', 'Internal'
         CONFIDENTIAL = 'CONFIDENTIAL', 'Confidential'
 
     title = models.CharField(max_length=255)
@@ -1090,7 +1089,7 @@ class Document(models.Model):
     target_service = models.ForeignKey(Service, on_delete=models.SET_NULL, to_field='code', null=True, blank=True, related_name='documents_received')
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='documents_created')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    confidentiality_level = models.CharField(max_length=20, choices=ConfidentialityLevel.choices, default=ConfidentialityLevel.INTERNAL)
+    confidentiality_level = models.CharField(max_length=20, choices=ConfidentialityLevel.choices, default=ConfidentialityLevel.PUBLIC)
     sent_at = models.DateTimeField(null=True, blank=True)
     validated_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='documents_validated')
     validated_at = models.DateTimeField(null=True, blank=True)
@@ -1661,7 +1660,7 @@ class DocumentAccess(models.Model):
         return queryset
 
     @staticmethod
-    def check_permission(user, document, action):
+    def check_permission(user, document, _action):
         """Check if a user has permission to perform an action on a document.
         
         This is a basic permission check that can be extended with custom logic.
@@ -1678,40 +1677,48 @@ class DocumentAccess(models.Model):
         if not user or not user.is_authenticated:
             return {'allowed': False, 'reason': 'User not authenticated'}
         
-        # Document creator always has access
+        # Creator always has full access
         if document.created_by_id == user.id:
             return {'allowed': True, 'reason': 'Document creator'}
 
-        # Employees can only access received documents when they are public.
-        if (
-            user.role == RoleChoices.EMPLOYEE
-            and document.confidentiality_level != Document.ConfidentialityLevel.PUBLIC
-        ):
+        from .permissions import is_drh, is_any_rh
+
+        # DRH sees everything
+        if is_drh(user):
+            return {'allowed': True, 'reason': 'DRH access'}
+
+        # Any RH role sees all RH documents
+        if is_any_rh(user):
+            return {'allowed': True, 'reason': 'RH role access'}
+
+        # Resolve employee for service-based checks
+        employee = Employee.objects.filter(email=user.email).first()
+        if not employee or not employee.service_id:
+            return {'allowed': False, 'reason': 'No employee record or service assignment'}
+
+        emp_service = employee.service_id
+        in_target = document.target_service_id == emp_service
+        in_source = document.source_service_id == emp_service
+
+        is_chef = (
+            user.role == RoleChoices.CHEF or
+            (user.service != ServiceChoices.HR and user.get_employee_role() == EmployeeRoleChoices.CHEF)
+        )
+
+        if is_chef:
+            # Chef sees all docs (public and confidential) for their service
+            if in_target or in_source:
+                return {'allowed': True, 'reason': 'Chef service access'}
+            return {'allowed': False, 'reason': 'Document not targeted at chef service'}
+
+        # Employee: only public docs targeted at their service
+        if in_target and document.confidentiality_level == Document.ConfidentialityLevel.PUBLIC:
+            return {'allowed': True, 'reason': 'Public document for employee service'}
+
+        if document.confidentiality_level != Document.ConfidentialityLevel.PUBLIC:
             return {'allowed': False, 'reason': 'Employees can only access public documents'}
-        
-        # Check if user is in the document's service
-        try:
-            employee = Employee.objects.filter(email=user.email).first()
-            if employee:
-                # User in source or target service
-                if document.source_service_id == employee.service_id:
-                    return {'allowed': True, 'reason': 'User in source service'}
-                if document.target_service_id == employee.service_id:
-                    return {'allowed': True, 'reason': 'User in target service'}
-        except Exception:
-            pass
-        
-        # GRH and RH roles have access to all documents
-        if user.role in ['GRH', 'RH_AGENT', 'RH_SIMPLE']:
-            return {'allowed': True, 'reason': f'User has {user.role} role'}
-        
-        # MODIFY and DELETE actions require higher permissions
-        if action in [DocumentAccess.Action.MODIFY, DocumentAccess.Action.DELETE]:
-            if user.role not in ['GRH', 'CHEF']:
-                return {'allowed': False, 'reason': 'Insufficient permissions for modify/delete'}
-        
-        # Default: deny access
-        return {'allowed': False, 'reason': 'No matching permissions'}
+
+        return {'allowed': False, 'reason': 'Document not targeted at employee service'}
 
 
 # ============================================================

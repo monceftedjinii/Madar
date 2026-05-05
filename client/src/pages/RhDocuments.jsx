@@ -3,6 +3,8 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
+import { downloadBlob } from "../utils/downloadFile";
 import "../styles/profile.css";
 
 const initialForm = {
@@ -10,7 +12,7 @@ const initialForm = {
   type: "",
   category: "RH",
   targetService: "",
-  confidentialityLevel: "INTERNAL",
+  confidentialityLevel: "PUBLIC",
   file: null,
 };
 
@@ -112,7 +114,7 @@ export default function RhDocuments() {
   const [documents, setDocuments] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(initialForm);
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -126,9 +128,9 @@ export default function RhDocuments() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [showArchives, setShowArchives] = useState(false);
 
-  const canValidate = role === "GRH";
-  const canUpload = role === "RH_SIMPLE" || role === "RH_AGENT" || role === "GRH";
-  const isGrh = role === "GRH";
+  const canValidate = roleCtx.canValidateDocuments ?? roleCtx.isDrh ?? false;
+  const canUpload = roleCtx.isRh ?? false;
+  const isGrh = roleCtx.isDrh ?? false;
 
   const visibleDocuments = useMemo(
     () => documents.filter((item) => item.status !== "ARCHIVED"),
@@ -156,7 +158,7 @@ export default function RhDocuments() {
       ]);
       setDocuments(Array.isArray(docsResponse.data) ? docsResponse.data : []);
       setServices(Array.isArray(servicesResponse.data) ? servicesResponse.data : []);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setUserEmail(meResponse.data?.email || "");
     } catch (error) {
       console.error("Erreur chargement documents RH:", error);
@@ -298,6 +300,32 @@ export default function RhDocuments() {
     } catch (error) {
       console.error("Erreur refus document RH:", error);
       setErrorMessage(error?.response?.data?.detail || "Impossible de refuser ce document.");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const downloadDocument = async (doc) => {
+    try {
+      const response = await axios.get(`/api/documents/${doc.id}/download/`, { responseType: "blob" });
+      downloadBlob(response, doc.file_name || `document-${doc.id}`);
+    } catch (error) {
+      console.error("Erreur téléchargement:", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible de télécharger ce document.");
+    }
+  };
+
+  const sendDocument = async (documentId) => {
+    try {
+      setActionId(documentId);
+      setFeedback("");
+      setErrorMessage("");
+      await axios.post(`/api/documents/${documentId}/send/`);
+      setFeedback("Document envoye avec succes.");
+      await fetchData();
+    } catch (error) {
+      console.error("Erreur envoi document:", error);
+      setErrorMessage(error?.response?.data?.detail || "Impossible d'envoyer ce document.");
     } finally {
       setActionId(null);
     }
@@ -540,24 +568,17 @@ export default function RhDocuments() {
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/10 pt-5">
                           <div className="text-sm text-slate-500">
-                            {canValidate && doc.status === "SENT"
-                              ? "Ce document attend une decision de validation."
-                              : "Consultez le detail pour lire les commentaires et les pieces de contexte."}
+                            Consultez le detail pour lire les commentaires et les pieces de contexte.
                           </div>
                           <div className="flex flex-wrap gap-3">
                             <button className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700" onClick={() => openDocument(doc)} type="button">
                               Consulter
                             </button>
-                            {canValidate && doc.status === "SENT" ? (
-                              <>
-                                <button className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60" disabled={actionId === doc.id} onClick={() => validateDocument(doc.id)} type="button">
-                                  Valider
-                                </button>
-                                <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-rose-500 hover:text-rose-300" : "border-slate-300 bg-white text-slate-700 hover:border-rose-400 hover:text-rose-600"}`} disabled={actionId === doc.id} onClick={() => rejectDocument(doc.id)} type="button">
-                                  Refuser
-                                </button>
-                              </>
-                            ) : null}
+                            {doc.status !== "DRAFT" && (
+                              <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-indigo-400 hover:text-indigo-300" : "border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:text-indigo-600"}`} onClick={() => downloadDocument(doc)} type="button">
+                                Télécharger
+                              </button>
+                            )}
                                   {confirmDialog && (
                                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                                       <div className={`rounded-[28px] border p-6 max-w-sm ${dark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"}`}>
@@ -599,6 +620,9 @@ export default function RhDocuments() {
                               if (doc.status === "DRAFT" && canManage) {
                                 return (
                                   <>
+                                    <button className={`rounded-full px-5 py-3 text-sm font-semibold transition bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60`} disabled={actionId === doc.id} onClick={() => sendDocument(doc.id)} type="button">
+                                      Envoyer
+                                    </button>
                                     <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => confirmArchive(doc.id)} type="button">
                                       Archiver
                                     </button>
@@ -707,9 +731,8 @@ export default function RhDocuments() {
                       <div>
                         <FieldLabel>Confidentialite</FieldLabel>
                         <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} className={fieldClassName}>
-                          <option value="INTERNAL">Interne</option>
-                          <option value="CONFIDENTIAL">Confidentiel</option>
                           <option value="PUBLIC">Public</option>
+                          <option value="CONFIDENTIAL">Confidentiel</option>
                         </select>
                       </div>
                     </div>

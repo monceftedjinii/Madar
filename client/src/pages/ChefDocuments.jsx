@@ -12,7 +12,7 @@ const initialForm = {
   type: "",
   category: "INTERNAL",
   targetService: "",
-  confidentialityLevel: "INTERNAL",
+  confidentialityLevel: "PUBLIC",
   file: null,
 };
 
@@ -444,9 +444,8 @@ export default function ChefDocuments() {
             <div>
               <p className="chef-form-label">Confidentialité</p>
               <select name="confidentialityLevel" value={form.confidentialityLevel} onChange={onFieldChange} style={fieldStyle}>
-                <option value="INTERNAL">Interne</option>
-                <option value="CONFIDENTIAL">Confidentiel</option>
                 <option value="PUBLIC">Public</option>
+                <option value="CONFIDENTIAL">Confidentiel</option>
               </select>
             </div>
             <div>

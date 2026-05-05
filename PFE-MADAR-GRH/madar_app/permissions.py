@@ -1,6 +1,52 @@
 from rest_framework import permissions
 from .models import RoleChoices, ServiceChoices, Employee, EmployeeRoleChoices
 
+# Sets of EmployeeRoleChoices that can access each feature area
+RH_ALL_ROLES = {EmployeeRoleChoices.RH, EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.DRH}
+RH_CONGE_ROLES = {EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.DRH}
+RH_FORMATION_ROLES = {EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.DRH}
+RH_DRH_ROLES = {EmployeeRoleChoices.DRH}
+
+
+def get_rh_employee_role(user):
+    """Return the Employee.role for a given user, or None."""
+    try:
+        return Employee.objects.get(email=user.email).role
+    except Employee.DoesNotExist:
+        return None
+
+
+def is_any_rh(user):
+    """True if user has any RH role — Employee.role is source of truth, User.role as fallback."""
+    emp_role = get_rh_employee_role(user)
+    if emp_role in RH_ALL_ROLES:
+        return True
+    return user.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
+
+
+def is_conge_rh(user):
+    """True if user can manage leaves/absences (RH_CONGE or DRH, or old RH roles)."""
+    emp_role = get_rh_employee_role(user)
+    if emp_role in RH_CONGE_ROLES:
+        return True
+    return user.role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
+
+
+def is_formation_rh(user):
+    """True if user can manage formations (RH_FORMATION or DRH, or old agent/GRH)."""
+    emp_role = get_rh_employee_role(user)
+    if emp_role in RH_FORMATION_ROLES:
+        return True
+    return user.role in {RoleChoices.RH_AGENT, RoleChoices.GRH}
+
+
+def is_drh(user):
+    """True if user is DRH (or old GRH) — full RH management access."""
+    emp_role = get_rh_employee_role(user)
+    if emp_role == EmployeeRoleChoices.DRH:
+        return True
+    return user.role == RoleChoices.GRH
+
 
 class HasRole(permissions.BasePermission):
     """Reusable permission that checks whether the user's role is in allowed roles.
@@ -33,8 +79,8 @@ class HasRole(permissions.BasePermission):
         if user.service:
             # Map new service-based roles to old role checks
             service_to_roles = {
-                ServiceChoices.RH: [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH],
-                ServiceChoices.OTHER: [RoleChoices.EMPLOYEE, RoleChoices.CHEF],
+                ServiceChoices.HR: [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH],
+                ServiceChoices.SALES: [RoleChoices.EMPLOYEE, RoleChoices.CHEF],
             }
             return user.service in service_to_roles and any(
                 r in allowed for r in service_to_roles[user.service]
@@ -90,8 +136,14 @@ class HasEmployeeRole(permissions.BasePermission):
             return False
 
 
-class IsGRH(HasRole):
-    allowed_roles = [RoleChoices.GRH]
+class IsGRH(permissions.BasePermission):
+    """DRH (new schema) or GRH (old schema)."""
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        return is_drh(user)
 
 
 class IsChef(HasRole):
@@ -110,78 +162,76 @@ class IsEmployeeOrChef(HasRole):
     allowed_roles = [RoleChoices.EMPLOYEE, RoleChoices.CHEF]
 
 
-class CanUseAttendance(HasRole):
-    allowed_roles = [
-        RoleChoices.EMPLOYEE,
-        RoleChoices.CHEF,
-        RoleChoices.RH_SIMPLE,
-        RoleChoices.RH_AGENT,
-        RoleChoices.GRH,
-    ]
-
-
-class IsRHSimple(HasRole):
-    allowed_roles = [RoleChoices.RH_SIMPLE]
-
-
-class IsRHSenior(HasRole):
-    allowed_roles = [RoleChoices.GRH]
-
-
-class IsRH(HasRole):
-    """Check if user belongs to RH service. Works for both old and new schema."""
-    
+class CanUseAttendance(permissions.BasePermission):
     def has_permission(self, request, view):
         user = getattr(request, 'user', None)
         if user is None or not user.is_authenticated:
             return False
-        
-        # New structure: check service
-        if user.service == ServiceChoices.RH:
+        return True
+
+
+class IsRHSimple(permissions.BasePermission):
+    """Any RH role (new) or old RH roles — for absences/warnings (RH_CONGE + DRH)."""
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        return is_conge_rh(user)
+
+
+class IsRHSenior(permissions.BasePermission):
+    """DRH or old GRH."""
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        return is_drh(user)
+
+
+class IsRH(permissions.BasePermission):
+    """Any RH role — new or old schema."""
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        return is_any_rh(user)
+
+
+class CanIssueWarnings(permissions.BasePermission):
+    """CHEF, or RH_CONGE/DRH in new schema, or old RH roles."""
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        if user.role == RoleChoices.CHEF:
             return True
-        
-        # Fallback to old role field
-        return user.role in [
+        return is_conge_rh(user)
+
+
+class CanUploadDocument(permissions.BasePermission):
+    """RH service members and CHEFs can upload. Employees cannot."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.service == ServiceChoices.HR:
+            return True
+        return request.user.role in [
             RoleChoices.RH_SIMPLE,
             RoleChoices.RH_AGENT,
+            RoleChoices.CHEF,
             RoleChoices.GRH,
         ]
 
 
-class CanIssueWarnings(HasRole):
-    allowed_roles = [
-        RoleChoices.CHEF,
-        RoleChoices.RH_SIMPLE,
-        RoleChoices.RH_AGENT,
-        RoleChoices.GRH,
-    ]
-
-
-class CanUploadDocument(permissions.BasePermission):
-    """Allow users from RH service or with old RH roles to upload documents."""
-
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        
-        # New structure: RH service members can upload
-        if request.user.service == ServiceChoices.RH:
-            return True
-        
-        # Fallback to old roles for backward compat
-        return request.user.role in [
-            RoleChoices.EMPLOYEE,
-            RoleChoices.RH_SIMPLE,
-            RoleChoices.RH_AGENT,
-            RoleChoices.CHEF,
-            RoleChoices.GRH
-        ]
-
-
 class CanValidateDocument(permissions.BasePermission):
-    """Only GRH can validate documents."""
+    """Only DRH (new) or GRH (old) can validate documents."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.role in [RoleChoices.GRH]
+        return is_drh(request.user)

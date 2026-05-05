@@ -4,11 +4,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.conf import settings
 from django.utils import timezone
-from ..models import Service, Employee, Position, User, RoleChoices
-from ..permissions import IsGRH
+from ..models import Service, Employee, Position, User, RoleChoices, EmployeeRoleChoices, ServiceChoices
+from ..permissions import IsGRH, is_drh
+
+_EMPLOYEE_ROLE_TO_USER_ROLE = {
+	'EMPLOYEE': 'EMPLOYEE',
+	'CHEF': 'CHEF',
+	'RH': 'RH_SIMPLE',
+	'RH_CONGE': 'RH_SIMPLE',
+	'RH_FORMATION': 'RH_AGENT',
+	'DRH': 'GRH',
+}
+_RH_EMPLOYEE_ROLES = {'RH', 'RH_CONGE', 'RH_FORMATION', 'DRH'}
 from ..scopes import employee_queryset_for, employee_team_queryset_for
 import secrets
-from datetime import date as date_type
 
 
 def _is_user_online(user):
@@ -57,7 +66,6 @@ def employees_list(request):
 	
 	data = []
 	current_user_id = request.user.id
-	current_user_email = request.user.email
 	
 	for e in employees:
 		related_user = users_by_email.get(e.email)
@@ -70,6 +78,7 @@ def employees_list(request):
 			'email': e.email,
 			'is_online': _is_user_online(related_user),
 			'role': related_user.role if related_user else None,
+			'employee_role': e.role,
 			'phone_number': e.phone_number if not for_messaging else None,
 			'address': e.address if not for_messaging else None,
 			'contract_type': e.contract_type if not for_messaging else None,
@@ -104,10 +113,55 @@ def employees_list(request):
 @permission_classes([IsAuthenticated])
 def services_list(request):
 	data = [
-		{'code': s.code, 'nomService': s.nomService, 'statut': s.statut}
+		{
+			'code': s.code,
+			'nomService': s.nomService,
+			'statut': s.statut,
+			'is_rh_service': s.code == ServiceChoices.HR,
+		}
 		for s in Service.objects.order_by('code')
 	]
 	return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_service(request):
+	"""Create a new service (DRH only)."""
+	if not is_drh(request.user):
+		return Response({'detail': 'DRH access required.'}, status=status.HTTP_403_FORBIDDEN)
+
+	code = request.data.get('code', '').strip().upper()
+	nom = request.data.get('nomService', '').strip()
+	statut = request.data.get('statut', 'ACTIF').strip()
+
+	if not code or not nom:
+		return Response({'detail': 'code and nomService are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if Service.objects.filter(code=code).exists():
+		return Response({'detail': 'A service with this code already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	service = Service.objects.create(code=code, nomService=nom, statut=statut)
+	return Response({'code': service.code, 'nomService': service.nomService, 'statut': service.statut}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_service(request, code):
+	"""Delete a service (DRH only)."""
+	if not is_drh(request.user):
+		return Response({'detail': 'DRH access required.'}, status=status.HTTP_403_FORBIDDEN)
+
+	try:
+		service = Service.objects.get(code=code)
+	except Service.DoesNotExist:
+		return Response({'detail': 'Service not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+	if Employee.objects.filter(service=service).exists():
+		return Response({'detail': 'Cannot delete a service that still has employees.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	service.delete()
+	return Response({'detail': 'Service deleted.'}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -134,22 +188,25 @@ def create_employee(request):
 	contract_type = request.data.get('contract_type', 'CDI')
 	salary = request.data.get('salary', '0.00')
 	attendance_pin = request.data.get('attendance_pin', '')
-	role = request.data.get('role', RoleChoices.EMPLOYEE)
+	employee_role = request.data.get('employee_role', EmployeeRoleChoices.EMPLOYEE).strip()
 
 	# Validation
 	if not all([first_name, last_name, email, service_code]):
 		return Response(
-			{'detail': 'first_name, last_name, email, service required'}, 
+			{'detail': 'first_name, last_name, email, service required'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
-	
-	# Validate role
-	valid_roles = [r.value for r in RoleChoices]
-	if role not in valid_roles:
+
+	# Validate employee_role
+	valid_employee_roles = [r.value for r in EmployeeRoleChoices]
+	if employee_role not in valid_employee_roles:
 		return Response(
-			{'detail': f'role invalide. Valeurs acceptées: {", ".join(valid_roles)}'},
+			{'detail': f'employee_role invalide. Valeurs acceptées: {", ".join(valid_employee_roles)}'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
+
+	user_role = _EMPLOYEE_ROLE_TO_USER_ROLE.get(employee_role, 'EMPLOYEE')
+	user_service = ServiceChoices.HR if employee_role in _RH_EMPLOYEE_ROLES else service_code
 
 	# Validate salary is numeric
 	try:
@@ -187,10 +244,11 @@ def create_employee(request):
 	user = User.objects.create_user(
 		email=email,
 		password=temp_password,
-		role=role
+		role=user_role,
+		service=user_service,
 	)
 	print(f"[API] Created User account for {email}")
-	
+
 	# Create Employee (signal will check and skip User creation)
 	try:
 		employee = Employee.objects.create(
@@ -203,7 +261,8 @@ def create_employee(request):
 			contract_type=contract_type,
 			service=service,
 			salary=salary,
-			attendance_pin=attendance_pin
+			attendance_pin=attendance_pin,
+			role=employee_role,
 		)
 		print(f"[API] Created Employee {email}")
 	except Exception as e:
@@ -406,11 +465,11 @@ def update_employee_role(request, pk):
 	except Employee.DoesNotExist:
 		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	new_role = request.data.get('role', '').strip()
-	valid_roles = [r.value for r in RoleChoices]
-	if new_role not in valid_roles:
+	new_employee_role = request.data.get('employee_role', '').strip()
+	valid_employee_roles = [r.value for r in EmployeeRoleChoices]
+	if new_employee_role not in valid_employee_roles:
 		return Response(
-			{'detail': f'role invalide. Valeurs acceptées: {", ".join(valid_roles)}'},
+			{'detail': f'employee_role invalide. Valeurs acceptées: {", ".join(valid_employee_roles)}'},
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
@@ -418,14 +477,15 @@ def update_employee_role(request, pk):
 	if not user:
 		return Response({'detail': 'Aucun compte utilisateur lié à cet employé.'}, status=status.HTTP_404_NOT_FOUND)
 
-	user.role = new_role
-	user.save(update_fields=['role'])
+	employee.role = new_employee_role
+	employee.save(update_fields=['role'])
+
+	user.role = _EMPLOYEE_ROLE_TO_USER_ROLE.get(new_employee_role, 'EMPLOYEE')
+	user.service = ServiceChoices.HR if new_employee_role in _RH_EMPLOYEE_ROLES else (employee.service_id or None)
+	user.save(update_fields=['role', 'service'])
 
 	return Response({
 		'success': True,
-		'detail': f'Rôle mis à jour avec succès.',
-		'user': {
-			'email': user.email,
-			'role': user.role,
-		}
+		'detail': 'Rôle mis à jour avec succès.',
+		'employee_role': new_employee_role,
 	})
