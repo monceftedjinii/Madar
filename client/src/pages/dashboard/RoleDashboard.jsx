@@ -4,9 +4,12 @@ import Dashboard from "./Dashboard";
 import ChefDashboard from "./ChefDashboard";
 import RhDashboard from "./RhDashboard";
 import GrhDashboard from "./GrhDashboard";
+import { getRoleContext } from "../../app/roleAccess";
 
 export default function RoleDashboard() {
   const [role, setRole] = useState("");
+  const [service, setService] = useState("");
+  const [employeeRole, setEmployeeRole] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,9 +17,13 @@ export default function RoleDashboard() {
       try {
         const response = await axios.get("/api/whoami/");
         setRole(response.data?.role || "");
+        setService(response.data?.service || "");
+        setEmployeeRole(response.data?.employee_role || "");
       } catch (error) {
         console.error("Erreur determination role dashboard:", error);
         setRole("");
+        setService("");
+        setEmployeeRole("");
       } finally {
         setLoading(false);
       }
@@ -33,15 +40,17 @@ export default function RoleDashboard() {
     );
   }
 
-  if (role === "CHEF") {
+  const context = getRoleContext({ role, service, employee_role: employeeRole });
+
+  if (context.isChef) {
     return <ChefDashboard />;
   }
 
-  if (role === "GRH") {
+  if (context.isDrh) {
     return <GrhDashboard />;
   }
 
-  if (["RH_SIMPLE", "RH_AGENT", "RH_SENIOR"].includes(role)) {
+  if (context.isRh) {
     return <RhDashboard />;
   }
 

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from .permissions import IsGRH
 from rest_framework.permissions import IsAuthenticated
 from .scopes import employee_queryset_for
-from .models import Task, Employee, User, RoleChoices, Department
+from .models import Task, Employee, User, RoleChoices, Department, ServiceChoices, EmployeeRoleChoices
 from rest_framework import status
 from rest_framework.parsers import JSONParser
 from .permissions import IsChef
@@ -30,7 +30,8 @@ def ping(request):
 def rbac_test(request):
 	# returns the role of the authenticated user; protected to GRH only
 	role = getattr(request.user, 'role', None)
-	return Response({'ok': True, 'role': role})
+	service = getattr(request.user, 'service', None)
+	return Response({'ok': True, 'role': role, 'service': service})
 
 
 @api_view(['GET'])
@@ -42,13 +43,22 @@ def whoami(request):
 	first_name = user.first_name or (emp.first_name if emp else "")
 	last_name = user.last_name or (emp.last_name if emp else "")
 	
+	# Get role info from both old and new schema
+	old_role = getattr(user, 'role', None)
+	service = getattr(user, 'service', None)
+	emp_role = emp.role if emp else None
+	
 	return Response({
 		'id': user.id,
 		'email': user.email,
 		'first_name': first_name,
 		'last_name': last_name,
-		'role': getattr(user, 'role', None),
-		'position': (emp.position.name if emp and emp.position else user.role) or "Assistant",
+		# Old schema
+		'role': old_role,
+		# New schema
+		'service': service,
+		'employee_role': emp_role,
+		'position': (emp.position.name if emp and emp.position else old_role) or "Assistant",
 		'department': emp.department.name if emp and emp.department else "General",
 		'phone_number': emp.phone_number if emp else "",
 		'address': emp.address if emp else "",
@@ -372,7 +382,14 @@ def create_warning(request):
 
 	# notify GRH if flag reaches 3
 	if flag.warning_count >= 3:
+		# Get GRH users: old schema (role=GRH) + new schema (service=RH and role=DRH)
+		from django.db.models import Q
 		grh_users = User.objects.filter(role=RoleChoices.GRH)
+		# Also add new schema DRH users
+		drh_emails = Employee.objects.filter(role=EmployeeRoleChoices.DRH).values_list('email', flat=True)
+		grh_users_new = User.objects.filter(email__in=drh_emails, service=ServiceChoices.HR)
+		grh_users = grh_users.union(grh_users_new)
+		
 		for rh_user in grh_users:
 			notify(rh_user, 'Discipline Flag', f'Employee {emp.first_name} {emp.last_name} has reached {flag.warning_count} warnings in the current month.')
 

@@ -3,31 +3,28 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db.models import Q
-from ..models import FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Service
+from ..models import (
+    FormationRequest, FormationCatalog, RoleChoices, Employee, FormationParticipant, Service,
+    ServiceChoices, EmployeeRoleChoices
+)
+from ..permissions import is_formation_rh
 
 
-def _is_rh_or_grh(user):
-    return user.role in [
-        RoleChoices.RH_SIMPLE,
-        RoleChoices.RH_AGENT,
-        RoleChoices.GRH,
-    ]
-
-
-def _is_agent_or_grh(user):
-    return user.role in [RoleChoices.RH_AGENT, RoleChoices.GRH]
+def _is_formation_rh_user(user):
+    """RH_FORMATION or DRH (new schema), or old RH_AGENT/GRH."""
+    return is_formation_rh(user)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def formation_list(request):
     """Get all formation requests (for current authenticated user)."""
-    # Chefs can see their own formation requests
-    if request.user.role == RoleChoices.CHEF:
-        requests = FormationRequest.objects.filter(requested_by=request.user).select_related('approved_formation').prefetch_related('participants__employee').order_by('-created_at')
-    else:
-        # Others can't access formation requests
-        return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    # Check if user is CHEF (works for both old and new schema)
+    is_chef = request.user.role == RoleChoices.CHEF or (request.user.service != ServiceChoices.HR and request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+    if not is_chef:
+        return Response({'detail': 'Only Chefs can view formation requests'}, status=status.HTTP_403_FORBIDDEN)
+    
+    requests = FormationRequest.objects.filter(requested_by=request.user).select_related('approved_formation').prefetch_related('participants__employee').order_by('-created_at')
     
     data = []
     for r in requests:
@@ -63,7 +60,8 @@ def formation_list(request):
 @permission_classes([IsAuthenticated])
 def create_formation_request(request):
     """Create a new formation request (Chef only)."""
-    if request.user.role != RoleChoices.CHEF:
+    is_chef = request.user.role == RoleChoices.CHEF or (request.user.service != ServiceChoices.HR and request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+    if not is_chef:
         return Response({'detail': 'Only Chefs can request formations'}, status=status.HTTP_403_FORBIDDEN)
     
     nom = request.data.get('nom', '').strip()
@@ -124,7 +122,7 @@ def formation_detail(request, pk):
 @permission_classes([IsAuthenticated])
 def agent_formation_requests(request):
     """List formation requests for RH / GRH."""
-    if not _is_rh_or_grh(request.user):
+    if not _is_formation_rh_user(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
     requests = FormationRequest.objects.select_related('requested_by', 'approved_formation').prefetch_related('participants__employee').order_by('-created_at')
@@ -173,9 +171,9 @@ def agent_formation_requests(request):
 def agent_formations_catalog(request):
     """List/search and create catalog formations for RH roles / GRH."""
     if request.method == 'GET':
-        if not _is_rh_or_grh(request.user):
+        if not _is_formation_rh_user(request.user):
             return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-    elif not _is_agent_or_grh(request.user):
+    elif not _is_formation_rh_user(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':
@@ -257,7 +255,7 @@ def agent_formations_catalog(request):
 @permission_classes([IsAuthenticated])
 def approve_formation_request(request, pk):
     """Approve a formation request with a selected formation."""
-    if not _is_agent_or_grh(request.user):
+    if not _is_formation_rh_user(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
@@ -285,7 +283,7 @@ def approve_formation_request(request, pk):
 @permission_classes([IsAuthenticated])
 def reject_formation_request(request, pk):
     """Reject a formation request."""
-    if not _is_agent_or_grh(request.user):
+    if not _is_formation_rh_user(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
@@ -380,7 +378,7 @@ def add_formation_participants(request, pk):
 @permission_classes([IsAuthenticated])
 def update_delete_formation_catalog(request, pk):
     """Update or delete a formation from the catalog."""
-    if not _is_agent_or_grh(request.user):
+    if not _is_formation_rh_user(request.user):
         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
     
     try:

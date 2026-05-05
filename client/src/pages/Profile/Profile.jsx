@@ -29,7 +29,7 @@ export default function Profile() {
     email: "",
     phone: "",
     address: "",
-    position: "",
+    role: "",
     department: "",
     contract: "",
     contractType: "",
@@ -137,7 +137,7 @@ export default function Profile() {
       email: me.data.email,
       phone: me.data.phone_number || me.data.employee_info?.phone_number || "",
       address: me.data.address || me.data.employee_info?.address || "",
-      position: me.data.position || me.data.employee_info?.position || "",
+      role: me.data.employee_role || me.data.role || "",
       department:
         me.data.service ||
         me.data.department ||
@@ -409,7 +409,7 @@ export default function Profile() {
         <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
           <Navbar
             fullName={profileData.fullName}
-            post={profileData.position}
+            post={profileData.role}
             image={profileData.photoName}
             email={profileData.email}
           />
@@ -433,7 +433,7 @@ export default function Profile() {
               <div className="yasar">
                 <h3 className="monprofile">Mon Profil</h3>
                 <p className="morinfo">
-                  Informations personnelles • poste • photo
+                  Informations personnelles • photo
                 </p>
               </div>
               <div className="yamin">
@@ -490,7 +490,7 @@ export default function Profile() {
                     </div>
                   </div>
                   <p>
-                    Poste : {profileData.position} • Département :{" "}
+                    Rôle : {profileData.role} • Département :{" "}
                     {profileData.department}
                   </p>
                   <div>
@@ -527,11 +527,11 @@ export default function Profile() {
               <div className="info-pro">
                 <div className="top">
                   <h3 className="title">Informations professionnelles</h3>
-                  <p className="desc">Poste, contrat, manager </p>
+                  <p className="desc">Rôle, contrat</p>
                 </div>
                 <div>
-                  <p className="desc">Poste</p>
-                  <h3>{profileData.position}</h3>
+                  <p className="desc">Rôle</p>
+                  <h3>{profileData.role || "-"}</h3>
                 </div>
                 <div>
                   <p className="desc">Département</p>

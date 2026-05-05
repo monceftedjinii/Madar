@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Employee, Evaluation, EvaluationCampaign, EvaluationCriteria, EvaluationScore
-from ..permissions import IsChef
+from ..permissions import IsChef, is_any_rh
 from .helpers import notify
 
 
@@ -120,7 +120,7 @@ def my_evaluations(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def rh_evaluations(request):
-    if request.user.role not in {"RH_SIMPLE", "RH_AGENT", "GRH"}:
+    if not is_any_rh(request.user):
         return Response({"detail": "Acces RH requis."}, status=status.HTTP_403_FORBIDDEN)
 
     evaluations = (

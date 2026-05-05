@@ -200,13 +200,14 @@ export default function ChefLeaves() {
             </div>
           )}
 
+          {/* Pending requests — need chef action */}
           <section className="chef-panel">
             <div className="chef-panel-head">
               <div>
-                <h2>Demandes du service</h2>
-                <p>Liste backend des demandes accessibles à la validation du chef.</p>
+                <h2>En attente de décision</h2>
+                <p>Demandes nécessitant votre validation.</p>
               </div>
-              <div className="chef-action-pill">Validation manager</div>
+              <div className="chef-action-pill">À traiter</div>
             </div>
 
             <div className="activite-table-scroll">
@@ -217,72 +218,80 @@ export default function ChefLeaves() {
                   <th>Type</th>
                   <th>Période</th>
                   <th>Motif</th>
-                  <th>Étape</th>
-                  <th>Statut</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="7">Chargement des demandes...</td>
-                  </tr>
-                ) : requests.length === 0 ? (
-                  <tr>
-                    <td colSpan="7">Aucune demande de congé visible pour le moment.</td>
-                  </tr>
+                  <tr><td colSpan="5">Chargement...</td></tr>
+                ) : requests.filter((r) => r.status === "PENDING" && r.can_decide).length === 0 ? (
+                  <tr><td colSpan="5">Aucune demande en attente de votre décision.</td></tr>
                 ) : (
-                  requests.map((requestItem) => {
-                    const fullName =
-                      `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() ||
-                      requestItem.employee_email ||
-                      "-";
-                    const canDecide = !!requestItem.can_decide && requestItem.status === "PENDING";
-
+                  requests.filter((r) => r.status === "PENDING" && r.can_decide).map((requestItem) => {
+                    const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
                     return (
                       <tr key={requestItem.id}>
                         <td>{fullName}</td>
                         <td>{requestItem.type_label || requestItem.type || "-"}</td>
-                        <td>
-                          {formatDate(requestItem.start_date)} - {formatDate(requestItem.end_date)}
-                        </td>
+                        <td>{formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}</td>
                         <td>{requestItem.reason || "-"}</td>
                         <td>
-                          {requestItem.current_step
-                            ? `Étape ${requestItem.current_step.validation_order} - ${requestItem.current_step.validator_role}`
-                            : "-"}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button className="modifier" disabled={actionId === requestItem.id} onClick={() => decideRequest(requestItem.id, "approve")} type="button">Valider</button>
+                            <button className="mode" disabled={actionId === requestItem.id} onClick={() => decideRequest(requestItem.id, "reject")} type="button">Refuser</button>
+                          </div>
                         </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* History — requests already decided (by chef or RH) */}
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Historique</h2>
+                <p>Toutes les demandes traitées — décisions chef et RH Congé.</p>
+              </div>
+              <div className="chef-action-pill">Suivi</div>
+            </div>
+
+            <div className="activite-table-scroll">
+              <table className="activite-table">
+              <thead>
+                <tr>
+                  <th>Employé</th>
+                  <th>Type</th>
+                  <th>Période</th>
+                  <th>Statut final</th>
+                  <th>Décision finale par</th>
+                  <th>Date décision</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="6">Chargement...</td></tr>
+                ) : requests.filter((r) => r.status !== "PENDING").length === 0 ? (
+                  <tr><td colSpan="6">Aucun historique pour le moment.</td></tr>
+                ) : (
+                  requests.filter((r) => r.status !== "PENDING").map((requestItem) => {
+                    const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
+                    return (
+                      <tr key={requestItem.id}>
+                        <td>{fullName}</td>
+                        <td>{requestItem.type_label || requestItem.type || "-"}</td>
+                        <td>{formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}</td>
                         <td>
                           <span className={`badge ${getStatusClass(requestItem.status)}`}>
                             {getStatusLabel(requestItem.status)}
                           </span>
                         </td>
-                        <td>
-                          {canDecide ? (
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                              <button
-                                className="modifier"
-                                disabled={actionId === requestItem.id}
-                                onClick={() => decideRequest(requestItem.id, "approve")}
-                                type="button"
-                              >
-                                Valider
-                              </button>
-                              <button
-                                className="mode"
-                                disabled={actionId === requestItem.id}
-                                onClick={() => decideRequest(requestItem.id, "reject")}
-                                type="button"
-                              >
-                                Refuser
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ color: "#64748b", fontWeight: 600 }}>
-                              Lecture seule
-                            </span>
-                          )}
-                        </td>
+                        <td>{requestItem.decided_by || "-"}</td>
+                        <td>{requestItem.decided_at ? new Date(requestItem.decided_at).toLocaleDateString("fr-FR") : "-"}</td>
                       </tr>
                     );
                   })

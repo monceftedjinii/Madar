@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from django.db.models import Q
-from ..models import Employee, LeaveRequest, LeaveType, User, RoleChoices, ValidationWorkflow, SoldeConge
-from ..permissions import IsEmployee
+from ..models import Employee, LeaveRequest, LeaveType, User, RoleChoices, ServiceChoices, ValidationWorkflow, SoldeConge, EmployeeRoleChoices
+from ..permissions import IsEmployee, is_conge_rh, is_drh, is_any_rh
 from .helpers import notify
 
 
@@ -93,23 +93,57 @@ def create_leave(request):
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
+	is_drh_user = is_drh(request.user)
+	is_rh_user = is_any_rh(request.user)
+	is_unlimited = leave_type.nbrJoursDroit == 0
+
+	# DRH: auto-accept immediately — no validation needed
+	if is_drh_user:
+		jours = Decimal((ed - sd).days + 1)
+		leave = LeaveRequest.objects.create(
+			employee=emp,
+			start_date=sd,
+			end_date=ed,
+			type=leave_type,
+			reason=reason,
+			attachment=request.FILES.get('attachment') or None,
+			status=LeaveRequest.Status.ACCEPTED,
+			decided_by=request.user,
+			decided_at=timezone.now(),
+		)
+		if not is_unlimited:
+			solde, _ = SoldeConge.get_or_create_balance(emp, leave_type, sd.year)
+			solde.debiter(jours)
+		return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
+
 	leave = LeaveRequest.objects.create(
 		employee=emp,
 		start_date=sd,
 		end_date=ed,
 		type=leave_type,
 		reason=reason,
-		attachment=request.FILES.get('attachment') if request.FILES.get('attachment') else None,
+		attachment=request.FILES.get('attachment') or None,
 		status=LeaveRequest.Status.PENDING,
 	)
 
-	workflow_steps = ValidationWorkflow.initialize_for_leave_request(leave)
-	ValidationWorkflow.objects.filter(leave_request=leave).update(is_active=False)
-	first_step = workflow_steps.first()
-	if first_step:
-		first_step.is_active = True
-		first_step.save(update_fields=['is_active', 'updated_at'])
-		_notify_step_validators(leave, first_step)
+	if is_rh_user:
+		# RH (non-DRH): single step — GRH validates
+		step = ValidationWorkflow.objects.create(
+			leave_request=leave,
+			validation_order=1,
+			validator_role=RoleChoices.GRH,
+			is_active=True,
+		)
+		_notify_step_validators(leave, step)
+	else:
+		# Regular employee / chef: 2-step workflow
+		workflow_steps = ValidationWorkflow.initialize_for_leave_request(leave)
+		ValidationWorkflow.objects.filter(leave_request=leave).update(is_active=False)
+		first_step = workflow_steps.first()
+		if first_step:
+			first_step.is_active = True
+			first_step.save(update_fields=['is_active', 'updated_at'])
+			_notify_step_validators(leave, first_step)
 
 	return Response({'id': leave.id}, status=status.HTTP_201_CREATED)
 
@@ -230,23 +264,39 @@ def cancel_my_leave(request, pk):
 @permission_classes([IsAuthenticated])
 def department_pending_leaves(request):
 	"""List leaves visible to current validator role, with workflow metadata."""
-	if request.user.role not in {
-		RoleChoices.CHEF,
-		RoleChoices.RH_SIMPLE,
-		RoleChoices.RH_AGENT,
-	}:
+	is_chef = (
+		request.user.role == RoleChoices.CHEF or
+		(request.user.service != ServiceChoices.HR and
+		 request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+	)
+	is_rh_conge = is_conge_rh(request.user)
+
+	if not is_chef and not is_rh_conge:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	qs = LeaveRequest.objects.select_related('employee', 'type', 'decided_by').prefetch_related('validation_workflow__validator')
 
-	if request.user.role == RoleChoices.CHEF:
+	if is_chef:
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
 		except Employee.DoesNotExist:
 			return Response({'detail': 'validator has no Employee record'}, status=status.HTTP_400_BAD_REQUEST)
-		qs = qs.filter(employee__service=chef_emp.service)
+		if not chef_emp.service_id:
+			return Response([], status=status.HTTP_200_OK)
+		qs = qs.filter(
+			Q(employee__service_id=chef_emp.service_id) |
+			Q(validation_workflow__validator=request.user)
+		)
+	elif is_drh(request.user):
+		# DRH sees both GRH-step (RH employee requests) and RH_SIMPLE-step (employee requests)
+		qs = qs.filter(validation_workflow__validator_role__in=[
+			RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH
+		])
 	else:
-		qs = qs.filter(validation_workflow__validator_role=RoleChoices.RH_SIMPLE)
+		# Regular RH Congé: only sees employee leaves at RH_SIMPLE step
+		qs = qs.filter(validation_workflow__validator_role__in=[
+			RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT
+		])
 
 	qs = qs.order_by('-created_at').distinct()
 	data = [
@@ -268,6 +318,7 @@ def department_pending_leaves(request):
 			'status': l.status,
 			'chef_comment': l.chef_comment,
 			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
+			'decided_by': f"{l.decided_by.first_name} {l.decided_by.last_name}".strip() or l.decided_by.email if l.decided_by else None,
 			'can_decide': _can_user_decide_leave(request.user, l),
 			'current_step': _serialize_current_step(l),
 			'workflow': _serialize_workflow(l),
@@ -291,10 +342,15 @@ def _chef_decide_common(request, pk, accept=True):
 	if not current_step:
 		return Response({'detail': 'workflow is not initialized or already completed'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if not _role_matches(current_step.validator_role, request.user.role):
+	if not _role_matches(current_step.validator_role, request.user):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
-	if request.user.role == RoleChoices.CHEF:
+	user_is_chef = (
+		request.user.role == RoleChoices.CHEF or
+		(request.user.service != ServiceChoices.HR and
+		 request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+	)
+	if user_is_chef:
 		try:
 			chef_emp = Employee.objects.get(email=request.user.email)
 		except Employee.DoesNotExist:
@@ -307,10 +363,12 @@ def _chef_decide_common(request, pk, accept=True):
 		pending_steps = ValidationWorkflow.objects.filter(
 			leave_request=lr,
 			decision=ValidationWorkflow.Decision.PENDING,
-		).exclude(validator_role=RoleChoices.GRH)
+		)
 		is_last_step = pending_steps.count() == 1
 
-		if is_last_step:
+		is_unlimited = lr.type.nbrJoursDroit == 0
+
+		if is_last_step and not is_unlimited:
 			jours = Decimal((lr.end_date - lr.start_date).days + 1)
 			solde, _ = SoldeConge.get_or_create_balance(lr.employee, lr.type, lr.start_date.year)
 			if solde.joursRestants < jours:
@@ -329,9 +387,10 @@ def _chef_decide_common(request, pk, accept=True):
 			lr.save(update_fields=['chef_comment'])
 			return Response({'id': lr.id, 'status': lr.status, 'detail': 'approved at current step; moved to next validator'})
 
-		jours = Decimal((lr.end_date - lr.start_date).days + 1)
-		solde, _ = SoldeConge.get_or_create_balance(lr.employee, lr.type, lr.start_date.year)
-		solde.debiter(jours)
+		if not is_unlimited:
+			jours = Decimal((lr.end_date - lr.start_date).days + 1)
+			solde, _ = SoldeConge.get_or_create_balance(lr.employee, lr.type, lr.start_date.year)
+			solde.debiter(jours)
 
 		lr.status = LeaveRequest.Status.ACCEPTED
 		lr.decided_by = request.user
@@ -386,16 +445,24 @@ def reject_leave(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def leave_types_list(request):
+	from ..models import Employee
+	emp = Employee.objects.filter(email=request.user.email).first()
+	emp_sexe = emp.sexe if emp else 'HOMME'
+
 	types = LeaveType.objects.order_by('code')
-	data = [
-		{
+	data = []
+	for lt in types:
+		# Skip gender-restricted types that don't match employee
+		if lt.sexeAutorise == 'FEMME' and emp_sexe != 'FEMME':
+			continue
+		if lt.sexeAutorise == 'HOMME' and emp_sexe != 'HOMME':
+			continue
+		data.append({
 			'code': lt.code,
 			'label': lt.libelle,
 			'requires_attachment': lt.justificatifRequis,
 			'notice_days': lt.delaiPreavis,
-		}
-		for lt in types
-	]
+		})
 	return Response(data)
 
 
@@ -416,6 +483,7 @@ def my_leave_balances(request):
 			'id': b.id,
 			'type_code': b.leaveType.code,
 			'type_label': b.leaveType.libelle,
+			'nbrJoursDroit': b.leaveType.nbrJoursDroit,
 			'joursAcquis': str(b.joursAcquis),
 			'joursPris': str(b.joursPris),
 			'joursReportes': str(b.joursReportes),
@@ -427,17 +495,19 @@ def my_leave_balances(request):
 	return Response(data)
 
 
-def _role_matches(expected_role, user_role):
-	if expected_role == RoleChoices.RH_SIMPLE:
-		return user_role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH}
-	return expected_role == user_role
+def _role_matches(expected_role, user):
+	"""Check if user can act on a workflow step with the given validator_role."""
+	if expected_role == RoleChoices.GRH:
+		return is_drh(user)
+	if expected_role in {RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT}:
+		return is_conge_rh(user)
+	return expected_role == getattr(user, 'role', None)
 
 
 def _get_current_pending_step(leave_request):
 	return (
 		leave_request.validation_workflow
 		.filter(decision=ValidationWorkflow.Decision.PENDING)
-		.exclude(validator_role=RoleChoices.GRH)
 		.order_by('validation_order')
 		.first()
 	)
@@ -476,9 +546,14 @@ def _can_user_decide_leave(user, leave_request):
 	step = _get_current_pending_step(leave_request)
 	if not step:
 		return False
-	if not _role_matches(step.validator_role, user.role):
+	if not _role_matches(step.validator_role, user):
 		return False
-	if user.role == RoleChoices.CHEF:
+	user_is_chef = (
+		user.role == RoleChoices.CHEF or
+		(user.service != ServiceChoices.HR and
+		 user.get_employee_role() == EmployeeRoleChoices.CHEF)
+	)
+	if user_is_chef:
 		chef_emp = Employee.objects.filter(email=user.email).first()
 		if not chef_emp:
 			return False
@@ -490,8 +565,19 @@ def _notify_step_validators(leave_request, step):
 	if step.validator_role == RoleChoices.CHEF:
 		emails = Employee.objects.filter(service=leave_request.employee.service).values_list('email', flat=True)
 		validators = User.objects.filter(role=RoleChoices.CHEF, email__in=emails)
+	elif step.validator_role == RoleChoices.GRH:
+		# DRH/GRH must validate this step (RH employee leave or escalated)
+		drh_emails = Employee.objects.filter(role=EmployeeRoleChoices.DRH).values_list('email', flat=True)
+		validators = User.objects.filter(
+			Q(role=RoleChoices.GRH) | Q(email__in=drh_emails)
+		).distinct()
 	elif step.validator_role == RoleChoices.RH_SIMPLE:
-		validators = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH])
+		old_validators = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH])
+		conge_emails = Employee.objects.filter(
+			role__in=[EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.DRH]
+		).values_list('email', flat=True)
+		new_validators = User.objects.filter(email__in=conge_emails)
+		validators = (old_validators | new_validators).distinct()
 	else:
 		validators = User.objects.none()
 

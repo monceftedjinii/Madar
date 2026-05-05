@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
 import "../styles/profile.css";
 
 function formatDate(value) {
@@ -45,7 +46,7 @@ function MetricCard({ dark, eyebrow, value, helper, accent }) {
 export default function RhAbsences() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [absences, setAbsences] = useState([]);
   const [flags, setFlags] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +56,8 @@ export default function RhAbsences() {
   const [warningTarget, setWarningTarget] = useState(null);
   const [warningComment, setWarningComment] = useState("Absence non justifiee");
 
-  const canWarn = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(role);
-  const isGrh = role === "GRH";
+  const canWarn = roleCtx.canViewRhAbsences ?? (roleCtx.isRhConges || roleCtx.isDrh) ?? false;
+  const isGrh = roleCtx.isDrh ?? false;
   const yesterday = useMemo(() => {
     const value = new Date();
     value.setDate(value.getDate() - 1);
@@ -78,7 +79,7 @@ export default function RhAbsences() {
         axios.get("/api/absences/yesterday/"),
         axios.get("/api/discipline/flags/"),
       ]);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setAbsences(Array.isArray(absencesResponse.data) ? absencesResponse.data : []);
       setFlags(Array.isArray(flagsResponse.data) ? flagsResponse.data : []);
     } catch (error) {

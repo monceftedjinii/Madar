@@ -104,6 +104,12 @@ def create_task(request):
     except Employee.DoesNotExist:
         return Response({"detail": "Employe introuvable."}, status=status.HTTP_400_BAD_REQUEST)
 
+    if employee.role == 'CHEF':
+        return Response(
+            {"detail": "Impossible d'assigner une tâche à un chef de service."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     try:
         chef_emp = Employee.objects.get(email=request.user.email)
     except Employee.DoesNotExist:

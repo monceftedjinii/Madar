@@ -31,7 +31,7 @@ class EmployeeRoleForm(forms.ModelForm):
 			try:
 				user = User.objects.get(email=self.instance.email)
 				# If user is in RH service, show RH-specific roles
-				if user.service == ServiceChoices.RH:
+				if user.service == ServiceChoices.HR:
 					self.fields['role'].choices = [
 						('', '---------'),
 						(EmployeeRoleChoices.RH, EmployeeRoleChoices.RH.label),
@@ -60,10 +60,10 @@ class EmployeeRoleForm(forms.ModelForm):
 				user = User.objects.get(email=self.instance.email)
 				# RH roles should only be assigned to RH service users
 				rh_roles = {EmployeeRoleChoices.RH, EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.DRH}
-				if role in rh_roles and user.service != ServiceChoices.RH:
+				if role in rh_roles and user.service != ServiceChoices.HR:
 					raise forms.ValidationError(f"RH roles can only be assigned to users in RH service.")
 				# Non-RH roles should only be assigned to non-RH users
-				if role in {EmployeeRoleChoices.EMPLOYEE, EmployeeRoleChoices.CHEF} and user.service == ServiceChoices.RH:
+				if role in {EmployeeRoleChoices.EMPLOYEE, EmployeeRoleChoices.CHEF} and user.service == ServiceChoices.HR:
 					raise forms.ValidationError(f"EMPLOYEE/CHEF roles can only be assigned to non-RH users.")
 			except User.DoesNotExist:
 				raise forms.ValidationError("User not found for this employee email.")

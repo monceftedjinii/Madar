@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
 import "../styles/profile.css";
 
 function getCurrentMonthRange() {
@@ -40,7 +41,7 @@ function FilterLabel({ children }) {
 export default function RhReports() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [filters, setFilters] = useState(getCurrentMonthRange);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export default function RhReports() {
         axios.get("/api/whoami/"),
         axios.get("/api/reports/summary/", { params: filters }),
       ]);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setSummary(response.data || null);
     } catch (error) {
       console.error("Erreur chargement rapports RH:", error);
@@ -89,7 +90,7 @@ export default function RhReports() {
     ];
   }, [summary]);
 
-  const isGrh = role === "GRH";
+  const isGrh = roleCtx.isDrh ?? false;
 
   const downloadReport = async (type, format) => {
     try {

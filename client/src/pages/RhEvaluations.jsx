@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
 import "../styles/profile.css";
 
 const recommendationThemes = {
@@ -71,7 +72,7 @@ function MetricCard({ dark, eyebrow, value, helper, accent }) {
 export default function RhEvaluations() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [evaluations, setEvaluations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -84,7 +85,7 @@ export default function RhEvaluations() {
         axios.get("/api/whoami/"),
         axios.get("/api/evaluations/rh/"),
       ]);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setEvaluations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Erreur chargement évaluations RH :", error);
@@ -109,7 +110,7 @@ export default function RhEvaluations() {
     return { total: evaluations.length, excellent, good, average, averageScore };
   }, [evaluations]);
 
-  const isGrh = role === "GRH";
+  const isGrh = roleCtx.isDrh ?? false;
 
   return (
     <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>

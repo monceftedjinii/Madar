@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
 import "../styles/profile.css";
 
 const initialCatalogForm = {
@@ -96,15 +97,15 @@ export default function RhFormations() {
   const [catalog, setCatalog] = useState([]);
   const [catalogForm, setCatalogForm] = useState(initialCatalogForm);
   const [selectedCatalogByRequest, setSelectedCatalogByRequest] = useState({});
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const canManageFormations = role === "RH_AGENT" || role === "GRH";
-  const isGrh = role === "GRH";
+  const canManageFormations = roleCtx.canViewRhFormations ?? (roleCtx.isRhFormation || roleCtx.isDrh) ?? false;
+  const isGrh = roleCtx.isDrh ?? false;
   const pendingRequests = requests.filter((item) => item.status === "PENDING");
   const waitingRequests = requests.filter((item) => item.status === "WAITING_FOR_PEOPLE");
   const approvedRequests = requests.filter((item) => item.status === "APPROVED");
@@ -124,7 +125,7 @@ export default function RhFormations() {
         axios.get("/api/agent/formations/requests/"),
         axios.get("/api/agent/formations/catalog/"),
       ]);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setRequests(Array.isArray(requestsResponse.data) ? requestsResponse.data : []);
       setCatalog(Array.isArray(catalogResponse.data) ? catalogResponse.data : []);
     } catch (error) {

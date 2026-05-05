@@ -75,18 +75,11 @@ class HasRole(permissions.BasePermission):
         if not allowed:
             return False
 
-        # Check new User.service for backward compat
-        if user.service:
-            # Map new service-based roles to old role checks
-            service_to_roles = {
-                ServiceChoices.HR: [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH],
-                ServiceChoices.SALES: [RoleChoices.EMPLOYEE, RoleChoices.CHEF],
-            }
-            return user.service in service_to_roles and any(
-                r in allowed for r in service_to_roles[user.service]
-            )
-        
-        # Fallback to old role field for users not yet migrated
+        # HR service has its own role mapping; all other services use user.role directly
+        if user.service == ServiceChoices.HR:
+            hr_roles = [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH]
+            return any(r in allowed for r in hr_roles)
+
         return user.role in allowed
 
 

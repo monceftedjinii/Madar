@@ -75,6 +75,16 @@ export default function Conge() {
     return Number.isInteger(numericValue) ? String(numericValue) : String(value);
   };
 
+  const formatBalanceValue = (item) => {
+    if (item.nbrJoursDroit === 0) return "Selon besoin";
+    const days = Number(item.joursRestants);
+    if (item.nbrJoursDroit >= 365) {
+      const years = Math.round(item.nbrJoursDroit / 365);
+      return `${years} an${years > 1 ? "s" : ""}`;
+    }
+    return `${formatDaysValue(days)} jours`;
+  };
+
   const calculateDays = (startDate, endDate) => {
     if (!startDate || !endDate) return "-";
     const start = new Date(`${startDate}T00:00:00`);
@@ -245,7 +255,7 @@ export default function Conge() {
     if (balances.length > 0) {
       return balances.map((item) => ({
         label: item.type_label || item.type_code,
-        value: `${formatDaysValue(item.joursRestants)} jours`,
+        value: formatBalanceValue(item),
       }));
     }
 
@@ -318,8 +328,7 @@ export default function Conge() {
               {balancesDisplay.slice(0, 4).map((item) => (
                 <article key={item.label} className="main-kpi-card">
                   <span>{item.label}</span>
-                  <strong>{item.value.replace(" jours", "")}</strong>
-                  <p>{item.value}</p>
+                  <strong>{item.value}</strong>
                 </article>
               ))}
             </div>

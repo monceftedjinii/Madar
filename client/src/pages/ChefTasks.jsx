@@ -92,7 +92,8 @@ export default function ChefTasks() {
         axios.get("/api/tasks/chef/"),
       ]);
 
-      const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      const allEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      const employeesData = allEmployees.filter((e) => e.employee_role !== "CHEF" && e.role !== "CHEF");
       const tasksData = Array.isArray(tasksResponse.data) ? tasksResponse.data : [];
 
       setEmployees(employeesData);
@@ -567,9 +568,6 @@ export default function ChefTasks() {
 
                             {task.status !== "DONE" && (
                               <>
-                                <button className="mode" onClick={() => openEditTask(task)} type="button">
-                                  Modifier
-                                </button>
                                 <button
                                   className="mode"
                                   disabled={actionId === task.id}

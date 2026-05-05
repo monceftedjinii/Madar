@@ -3,29 +3,39 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
+import { getRoleContext } from "../app/roleAccess";
 import "../styles/profile.css";
+
+const RH_SERVICE_ROLES = [
+  { value: "RH", label: "RH" },
+  { value: "RH_FORMATION", label: "RH Formation" },
+  { value: "RH_CONGE", label: "RH Congé" },
+];
+const OTHER_ROLES = [
+  { value: "EMPLOYEE", label: "Employé" },
+  { value: "CHEF", label: "Chef de service" },
+];
 
 const initialForm = {
   first_name: "",
   last_name: "",
   email: "",
+  sexe: "HOMME",
   service: "",
-  position: "",
   phone_number: "",
   address: "",
   contract_type: "CDI",
   salary: "",
   attendance_pin: "",
-  role: "EMPLOYEE",
+  employee_role: "EMPLOYEE",
 };
 
 export default function RhEmployees() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
-  const [role, setRole] = useState("");
+  const [roleCtx, setRoleCtx] = useState({});
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
-  const [positions, setPositions] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -34,8 +44,8 @@ export default function RhEmployees() {
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const canManageEmployees = role === "GRH";
-  const isGrh = role === "GRH";
+  const canManageEmployees = roleCtx.canManageEmployees ?? roleCtx.isDrh ?? false;
+  const isGrh = roleCtx.isDrh ?? false;
 
   const fieldStyle = {
     width: "100%",
@@ -51,16 +61,14 @@ export default function RhEmployees() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const [meResponse, employeesResponse, servicesResponse, positionsResponse] = await Promise.all([
+      const [meResponse, employeesResponse, servicesResponse] = await Promise.all([
         axios.get("/api/whoami/"),
         axios.get("/api/employees/"),
         axios.get("/api/services/"),
-        axios.get("/api/positions/"),
       ]);
-      setRole(meResponse.data?.role || "");
+      setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setEmployees(Array.isArray(employeesResponse.data) ? employeesResponse.data : []);
       setServices(Array.isArray(servicesResponse.data) ? servicesResponse.data : []);
-      setPositions(Array.isArray(positionsResponse.data) ? positionsResponse.data : []);
     } catch (error) {
       console.error("Erreur chargement gestion employes RH:", error);
       setEmployees([]);
@@ -121,13 +129,14 @@ export default function RhEmployees() {
       first_name: employee.first_name || "",
       last_name: employee.last_name || "",
       email: employee.email || "",
+      sexe: employee.sexe || "HOMME",
       service: employee.service?.code || "",
-      position: employee.position_id || "",
       phone_number: employee.phone_number || "",
       address: employee.address || "",
       contract_type: employee.contract_type || "CDI",
       salary: employee.salary || "",
       attendance_pin: employee.attendance_pin || "",
+      employee_role: employee.employee_role || "EMPLOYEE",
     });
   };
 
@@ -173,7 +182,7 @@ export default function RhEmployees() {
       setActionId(employeeId);
       setFeedback("");
       setErrorMessage("");
-      await axios.patch(`/api/employees/${employeeId}/role/`, { role: newRole });
+      await axios.patch(`/api/employees/${employeeId}/role/`, { employee_role: newRole });
       setFeedback(`Rôle mis à jour avec succès : ${newRole}`);
       await fetchData();
     } catch (error) {
@@ -235,7 +244,7 @@ export default function RhEmployees() {
               <h2 className="title">{isGrh ? "Role de gouvernance" : "Role RH"}</h2>
               <p className="desc">{isGrh ? "Niveau d'action global sur les fiches employees." : "Niveau d'action sur les fiches employees."}</p>
             </div>
-            <div><p className="desc">Role</p><h3>{role || "-"}</h3></div>
+            <div><p className="desc">Role</p><h3>{roleCtx.effectiveRole || "-"}</h3></div>
             <div>
               <p className="desc">Actualisation</p>
               <button className="modifier" onClick={fetchData} type="button">Actualiser</button>
@@ -278,31 +287,36 @@ export default function RhEmployees() {
                 </div>
               ))}
               <div>
+                <p className="desc">Sexe</p>
+                <select
+                  value={form.sexe}
+                  onChange={(event) => setForm((prev) => ({ ...prev, sexe: event.target.value }))}
+                  style={fieldStyle}
+                >
+                  <option value="HOMME">Homme</option>
+                  <option value="FEMME">Femme</option>
+                </select>
+              </div>
+              <div>
                 <p className="desc">Service</p>
                 <select
                   value={form.service}
-                  onChange={(event) => setForm((prev) => ({ ...prev, service: event.target.value }))}
+                  onChange={(event) => {
+                    const newService = event.target.value;
+                    const wasRh = services.find((s) => s.code === form.service)?.is_rh_service ?? false;
+                    const isRh = services.find((s) => s.code === newService)?.is_rh_service ?? false;
+                    setForm((prev) => ({
+                      ...prev,
+                      service: newService,
+                      employee_role: wasRh !== isRh ? (isRh ? "RH" : "EMPLOYEE") : prev.employee_role,
+                    }));
+                  }}
                   style={fieldStyle}
                 >
                   <option value="">Choisir un service</option>
                   {services.map((service) => (
                     <option key={service.code} value={service.code}>
                       {service.nomService}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <p className="desc">Poste</p>
-                <select
-                  value={form.position}
-                  onChange={(event) => setForm((prev) => ({ ...prev, position: event.target.value }))}
-                  style={fieldStyle}
-                >
-                  <option value="">Choisir un poste</option>
-                  {positions.map((position) => (
-                    <option key={position.id} value={position.id}>
-                      {position.name}
                     </option>
                   ))}
                 </select>
@@ -319,23 +333,18 @@ export default function RhEmployees() {
                   <option value="STAGE">STAGE</option>
                 </select>
               </div>
-              {!editingEmployeeId && (
-                <div>
-                  <p className="desc">Rôle</p>
-                  <select
-                    value={form.role}
-                    onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
-                    style={fieldStyle}
-                  >
-                    <option value="EMPLOYEE">Employé</option>
-                    <option value="CHEF">Chef de service</option>
-                    <option value="RH_SIMPLE">RH</option>
-                    <option value="RH_AGENT">RH Agent</option>
-                    <option value="RH_SENIOR">RH Senior</option>
-                    <option value="GRH">GRH</option>
-                  </select>
-                </div>
-              )}
+              <div>
+                <p className="desc">Rôle</p>
+                <select
+                  value={form.employee_role}
+                  onChange={(event) => setForm((prev) => ({ ...prev, employee_role: event.target.value }))}
+                  style={fieldStyle}
+                >
+                  {((services.find((s) => s.code === form.service)?.is_rh_service) ? RH_SERVICE_ROLES : OTHER_ROLES).map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 {editingEmployeeId ? (
                   <button className="mode" onClick={resetForm} type="button">Annuler</button>
@@ -361,11 +370,11 @@ export default function RhEmployees() {
               <thead>
                 <tr>
                   <th>Employe</th>
+                  <th>Sexe</th>
                   <th>Service</th>
-                  <th>Poste</th>
+                  <th>Rôle</th>
                   <th>Contrat</th>
                   <th>En ligne</th>
-                  <th>Rôle</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -381,32 +390,16 @@ export default function RhEmployees() {
                         <div>{`${employee.first_name || ""} ${employee.last_name || ""}`.trim() || employee.email}</div>
                         <div style={{ fontSize: 12, color: "#94a3b8" }}>{employee.email}</div>
                       </td>
+                      <td>{employee.sexe === "FEMME" ? "Femme" : "Homme"}</td>
                       <td>{employee.service?.nomService || "-"}</td>
-                      <td>{employee.position || "-"}</td>
+                      <td>
+                        <span style={{ fontWeight: 600 }}>{employee.employee_role || employee.role || "-"}</span>
+                      </td>
                       <td>{employee.contract_type || "-"}</td>
                       <td>
                         <span className={`badge ${employee.is_online ? "badge-termine" : "badge-refuse"}`}>
                           {employee.is_online ? "En ligne" : "Hors ligne"}
                         </span>
-                      </td>
-                      <td>
-                        {canManageEmployees ? (
-                          <select
-                            value={employee.role || "EMPLOYEE"}
-                            disabled={actionId === employee.id}
-                            onChange={(e) => changeRole(employee.id, e.target.value)}
-                            style={{ ...fieldStyle, width: "auto", padding: "4px 8px", fontSize: 13 }}
-                          >
-                            <option value="EMPLOYEE">Employé</option>
-                            <option value="CHEF">Chef de service</option>
-                            <option value="RH_SIMPLE">RH</option>
-                            <option value="RH_AGENT">RH Agent</option>
-                            <option value="RH_SENIOR">RH Senior</option>
-                            <option value="GRH">GRH</option>
-                          </select>
-                        ) : (
-                          <span style={{ fontWeight: 600 }}>{employee.role || "-"}</span>
-                        )}
                       </td>
                       <td>
                         {canManageEmployees ? (

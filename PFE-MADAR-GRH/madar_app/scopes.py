@@ -1,4 +1,4 @@
-from .models import Employee, RoleChoices
+from .models import Employee, RoleChoices, ServiceChoices
 
 
 def service_scope_ids_for_employee(employee):
@@ -22,7 +22,7 @@ def employee_queryset_for(user):
         return Employee.objects.none()
 
     role = getattr(user, 'role', None)
-    if role in (RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT):
+    if role in (RoleChoices.GRH, RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT) or user.service == ServiceChoices.HR:
         return Employee.objects.all()
 
     if role == RoleChoices.CHEF:

@@ -27,6 +27,7 @@ import RhFormations from "../pages/RhFormations";
 import RhReports from "../pages/RhReports";
 import RhEmployees from "../pages/RhEmployees";
 import RhEvaluations from "../pages/RhEvaluations";
+import RhServices from "../pages/RhServices";
 import Error from "../pages/Error";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -63,6 +64,7 @@ export default function Routers() {
           <Route path="/rh/reports" element={<RhReports />} />
           <Route path="/rh/employees" element={<RhEmployees />} />
           <Route path="/rh/evaluations" element={<RhEvaluations />} />
+          <Route path="/rh/services" element={<RhServices />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messagerie" element={<Messagrie />} />
           <Route path="/conge" element={<Conge />} />

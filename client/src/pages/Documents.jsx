@@ -25,7 +25,7 @@ function getStatusClass(status) {
   if (status === "VALIDATED") return "badge-termine";
   if (status === "ARCHIVED") return "badge-genere";
   if (status === "REJECTED") return "badge-refuse";
-  if (status === "SENT") return "badge-attente";
+  if (status === "SENT") return "badge-termine";
   return "badge-attente";
 }
 
@@ -65,12 +65,24 @@ export default function Documents() {
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [archivedIds, setArchivedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("emp_archived_docs") || "[]")); }
+    catch { return new Set(); }
+  });
+  const [showArchives, setShowArchives] = useState(false);
 
   const requestedDocId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const value = Number(params.get("docId"));
     return Number.isFinite(value) ? value : null;
   }, [location.search]);
+
+  const saveArchived = (newSet) => {
+    localStorage.setItem("emp_archived_docs", JSON.stringify([...newSet]));
+    setArchivedIds(newSet);
+  };
+  const archiveDocLocally = (id) => { const s = new Set(archivedIds); s.add(id); saveArchived(s); setFeedback("Document archivé."); };
+  const unarchiveDocLocally = (id) => { const s = new Set(archivedIds); s.delete(id); saveArchived(s); setFeedback("Document restauré."); };
 
   const fetchDocuments = async () => {
     try {
@@ -337,7 +349,9 @@ export default function Documents() {
                 <h2>Documents reçus</h2>
                 <p>Seuls les documents publics envoyés à votre service sont affichés.</p>
               </div>
-              <div className="main-action-pill">Réception</div>
+              <button className="mode" onClick={() => setShowArchives((v) => !v)} type="button">
+                {showArchives ? "Masquer archives" : `Archives (${archivedIds.size})`}
+              </button>
             </div>
 
             <div className="activite-table-scroll">
@@ -354,15 +368,11 @@ export default function Documents() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="6">Chargement des documents...</td>
-                  </tr>
-                ) : documents.length === 0 ? (
-                  <tr>
-                    <td colSpan="6">Aucun document public n'a été envoyé à votre service.</td>
-                  </tr>
+                  <tr><td colSpan="6">Chargement des documents...</td></tr>
+                ) : documents.filter((d) => !archivedIds.has(d.id)).length === 0 ? (
+                  <tr><td colSpan="6">Aucun document pour le moment.</td></tr>
                 ) : (
-                  documents.map((document) => (
+                  documents.filter((d) => !archivedIds.has(d.id)).map((document) => (
                     <tr key={document.id}>
                       <td>{document.title}</td>
                       <td>{document.doc_type || "-"}</td>
@@ -375,20 +385,9 @@ export default function Documents() {
                       <td>{formatDateTime(document.sent_at || document.created_at)}</td>
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button
-                            className="modifier"
-                            onClick={() => openDocument(document.id)}
-                            type="button"
-                          >
-                            Détails
-                          </button>
-                          <button
-                            className="mode"
-                            onClick={() => downloadDocument(document.id)}
-                            type="button"
-                          >
-                            Télécharger
-                          </button>
+                          <button className="modifier" onClick={() => openDocument(document.id)} type="button">Détails</button>
+                          <button className="mode" onClick={() => downloadDocument(document.id)} type="button">Télécharger</button>
+                          <button className="mode" onClick={() => archiveDocLocally(document.id)} type="button">Archiver</button>
                         </div>
                       </td>
                     </tr>
@@ -397,6 +396,44 @@ export default function Documents() {
               </tbody>
               </table>
             </div>
+
+            {showArchives && (
+              <div style={{ marginTop: 24 }}>
+                <h3 style={{ marginBottom: 12 }}>Archives ({documents.filter((d) => archivedIds.has(d.id)).length})</h3>
+                {documents.filter((d) => archivedIds.has(d.id)).length === 0 ? (
+                  <p style={{ fontSize: 14, color: "#64748b" }}>Aucun document archivé.</p>
+                ) : (
+                  <table className="activite-table">
+                    <thead>
+                      <tr>
+                        <th>Titre</th>
+                        <th>Type</th>
+                        <th>Service source</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documents.filter((d) => archivedIds.has(d.id)).map((document) => (
+                        <tr key={`arch-${document.id}`} style={{ opacity: 0.7 }}>
+                          <td>{document.title}</td>
+                          <td>{document.doc_type || "-"}</td>
+                          <td>{document.source_service || "-"}</td>
+                          <td><span className={`badge ${getStatusClass(document.status)}`}>{statusLabels[document.status] || document.status}</span></td>
+                          <td>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button className="modifier" onClick={() => openDocument(document.id)} type="button">Détails</button>
+                              <button className="mode" onClick={() => downloadDocument(document.id)} type="button">Télécharger</button>
+                              <button className="mode" onClick={() => unarchiveDocLocally(document.id)} type="button">Désarchiver</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="main-panel">

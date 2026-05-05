@@ -73,11 +73,11 @@ export default function Form({
               />
             </label>
             <label>
-              Poste
+              Rôle
               <input
                 type="text"
-                name="position"
-                value={formData.position}
+                name="role"
+                value={formData.role || ""}
                 readOnly
               />
             </label>

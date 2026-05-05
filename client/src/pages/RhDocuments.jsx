@@ -31,9 +31,9 @@ const statusThemes = {
     panel: "from-slate-500/10 to-slate-500/5",
   },
   SENT: {
-    badge: "bg-amber-100 text-amber-800 ring-amber-200",
-    dot: "bg-amber-500",
-    panel: "from-amber-500/15 to-orange-500/10",
+    badge: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    dot: "bg-emerald-500",
+    panel: "from-emerald-500/15 to-green-500/10",
   },
   VALIDATED: {
     badge: "bg-emerald-100 text-emerald-800 ring-emerald-200",
@@ -127,19 +127,30 @@ export default function RhDocuments() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [showArchives, setShowArchives] = useState(false);
+  const [archivedIds, setArchivedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("rh_archived_docs") || "[]")); }
+    catch { return new Set(); }
+  });
 
   const canValidate = roleCtx.canValidateDocuments ?? roleCtx.isDrh ?? false;
   const canUpload = roleCtx.isRh ?? false;
   const isGrh = roleCtx.isDrh ?? false;
 
   const visibleDocuments = useMemo(
-    () => documents.filter((item) => item.status !== "ARCHIVED"),
-    [documents]
+    () => documents.filter((item) => !archivedIds.has(item.id)),
+    [documents, archivedIds]
   );
   const archivedDocuments = useMemo(
-    () => documents.filter((item) => item.status === "ARCHIVED"),
-    [documents]
+    () => documents.filter((item) => archivedIds.has(item.id)),
+    [documents, archivedIds]
   );
+
+  const saveArchived = (newSet) => {
+    localStorage.setItem("rh_archived_docs", JSON.stringify([...newSet]));
+    setArchivedIds(newSet);
+  };
+  const archiveDocLocally = (id) => { const s = new Set(archivedIds); s.add(id); saveArchived(s); setFeedback("Document archivé."); };
+  const unarchiveDocLocally = (id) => { const s = new Set(archivedIds); s.delete(id); saveArchived(s); setFeedback("Document restauré."); };
 
   const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
     dark
@@ -610,11 +621,9 @@ export default function RhDocuments() {
                                       </div>
                                     </div>
                                   )}
-                            {canValidate && doc.status === "VALIDATED" ? (
-                              <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => archiveDocument(doc.id)} type="button">
-                                Archiver
-                              </button>
-                            ) : null}
+                            <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} onClick={() => archiveDocLocally(doc.id)} type="button">
+                              Archiver
+                            </button>
                             {(() => {
                               const canManage = isGrh || doc.created_by === userEmail;
                               if (doc.status === "DRAFT" && canManage) {
@@ -622,9 +631,6 @@ export default function RhDocuments() {
                                   <>
                                     <button className={`rounded-full px-5 py-3 text-sm font-semibold transition bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60`} disabled={actionId === doc.id} onClick={() => sendDocument(doc.id)} type="button">
                                       Envoyer
-                                    </button>
-                                    <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-sky-500 hover:text-sky-300" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:text-sky-600"}`} disabled={actionId === doc.id} onClick={() => confirmArchive(doc.id)} type="button">
-                                      Archiver
                                     </button>
                                     <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-red-500 hover:text-red-300" : "border-slate-300 bg-white text-slate-700 hover:border-red-400 hover:text-red-600"}`} disabled={actionId === doc.id} onClick={() => confirmDelete(doc.id)} type="button">
                                       Supprimer
@@ -665,7 +671,7 @@ export default function RhDocuments() {
                         return (
                           <article
                             key={`archive-${doc.id}`}
-                            className={`rounded-[24px] border p-5 ${
+                            className={`rounded-[24px] border p-5 opacity-75 ${
                               dark ? "border-slate-800 bg-slate-950/65" : "border-slate-200 bg-slate-50/70"
                             }`}
                           >
@@ -680,17 +686,12 @@ export default function RhDocuments() {
                                   </span>
                                 </div>
                                 <h4 className={`mt-3 text-lg font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{doc.title}</h4>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">
-                                  {doc.doc_type} • archive le {formatDateTime(doc.archived_at || doc.updated_at)} • cree le {formatDateTime(doc.created_at)}
-                                </p>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">{doc.doc_type} • {doc.target_service || "-"}</p>
                               </div>
-                              <button
-                                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-                                onClick={() => openDocument(doc)}
-                                type="button"
-                              >
-                                Consulter
-                              </button>
+                              <div className="flex gap-3">
+                                <button className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700" onClick={() => openDocument(doc)} type="button">Consulter</button>
+                                <button className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${dark ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-indigo-400 hover:text-indigo-300" : "border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:text-indigo-600"}`} onClick={() => unarchiveDocLocally(doc.id)} type="button">Désarchiver</button>
+                              </div>
                             </div>
                           </article>
                         );

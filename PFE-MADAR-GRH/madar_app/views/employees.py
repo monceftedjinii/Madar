@@ -73,6 +73,7 @@ def employees_list(request):
 			'id': e.id,
 			'first_name': e.first_name,
 			'last_name': e.last_name,
+			'sexe': e.sexe,
 			'position': e.position.name if e.position else '',
 			'position_id': e.position.id if e.position else None,
 			'email': e.email,
@@ -181,6 +182,7 @@ def create_employee(request):
 	first_name = request.data.get('first_name', '').strip()
 	last_name = request.data.get('last_name', '').strip()
 	email = request.data.get('email', '').strip().lower()
+	sexe = request.data.get('sexe', 'HOMME').strip().upper()
 	service_code = request.data.get('service')
 	position_value = request.data.get('position', '')
 	phone_number = request.data.get('phone_number', '').strip()
@@ -189,6 +191,8 @@ def create_employee(request):
 	salary = request.data.get('salary', '0.00')
 	attendance_pin = request.data.get('attendance_pin', '')
 	employee_role = request.data.get('employee_role', EmployeeRoleChoices.EMPLOYEE).strip()
+	if sexe not in ('HOMME', 'FEMME'):
+		sexe = 'HOMME'
 
 	# Validation
 	if not all([first_name, last_name, email, service_code]):
@@ -255,6 +259,7 @@ def create_employee(request):
 			first_name=first_name,
 			last_name=last_name,
 			email=email,
+			sexe=sexe,
 			position=position,
 			phone_number=phone_number,
 			address=address,
@@ -311,6 +316,13 @@ def update_employee(request, pk):
 	first_name = request.data.get('first_name', employee.first_name).strip()
 	last_name = request.data.get('last_name', employee.last_name).strip()
 	email = request.data.get('email', employee.email).strip().lower()
+	sexe = request.data.get('sexe', employee.sexe).strip().upper()
+	if sexe not in ('HOMME', 'FEMME'):
+		sexe = employee.sexe
+	new_employee_role = request.data.get('employee_role', employee.role or 'EMPLOYEE').strip()
+	valid_employee_roles = [r.value for r in EmployeeRoleChoices]
+	if new_employee_role not in valid_employee_roles:
+		new_employee_role = employee.role or 'EMPLOYEE'
 	position_value = request.data.get('position', employee.position_id)
 	phone_number = request.data.get('phone_number', employee.phone_number).strip()
 	address = request.data.get('address', employee.address).strip()
@@ -364,6 +376,8 @@ def update_employee(request, pk):
 	employee.first_name = first_name
 	employee.last_name = last_name
 	employee.email = email
+	employee.sexe = sexe
+	employee.role = new_employee_role
 	employee.position = position
 	employee.phone_number = phone_number
 	employee.address = address
@@ -372,6 +386,13 @@ def update_employee(request, pk):
 	employee.salary = salary
 	employee.attendance_pin = attendance_pin or ''
 	employee.save()
+
+	# Sync User.role and User.service
+	related_user = User.objects.filter(email=employee.email).first()
+	if related_user:
+		related_user.role = _EMPLOYEE_ROLE_TO_USER_ROLE.get(new_employee_role, 'EMPLOYEE')
+		related_user.service = ServiceChoices.HR if new_employee_role in _RH_EMPLOYEE_ROLES else (employee.service_id or None)
+		related_user.save(update_fields=['role', 'service'])
 
 	return Response({
 		'success': True,

@@ -4,6 +4,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 import logo from "../assets/Logo_madar_holding.png";
 import { AUTH_SESSION_CHANGED_EVENT, isAuthenticated } from "../app/auth";
+import { getRoleContext, getRoleLabel } from "../app/roleAccess";
 
 const NAVBAR_CACHE_KEY = "madar_navbar_cache";
 const NAVBAR_SCROLL_KEY = "madar_navbar_scroll";
@@ -40,6 +41,8 @@ export default function Navbar(props) {
     image: "",
     email: "",
     role: "",
+    service: "",
+    employeeRole: "",
   });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
@@ -49,7 +52,7 @@ export default function Navbar(props) {
     const fetchNavbarData = async () => {
       if (!isAuthenticated()) {
         if (isMounted) {
-          setFetchedProfile({ fullName: "", post: "", image: "", email: "", role: "" });
+          setFetchedProfile({ fullName: "", post: "", image: "", email: "", role: "", service: "", employeeRole: "" });
           setUnreadNotifications(0);
         }
         return;
@@ -67,6 +70,8 @@ export default function Navbar(props) {
           image: me.data?.profile_picture || "",
           email: me.data?.email || "",
           role: me.data?.role || "",
+          service: me.data?.service || "",
+          employeeRole: me.data?.employee_role || "",
         };
 
         const items = Array.isArray(notifications.data) ? notifications.data : [];
@@ -126,16 +131,24 @@ export default function Navbar(props) {
   const resolvedPost = post || fetchedProfile.post || "Poste non renseigné";
   const resolvedImage = image || fetchedProfile.image;
   const resolvedEmail = email || fetchedProfile.email;
-  const resolvedRole = fetchedProfile.role || "";
+  const resolvedRoleContext = getRoleContext({
+    role: fetchedProfile.role,
+    service: fetchedProfile.service,
+    employee_role: fetchedProfile.employeeRole,
+  });
+  const resolvedRole = getRoleLabel({
+    role: fetchedProfile.role,
+    service: fetchedProfile.service,
+    employee_role: fetchedProfile.employeeRole,
+  });
   const initials = getAccountInitials(resolvedName);
 
-  const isChef = resolvedRole === "CHEF";
-  const isEmployee = resolvedRole === "EMPLOYEE";
-  const isGrh = resolvedRole === "GRH";
-  const isRh = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
-  const isRhSeniorManager = resolvedRole === "RH_SENIOR";
-  const canManageRhEmployees = resolvedRole === "GRH";
-  const canUseRhFormations = ["RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(resolvedRole);
+  const isChef = resolvedRoleContext.isChef;
+  const isEmployee = resolvedRoleContext.isEmployee;
+  const isDrh = resolvedRoleContext.isDrh;
+  const isRh = resolvedRoleContext.isRh;
+  const isRhFormation = resolvedRoleContext.isRhFormation;
+  const isRhConges = resolvedRoleContext.isRhConges;
 
   const navSections = [
     {
@@ -147,42 +160,60 @@ export default function Navbar(props) {
         { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
         { to: "/evaluations", label: "Évaluations" },
-        { to: "/tasks", label: "Mes tâches" },
+        ...(!isChef ? [{ to: "/tasks", label: "Mes tâches" }] : []),
       ],
     },
-    ...(isChef || isRhSeniorManager
+    // DRH: single unified section with everything
+    ...(isDrh
       ? [
           {
-            title: isRhSeniorManager ? "Équipe RH" : "Espace Chef",
+            title: "Espace DRH",
             items: [
-              { to: "/team", label: "Mon équipe" },
-              { to: "/chef/attendance", label: "Présence équipe" },
-              { to: "/chef/tasks", label: "Tâches équipe" },
-              ...(isChef
-                ? [
-                    { to: "/chef/leaves", label: "Validation des congés" },
-                    { to: "/chef/evaluations", label: "Évaluer l'équipe" },
-                    { to: "/chef/documents", label: "Documents" },
-                    { to: "/chef/formations", label: "Formations" },
-                    { to: "/chef/reports", label: "Rapports" },
-                  ]
-                : []),
+              { to: "/rh/reports", label: "Pilotage et rapports" },
+              { to: "/rh/evaluations", label: "Évaluations globales" },
+              { to: "/rh/documents", label: "Documents globaux" },
+              { to: "/rh/leaves", label: "Congés (Approbations)" },
+              { to: "/rh/absences", label: "Absences globales" },
+              { to: "/rh/formations", label: "Formations globales" },
+              { to: "/rh/employees", label: "Gérer les employés" },
+              { to: "/rh/services", label: "Gérer les services" },
+              { to: "/rh/archive", label: "Archives RH" },
             ],
           },
         ]
       : []),
-    ...(isRh
+    // Chef (non-DRH)
+    ...(isChef
       ? [
           {
-            title: isGrh ? "Espace GRH" : "Espace RH",
+            title: "Espace Chef",
             items: [
-              ...(!isGrh ? [{ to: "/rh/leaves", label: "Validation RH" }] : []),
-              { to: "/rh/absences", label: isGrh ? "Absences globales" : "Absences RH" },
-              { to: "/rh/documents", label: isGrh ? "Documents globaux" : "Documents RH" },
-              ...(canUseRhFormations ? [{ to: "/rh/formations", label: isGrh ? "Formations globales" : "Formations RH" }] : []),
-              { to: "/rh/evaluations", label: isGrh ? "Évaluations globales" : "Évaluations RH" },
-              { to: "/rh/reports", label: isGrh ? "Pilotage et rapports" : "Rapports RH" },
-              ...(canManageRhEmployees ? [{ to: "/rh/employees", label: "Gérer les employés" }] : []),
+              { to: "/team", label: "Mon équipe" },
+              { to: "/chef/attendance", label: "Présence équipe" },
+              { to: "/chef/tasks", label: "Tâches équipe" },
+              { to: "/chef/leaves", label: "Validation des congés" },
+              { to: "/chef/evaluations", label: "Évaluer l'équipe" },
+              { to: "/chef/documents", label: "Documents" },
+              { to: "/chef/formations", label: "Formations" },
+              { to: "/chef/reports", label: "Rapports" },
+            ],
+          },
+        ]
+      : []),
+    // Other RH roles (not DRH)
+    ...(isRh && !isDrh
+      ? [
+          {
+            title: isRhFormation ? "Espace RH Formation" : isRhConges ? "Espace RH Congé" : "Espace RH",
+            items: [
+              { to: "/rh/reports", label: "Pilotage et rapports" },
+              { to: "/rh/evaluations", label: "Évaluations globales" },
+              { to: "/rh/documents", label: "Documents globaux" },
+              ...(isRhConges ? [
+                { to: "/rh/leaves", label: "Congés (Approbations)" },
+                { to: "/rh/absences", label: "Absences globales" },
+              ] : []),
+              ...(isRhFormation ? [{ to: "/rh/formations", label: "Formations globales" }] : []),
             ],
           },
         ]
@@ -268,7 +299,7 @@ export default function Navbar(props) {
         )}
         <div className="profile-name">
           <h4>{resolvedName}</h4>
-          <p className="text-nav account-role">{resolvedPost}</p>
+          <p className="text-nav account-role">{resolvedRole}</p>
           {resolvedEmail && (
             <p className="text-nav account-email">{resolvedEmail}</p>
           )}

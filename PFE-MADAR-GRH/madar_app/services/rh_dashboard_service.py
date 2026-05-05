@@ -8,11 +8,13 @@ from madar_app.models import (
     Document,
     DocumentValidation,
     Employee,
+    EmployeeRoleChoices,
     Evaluation,
     FormationRequest,
     LeaveRequest,
     Notification,
     RoleChoices,
+    ServiceChoices,
     User,
 )
 
@@ -43,6 +45,11 @@ class RhDashboardService:
         RoleChoices.RH_SIMPLE: "RH",
         RoleChoices.RH_AGENT: "Agent RH",
         RoleChoices.GRH: "GRH",
+        # New schema labels
+        EmployeeRoleChoices.RH: "RH",
+        EmployeeRoleChoices.RH_CONGE: "RH Congé",
+        EmployeeRoleChoices.RH_FORMATION: "RH Formation",
+        EmployeeRoleChoices.DRH: "Directeur RH",
     }
 
     def __init__(self, user, request=None, month=None):
@@ -55,7 +62,10 @@ class RhDashboardService:
         self.employee = Employee.objects.select_related("service", "position").filter(email=user.email).first()
 
     def build(self):
-        if self.user.role not in self.RH_ROLES:
+        emp_role = self.employee.role if self.employee else None
+        is_new_rh = emp_role in {EmployeeRoleChoices.RH, EmployeeRoleChoices.RH_CONGE, EmployeeRoleChoices.RH_FORMATION, EmployeeRoleChoices.DRH}
+        is_old_rh = self.user.role in self.RH_ROLES
+        if not is_new_rh and not is_old_rh:
             raise ValueError("role RH requis")
 
         employees_qs = Employee.objects.select_related("service", "position").order_by("first_name", "last_name")
@@ -118,7 +128,7 @@ class RhDashboardService:
             },
             "profile": {
                 "fullName": self._full_name(),
-                "role": self.ROLE_LABELS.get(self.user.role, self.user.role),
+                "role": self.ROLE_LABELS.get(self.employee.role if self.employee else self.user.role, self.user.role),
                 "department": self.employee.service.nomService if self.employee and self.employee.service else "Direction RH",
                 "email": self.user.email,
                 "avatar": self._avatar_url(),
@@ -248,7 +258,8 @@ class RhDashboardService:
         )
 
     def _formation_requests_queryset(self):
-        if self.user.role not in {RoleChoices.RH_AGENT, RoleChoices.GRH}:
+        from madar_app.permissions import is_formation_rh
+        if not is_formation_rh(self.user) and self.user.role not in {RoleChoices.RH_AGENT, RoleChoices.GRH}:
             return FormationRequest.objects.none()
         return (
             FormationRequest.objects.select_related("requested_by", "approved_formation")

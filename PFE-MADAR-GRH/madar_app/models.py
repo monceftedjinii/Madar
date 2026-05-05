@@ -354,10 +354,15 @@ class Employee(models.Model):
         CDD = 'CDD', 'CDD'
         CDI = 'CDI', 'CDI'
         STAGE = 'STAGE', 'Stage'
-    
+
+    class Sexe(models.TextChoices):
+        HOMME = 'HOMME', 'Homme'
+        FEMME = 'FEMME', 'Femme'
+
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
+    sexe = models.CharField(max_length=10, choices=Sexe.choices, default=Sexe.HOMME, verbose_name="Sexe")
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     phone_number = models.CharField(max_length=30, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')

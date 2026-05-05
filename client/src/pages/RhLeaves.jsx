@@ -66,9 +66,17 @@ function getEmployeeName(requestItem) {
   );
 }
 
+const ROLE_LABELS = {
+  CHEF: "Chef de service",
+  RH_SIMPLE: "RH Congé",
+  RH_AGENT: "RH Congé",
+  GRH: "DRH",
+};
+
 function getStepLabel(step) {
   if (!step) return "Aucune étape active";
-  return `Étape ${step.validation_order} - ${step.validator_role}`;
+  const roleLabel = ROLE_LABELS[step.validator_role] || step.validator_role;
+  return `Étape ${step.validation_order} - ${roleLabel}`;
 }
 
 function MetricCard({ dark, eyebrow, value, helper, accent }) {
@@ -93,7 +101,6 @@ function MetricCard({ dark, eyebrow, value, helper, accent }) {
 export default function RhLeaves() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
-  const [role, setRole] = useState("");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -118,7 +125,6 @@ export default function RhLeaves() {
         axios.get("/api/whoami/"),
         axios.get("/api/leaves/department/"),
       ]);
-      setRole(meResponse.data?.role || "");
       setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Erreur chargement validation RH des congés :", error);

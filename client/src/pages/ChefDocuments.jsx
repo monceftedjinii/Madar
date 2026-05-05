@@ -38,7 +38,7 @@ function getStatusClass(status) {
   if (status === "VALIDATED") return "badge-termine";
   if (status === "ARCHIVED") return "badge-genere";
   if (status === "REJECTED") return "badge-refuse";
-  if (status === "SENT") return "badge-attente";
+  if (status === "SENT") return "badge-termine";
   return "badge-attente";
 }
 
@@ -98,6 +98,12 @@ export default function ChefDocuments() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
+  const [archivedIds, setArchivedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("chef_archived_docs") || "[]")); }
+    catch { return new Set(); }
+  });
+  const [showArchives, setShowArchives] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -135,16 +141,37 @@ export default function ChefDocuments() {
     minHeight: 56,
   };
 
+  const saveArchived = (newSet) => {
+    localStorage.setItem("chef_archived_docs", JSON.stringify([...newSet]));
+    setArchivedIds(newSet);
+  };
+
+  const archiveDocLocally = (docId) => {
+    const next = new Set(archivedIds);
+    next.add(docId);
+    saveArchived(next);
+    setFeedback("Document déplacé vers les archives.");
+  };
+
+  const unarchiveDocLocally = (docId) => {
+    const next = new Set(archivedIds);
+    next.delete(docId);
+    saveArchived(next);
+    setFeedback("Document restauré.");
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-      const [docsResponse, servicesResponse] = await Promise.all([
+      const [docsResponse, servicesResponse, meResponse] = await Promise.all([
         axios.get("/api/documents/mine/"),
         axios.get("/api/services/"),
+        axios.get("/api/whoami/"),
       ]);
       setDocuments(Array.isArray(docsResponse.data) ? docsResponse.data : []);
       setServices(Array.isArray(servicesResponse.data) ? servicesResponse.data : []);
+      setUserEmail(meResponse.data?.email || "");
     } catch (error) {
       console.error("Erreur chargement documents chef:", error);
       setDocuments([]);
@@ -496,9 +523,11 @@ export default function ChefDocuments() {
             <div className="chef-panel-head">
               <div>
                 <h2>Documents du service</h2>
-                <p>Historique backend des documents créés depuis votre service.</p>
+                <p>Historique des documents créés depuis votre service.</p>
               </div>
-              <div className="chef-action-pill">Historique</div>
+              <button className="mode" onClick={() => setShowArchives((v) => !v)} type="button">
+                {showArchives ? "Masquer archives" : `Archives (${archivedIds.size})`}
+              </button>
             </div>
 
             <div className="activite-table-scroll">
@@ -517,10 +546,10 @@ export default function ChefDocuments() {
               <tbody>
                 {loading ? (
                   <tr><td colSpan="7">Chargement des documents...</td></tr>
-                ) : documents.length === 0 ? (
-                  <tr><td colSpan="7">Aucun document du service pour le moment.</td></tr>
+                ) : documents.filter((d) => !archivedIds.has(d.id)).length === 0 ? (
+                  <tr><td colSpan="7">Aucun document pour le moment.</td></tr>
                 ) : (
-                  documents.map((doc) => (
+                  documents.filter((d) => !archivedIds.has(d.id)).map((doc) => (
                     <tr key={doc.id}>
                       <td>{doc.title}</td>
                       <td>{doc.doc_type}</td>
@@ -537,6 +566,9 @@ export default function ChefDocuments() {
                               {actionId === doc.id ? "Envoi..." : "Envoyer"}
                             </button>
                           )}
+                          <button className="mode" onClick={() => archiveDocLocally(doc.id)} type="button">
+                            Archiver
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -545,6 +577,44 @@ export default function ChefDocuments() {
               </tbody>
               </table>
             </div>
+
+            {showArchives && (
+              <div style={{ marginTop: 24 }}>
+                <h3 style={{ marginBottom: 12 }}>Archives ({documents.filter((d) => archivedIds.has(d.id)).length})</h3>
+                {documents.filter((d) => archivedIds.has(d.id)).length === 0 ? (
+                  <p style={{ color: dark ? "#94a3b8" : "#64748b", fontSize: 14 }}>Aucun document archivé.</p>
+                ) : (
+                  <table className="activite-table">
+                    <thead>
+                      <tr>
+                        <th>Titre</th>
+                        <th>Type</th>
+                        <th>Service cible</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documents.filter((d) => archivedIds.has(d.id)).map((doc) => (
+                        <tr key={doc.id} style={{ opacity: 0.7 }}>
+                          <td>{doc.title}</td>
+                          <td>{doc.doc_type}</td>
+                          <td>{doc.target_service || "-"}</td>
+                          <td><span className={`badge ${getStatusClass(doc.status)}`}>{statusLabels[doc.status] || doc.status}</span></td>
+                          <td>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button className="modifier" onClick={() => openDocument(doc)} type="button">Consulter</button>
+                              <button className="mode" onClick={() => downloadDocument(doc.id)} type="button">Télécharger</button>
+                              <button className="mode" onClick={() => unarchiveDocLocally(doc.id)} type="button">Désarchiver</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>
@@ -631,58 +701,60 @@ export default function ChefDocuments() {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                    <section>
-                      <h3 style={{ marginTop: 0 }}>Nouvelle version</h3>
-                      <form onSubmit={submitNewVersion}>
-                        <label style={fileFieldStyle}>
-                          <input
-                            type="file"
-                            onChange={(event) => setVersionFile(event.target.files?.[0] || null)}
-                            style={{ display: "none" }}
+                    {selectedDocument.status === "DRAFT" && (
+                      <section>
+                        <h3 style={{ marginTop: 0 }}>Nouvelle version</h3>
+                        <form onSubmit={submitNewVersion}>
+                          <label style={fileFieldStyle}>
+                            <input
+                              type="file"
+                              onChange={(event) => setVersionFile(event.target.files?.[0] || null)}
+                              style={{ display: "none" }}
+                            />
+                            <span
+                              style={{
+                                padding: "8px 14px",
+                                borderRadius: 10,
+                                background: dark ? "#1d4ed8" : "#2563eb",
+                                color: "#ffffff",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Choisir un fichier
+                            </span>
+                            <span
+                              style={{
+                                color: dark ? "#cbd5e1" : "#475569",
+                                fontSize: 14,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                flex: 1,
+                                minWidth: 140,
+                              }}
+                            >
+                              {getSelectedFileLabel(versionFile)}
+                            </span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={versionComment}
+                            onChange={(event) => setVersionComment(event.target.value)}
+                            placeholder="Commentaire de version (optionnel)."
+                            style={{ ...fieldStyle, resize: "vertical", marginTop: 12 }}
                           />
-                          <span
-                            style={{
-                              padding: "8px 14px",
-                              borderRadius: 10,
-                              background: dark ? "#1d4ed8" : "#2563eb",
-                              color: "#ffffff",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Choisir un fichier
-                          </span>
-                          <span
-                            style={{
-                              color: dark ? "#cbd5e1" : "#475569",
-                              fontSize: 14,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              flex: 1,
-                              minWidth: 140,
-                            }}
-                          >
-                            {getSelectedFileLabel(versionFile)}
-                          </span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={versionComment}
-                          onChange={(event) => setVersionComment(event.target.value)}
-                          placeholder="Commentaire de version (optionnel)."
-                          style={{ ...fieldStyle, resize: "vertical", marginTop: 12 }}
-                        />
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                          <button className="mode" onClick={() => downloadDocument(selectedDocument.id)} type="button">
-                            Telecharger
-                          </button>
-                          <button className="modifier" disabled={versionSubmitting} type="submit">
-                            {versionSubmitting ? "Enregistrement..." : "Creer une version"}
-                          </button>
-                        </div>
-                      </form>
-                    </section>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+                            <button className="mode" onClick={() => downloadDocument(selectedDocument.id)} type="button">
+                              Telecharger
+                            </button>
+                            <button className="modifier" disabled={versionSubmitting} type="submit">
+                              {versionSubmitting ? "Enregistrement..." : "Creer une version"}
+                            </button>
+                          </div>
+                        </form>
+                      </section>
+                    )}
                   </div>
                 </div>
               </>

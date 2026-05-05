@@ -433,13 +433,12 @@ def list_documents_scoped(request):
 		# DRH sees everything
 		qs = Document.objects.all()
 	elif is_any_rh(user):
-		# RH sees their own docs + PUBLIC docs sent to the HR service
-		# (CONFIDENTIAL docs sent to HR are DRH-only, already handled above)
+		# RH sees their own docs + PUBLIC (non-archived) docs sent to the HR service
 		qs = Document.objects.filter(
 			Q(created_by=user) |
 			Q(
 				target_service_id=ServiceChoices.HR,
-				status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED],
+				status__in=[Document.Status.SENT, Document.Status.VALIDATED],
 				confidentiality_level=Document.ConfidentialityLevel.PUBLIC,
 			)
 		).distinct()
@@ -452,23 +451,29 @@ def list_documents_scoped(request):
 		emp_service = emp.service_id if emp else None
 
 		if is_chef:
-			# Chef sees their own docs + all docs (public & confidential) for their service
-			if emp_service:
-				qs = Document.objects.filter(
-					Q(created_by=user) |
-					Q(target_service_id=emp_service) |
-					Q(source_service_id=emp_service)
-				).distinct()
-			else:
-				qs = Document.objects.filter(created_by=user)
-		else:
-			# Employee: only public docs targeted at their service + their own
+			# Chef sees their own docs + non-archived docs for their service
 			if emp_service:
 				qs = Document.objects.filter(
 					Q(created_by=user) |
 					Q(
 						target_service_id=emp_service,
-						status__in=[Document.Status.SENT, Document.Status.VALIDATED, Document.Status.ARCHIVED],
+						status__in=[Document.Status.SENT, Document.Status.VALIDATED],
+					) |
+					Q(
+						source_service_id=emp_service,
+						status__in=[Document.Status.SENT, Document.Status.VALIDATED],
+					)
+				).distinct()
+			else:
+				qs = Document.objects.filter(created_by=user)
+		else:
+			# Employee: only public non-archived docs for their service + their own
+			if emp_service:
+				qs = Document.objects.filter(
+					Q(created_by=user) |
+					Q(
+						target_service_id=emp_service,
+						status__in=[Document.Status.SENT, Document.Status.VALIDATED],
 						confidentiality_level=Document.ConfidentialityLevel.PUBLIC,
 					)
 				).distinct()
@@ -525,8 +530,15 @@ def documents_mine(request):
 	qs = Document.objects.select_related('doc_type', 'source_service', 'target_service', 'created_by').prefetch_related(
 		Prefetch('versions', queryset=DocumentVersion.objects.filter(is_current=True), to_attr='_prefetched_current_version')
 	).filter(
-		Q(source_service_id=chef_emp.service_id) |
-		Q(target_service_id=chef_emp.service_id)
+		Q(created_by=request.user) |
+		Q(
+			source_service_id=chef_emp.service_id,
+			status__in=[Document.Status.SENT, Document.Status.VALIDATED],
+		) |
+		Q(
+			target_service_id=chef_emp.service_id,
+			status__in=[Document.Status.SENT, Document.Status.VALIDATED],
+		)
 	).distinct().order_by('-created_at')
 
 	data = [_serialize_document(d, request) for d in qs]
@@ -862,8 +874,7 @@ def archive_document(request, pk):
 	except Document.DoesNotExist:
 		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
 
-	can_archive = is_drh(request.user) or (is_any_rh(request.user) and doc.created_by_id == request.user.id)
-	if not can_archive:
+	if doc.created_by_id != request.user.id and not is_drh(request.user):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
 	if doc.status == Document.Status.ARCHIVED:
