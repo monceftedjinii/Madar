@@ -142,8 +142,33 @@ def create_service(request):
 	if Service.objects.filter(code=code).exists():
 		return Response({'detail': 'A service with this code already exists.'}, status=status.HTTP_400_BAD_REQUEST)
 
-	service = Service.objects.create(code=code, nomService=nom, statut=statut)
+	from decimal import Decimal
+	service = Service.objects.create(code=code, nomService=nom, statut=statut, budget=Decimal('0'))
 	return Response({'code': service.code, 'nomService': service.nomService, 'statut': service.statut}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_service(request, code):
+	"""Update a service name or status (DRH only)."""
+	if not is_drh(request.user):
+		return Response({'detail': 'DRH access required.'}, status=status.HTTP_403_FORBIDDEN)
+
+	try:
+		service = Service.objects.get(code=code)
+	except Service.DoesNotExist:
+		return Response({'detail': 'Service not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+	nom = request.data.get('nomService', '').strip()
+	statut = request.data.get('statut', '').strip()
+
+	if nom:
+		service.nomService = nom
+	if statut in ('ACTIF', 'INACTIF'):
+		service.statut = statut
+
+	service.save()
+	return Response({'code': service.code, 'nomService': service.nomService, 'statut': service.statut})
 
 
 @api_view(['DELETE'])
@@ -157,6 +182,9 @@ def delete_service(request, code):
 		service = Service.objects.get(code=code)
 	except Service.DoesNotExist:
 		return Response({'detail': 'Service not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+	if service.code == 'HR':
+		return Response({'detail': 'Le service RH est le service par défaut et ne peut pas être supprimé.'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if Employee.objects.filter(service=service).exists():
 		return Response({'detail': 'Cannot delete a service that still has employees.'}, status=status.HTTP_400_BAD_REQUEST)

@@ -318,7 +318,7 @@ def department_pending_leaves(request):
 			'status': l.status,
 			'chef_comment': l.chef_comment,
 			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
-			'decided_by': f"{l.decided_by.first_name} {l.decided_by.last_name}".strip() or l.decided_by.email if l.decided_by else None,
+			'decided_by': _display_name_for_user(l.decided_by),
 			'can_decide': _can_user_decide_leave(request.user, l),
 			'current_step': _serialize_current_step(l),
 			'workflow': _serialize_workflow(l),
@@ -493,6 +493,19 @@ def my_leave_balances(request):
 		for b in balances
 	]
 	return Response(data)
+
+
+def _display_name_for_user(user):
+	"""Return full name from Employee record, falling back to User name then email."""
+	if not user:
+		return None
+	emp = Employee.objects.filter(email=user.email).first()
+	if emp:
+		name = f"{emp.first_name} {emp.last_name}".strip()
+		if name:
+			return name
+	name = f"{user.first_name} {user.last_name}".strip()
+	return name or user.email
 
 
 def _role_matches(expected_role, user):

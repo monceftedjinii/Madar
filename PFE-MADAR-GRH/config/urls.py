@@ -40,6 +40,7 @@ urlpatterns = [
     path('api/employees/<int:pk>/role/', madar_views.update_employee_role, name='api-employees-update-role'),
     path('api/services/', madar_views.services_list, name='api-services'),
     path('api/services/create/', madar_views.create_service, name='api-services-create'),
+    path('api/services/<str:code>/update/', madar_views.update_service, name='api-services-update'),
     path('api/services/<str:code>/delete/', madar_views.delete_service, name='api-services-delete'),
     path('api/positions/', madar_views.positions_list, name='api-positions'),
     path('api/tasks/', madar_views.create_task, name='api-tasks-create'),
