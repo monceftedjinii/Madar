@@ -160,7 +160,7 @@ export default function Navbar(props) {
         { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
         { to: "/evaluations", label: "Évaluations" },
-        ...(!isChef ? [{ to: "/tasks", label: "Mes tâches" }] : []),
+        ...(!isChef && !isDrh ? [{ to: "/tasks", label: "Mes tâches" }] : []),
       ],
     },
     // DRH: single unified section with everything
@@ -170,6 +170,7 @@ export default function Navbar(props) {
             title: "Espace DRH",
             items: [
               { to: "/rh/reports", label: "Pilotage et rapports" },
+              { to: "/chef/tasks", label: "Tâches équipe" },
               { to: "/rh/evaluations", label: "Évaluations globales" },
               { to: "/rh/documents", label: "Documents globaux" },
               { to: "/rh/leaves", label: "Congés (Approbations)" },

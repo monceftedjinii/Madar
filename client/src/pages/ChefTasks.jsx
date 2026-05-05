@@ -72,6 +72,7 @@ export default function ChefTasks() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewAction, setReviewAction] = useState("approve");
   const [actionId, setActionId] = useState(null);
+  const [isDrh, setIsDrh] = useState(false);
 
   const fieldStyle = {
     width: "100%",
@@ -87,13 +88,27 @@ export default function ChefTasks() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const [employeesResponse, tasksResponse] = await Promise.all([
+      const [meResponse, employeesResponse, tasksResponse] = await Promise.all([
+        axios.get("/api/whoami/"),
         axios.get("/api/employees/", { params: { scope: "team" } }),
         axios.get("/api/tasks/chef/"),
       ]);
 
-      const allEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
-      const employeesData = allEmployees.filter((e) => e.employee_role !== "CHEF" && e.role !== "CHEF");
+      const me = meResponse.data;
+      const drh = me?.employee_role === "DRH" || me?.role === "GRH";
+      setIsDrh(drh);
+
+      // DRH gets all employees across all services; others get their team only
+      const allFetchedEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      let allEmployees = allFetchedEmployees;
+      if (drh) {
+        const allRes = await axios.get("/api/employees/");
+        allEmployees = Array.isArray(allRes.data) ? allRes.data : [];
+      }
+      const EXCLUDED_ROLES = ["DRH", "CHEF"];
+      const employeesData = drh
+        ? allEmployees.filter((e) => !EXCLUDED_ROLES.includes(e.employee_role) && e.role !== "GRH" && e.role !== "CHEF" && e.email !== me?.email)
+        : allEmployees.filter((e) => e.employee_role !== "CHEF" && e.role !== "CHEF");
       const tasksData = Array.isArray(tasksResponse.data) ? tasksResponse.data : [];
 
       setEmployees(employeesData);

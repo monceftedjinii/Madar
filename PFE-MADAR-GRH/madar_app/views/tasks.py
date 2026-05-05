@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Employee, Task, User
-from ..permissions import IsServiceManager
+from ..permissions import IsServiceManager, is_drh
 from ..scopes import service_scope_ids_for_employee
 from .helpers import notify
 
@@ -104,22 +104,22 @@ def create_task(request):
     except Employee.DoesNotExist:
         return Response({"detail": "Employe introuvable."}, status=status.HTTP_400_BAD_REQUEST)
 
-    if employee.role == 'CHEF':
-        return Response(
-            {"detail": "Impossible d'assigner une tâche à un chef de service."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    try:
-        chef_emp = Employee.objects.get(email=request.user.email)
-    except Employee.DoesNotExist:
-        return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
-
-    if employee.service_id not in service_scope_ids_for_employee(chef_emp):
-        return Response(
-            {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service ou de ses sous-services."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+    # DRH can assign tasks to everyone; others are restricted to their service scope
+    if not is_drh(request.user):
+        if employee.role == 'CHEF':
+            return Response(
+                {"detail": "Impossible d'assigner une tâche à un chef de service."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            chef_emp = Employee.objects.get(email=request.user.email)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Aucune fiche employe n'est liee a ce responsable."}, status=status.HTTP_400_BAD_REQUEST)
+        if employee.service_id not in service_scope_ids_for_employee(chef_emp):
+            return Response(
+                {"detail": "Vous ne pouvez affecter une tache qu'aux employes de votre service ou de ses sous-services."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
     task = Task.objects.create(
         title=title,
