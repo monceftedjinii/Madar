@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -444,9 +445,10 @@ export default function Profile() {
                 >
                   {isNavOpen ? "Masquer menu" : "Afficher menu"}
                 </button>
-                <button className="mode" onClick={() => setDark(!dark)}>
+              <button className="mode" onClick={() => setDark(!dark)}>
                   {dark ? "mode clair" : "mode sombre"}
                 </button>
+              <NotificationBell dark={dark} />
                 <button className="btn-logout" onClick={logout}>
                   déconnecter
                 </button>

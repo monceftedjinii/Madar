@@ -45,6 +45,9 @@ export default function Navbar(props) {
     employeeRole: "",
   });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [recentNotifications, setRecentNotifications] = useState([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const bellRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -81,6 +84,7 @@ export default function Navbar(props) {
 
         setFetchedProfile(nextProfile);
         setUnreadNotifications(nextUnreadNotifications);
+        setRecentNotifications(items.slice(0, 5));
         writeNavbarCache({
           profile: nextProfile,
           unreadNotifications: nextUnreadNotifications,
@@ -126,6 +130,15 @@ export default function Navbar(props) {
       navMenu.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    const handleOutside = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [bellOpen]);
 
   const resolvedName = fullName || fetchedProfile.fullName || "Utilisateur";
   const resolvedPost = post || fetchedProfile.post || "Poste non renseigné";

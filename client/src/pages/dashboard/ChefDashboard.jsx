@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
@@ -217,6 +218,7 @@ export default function ChefDashboard() {
               >
                 {dark ? "Mode clair" : "Mode sombre"}
               </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>
@@ -399,7 +401,7 @@ export default function ChefDashboard() {
                           <div className={`mt-1 text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{member.email}</div>
                         </td>
                         <td className={`px-3 py-4 text-sm ${dark ? "text-slate-300" : "text-slate-600"}`}>
-                          {member.position || "-"}
+                          {member.employee_role || "-"}
                         </td>
                         <td className="px-3 py-4 text-sm">
                           <span className={`badge ${member.isOnline ? "badge-termine" : "badge-refuse"}`}>

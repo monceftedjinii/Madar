@@ -133,7 +133,6 @@ def attendance_team(request):
 	team = list(
 		Employee.objects.select_related('service', 'position')
 		.filter(service=chef_emp.service)
-		.exclude(email=request.user.email)
 		.order_by('first_name', 'last_name')
 	)
 	attendance_qs = Attendance.objects.filter(

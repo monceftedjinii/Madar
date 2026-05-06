@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
@@ -175,6 +176,7 @@ export default function GrhDashboard() {
               >
                 {dark ? "Mode clair" : "Mode sombre"}
               </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>
@@ -356,7 +358,7 @@ export default function GrhDashboard() {
                     <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                       <th className="px-3">Employe</th>
                       <th className="px-3">Service</th>
-                      <th className="px-3">Poste</th>
+                      <th className="px-3">Rôle</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -370,7 +372,7 @@ export default function GrhDashboard() {
                           {employee.service}
                         </td>
                         <td className={`rounded-r-2xl px-3 py-4 text-sm ${dark ? "text-slate-300" : "text-slate-600"}`}>
-                          {employee.position}
+                          {employee.employee_role || employee.role || "-"}
                         </td>
                       </tr>
                     ))}

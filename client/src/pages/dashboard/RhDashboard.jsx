@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Groups2OutlinedIcon from "@mui/icons-material/Groups2Outlined";
@@ -182,6 +183,7 @@ export default function RhDashboard() {
               >
                 {dark ? "Mode clair" : "Mode sombre"}
               </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import NotificationBell from "../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
@@ -167,6 +168,7 @@ export default function ChefEvaluations() {
               <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
                 {dark ? "mode clair" : "mode sombre"}
               </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>

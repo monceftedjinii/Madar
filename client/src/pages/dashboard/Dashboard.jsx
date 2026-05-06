@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
@@ -202,6 +203,7 @@ export default function Dashboard() {
               >
                 {dark ? "Mode clair" : "Mode sombre"}
               </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>

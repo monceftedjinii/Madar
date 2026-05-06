@@ -36,12 +36,15 @@ class ChefDashboardService:
         if not self.chef_employee:
             raise ValueError("chef employee record not found")
 
+        # All employees in service (excluding chef) shown in team list
         team_members = list(
             Employee.objects.select_related("position", "service")
             .filter(service=self.chef_employee.service)
             .exclude(email=self.user.email)
             .order_by("first_name", "last_name")
         )
+        # Full service size including the chef
+        total_service_size = Employee.objects.filter(service=self.chef_employee.service).count()
         team_emails = [employee.email for employee in team_members]
         team_users = {
             item.email: item
@@ -67,10 +70,15 @@ class ChefDashboardService:
             .order_by("-created_at")
         )
         leaves = list(leaves_qs)
+        notifications_qs = Notification.objects.filter(user=self.user).order_by("-created_at")[:10]
         notifications = list(notifications_qs)
 
+        # Include all service employees (including chef) for attendance tracking
+        all_service_employees = list(
+            Employee.objects.filter(service=self.chef_employee.service)
+        )
         today_attendance = Attendance.objects.filter(
-            employee__in=team_members,
+            employee__in=all_service_employees,
             date=self.today,
         ).select_related("employee")
 
@@ -115,7 +123,7 @@ class ChefDashboardService:
             "profile": {
                 "fullName": f"{self.user.first_name or self.chef_employee.first_name} {self.user.last_name or self.chef_employee.last_name}".strip()
                 or self.user.email,
-                "role": self.chef_employee.position.name if self.chef_employee.position else "Chef de service",
+                "role": self.chef_employee.role or "Chef de service",
                 "department": self.chef_employee.service.nomService if self.chef_employee.service else "Non renseigne",
                 "email": self.user.email,
                 "avatar": (
@@ -123,11 +131,11 @@ class ChefDashboardService:
                     if self.request and getattr(self.user, "profile_picture", None)
                     else ""
                 ),
-                "teamSize": len(team_members),
+                "teamSize": total_service_size,
                 "onlineCount": online_count,
             },
             "stats": [
-                {"id": "team", "label": "Employes du service", "value": len(team_members), "helper": "Equipe geree"},
+                {"id": "team", "label": "Employes du service", "value": total_service_size, "helper": "Equipe geree"},
                 {"id": "online", "label": "En ligne", "value": online_count, "helper": "Disponibles maintenant"},
                 {"id": "tasks", "label": "Taches assignees", "value": len(task_dicts), "helper": "Sur le mois selectionne"},
                 {"id": "submitted", "label": "Travaux remis", "value": submitted_count, "helper": "A relire par le chef"},
@@ -139,7 +147,7 @@ class ChefDashboardService:
             "charts": {
                 "attendance": [
                     checked_in_count,
-                    max(len(team_members) - checked_in_count, 0),
+                    max(total_service_size - checked_in_count, 0),
                     completed_attendance_count,
                 ],
                 "tasks": {
@@ -153,7 +161,7 @@ class ChefDashboardService:
                 {
                     "id": member.id,
                     "fullName": f"{member.first_name} {member.last_name}".strip() or member.email,
-                    "position": member.position.name if member.position else "-",
+                    "employee_role": member.role or "-",
                     "email": member.email,
                     "isOnline": self._is_user_online(team_users.get(member.email)),
                     "checkedInToday": bool(attendance_by_employee.get(member.id) and attendance_by_employee[member.id].check_in_time),

@@ -160,7 +160,7 @@ class RhDashboardService:
                     "fullName": f"{item.first_name} {item.last_name}".strip() or item.email,
                     "email": item.email,
                     "service": item.service.nomService if item.service else "-",
-                    "position": item.position.name if item.position else "-",
+                    "employee_role": item.role or "-",
                     "isOnline": self._is_user_online(users_by_email.get(item.email)),
                     "hiredAt": item.hired_at.isoformat() if item.hired_at else None,
                 }

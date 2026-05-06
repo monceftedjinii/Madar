@@ -1,3 +1,4 @@
+import NotificationBell from "../components/NotificationBell";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
@@ -103,6 +104,7 @@ export default function RhArchive() {
               <h1 className={`text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
                 Archive RH
               </h1>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>

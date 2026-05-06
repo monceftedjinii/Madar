@@ -1,3 +1,4 @@
+import NotificationBell from "../../components/NotificationBell";
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Navbar from "../../components/Navbar";
@@ -311,6 +312,7 @@ export default function Conge() {
                 >
                   {dark ? "mode clair" : "mode sombre"}
                 </button>
+              <NotificationBell dark={dark} />
             </div>
           </div>
         </div>

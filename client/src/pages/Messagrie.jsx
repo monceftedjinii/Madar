@@ -1,3 +1,4 @@
+import NotificationBell from "../components/NotificationBell";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import SearchIcon from "@mui/icons-material/Search";
@@ -513,9 +514,10 @@ export default function Messagrie() {
                 >
                   {isNavOpen ? "Masquer menu" : "Afficher menu"}
                 </button>
-                <button className="mode" onClick={() => setDark(!dark)}>
+              <button className="mode" onClick={() => setDark(!dark)}>
                   {dark ? "mode clair" : "mode sombre"}
                 </button>
+              <NotificationBell dark={dark} />
 
                 <button className="modifier" type="button" onClick={openCompose}>
                   Nouveau message
