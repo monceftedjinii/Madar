@@ -6,8 +6,8 @@ from .employees import employees_list, services_list, positions_list, create_emp
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, update_chef_task, delete_chef_task, submit_task_work, review_task_submission, mark_task_done
 from .attendance import attendance_check_in, attendance_check_out, attendance_me, attendance_team
-from .leaves import create_leave, my_leaves, update_my_leave, cancel_my_leave, department_pending_leaves, approve_leave, reject_leave, leave_types_list, my_leave_balances
-from .absences import absences_yesterday, create_warning, discipline_flags
+from .leaves import create_leave, my_leaves, update_my_leave, cancel_my_leave, department_pending_leaves, approve_leave, reject_leave, leave_types_list, my_leave_balances, all_leaves_global
+from .absences import absences_yesterday, create_warning, discipline_flags, submit_absence_justification, my_absence_justifications, rh_absences_global, rh_accept_justification, rh_refuse_justification
 from .notifications import list_notifications, mark_notification_read
 from .formation import (
 	formation_list,
@@ -79,9 +79,10 @@ __all__ = [
 	# attendance
 	'attendance_check_in', 'attendance_check_out', 'attendance_me', 'attendance_team',
 	# leaves
-	'create_leave', 'my_leaves', 'update_my_leave', 'cancel_my_leave', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list', 'my_leave_balances',
+	'create_leave', 'my_leaves', 'update_my_leave', 'cancel_my_leave', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list', 'my_leave_balances', 'all_leaves_global',
 	# absences & discipline
 	'absences_yesterday', 'create_warning', 'discipline_flags',
+	'submit_absence_justification', 'my_absence_justifications', 'rh_absences_global', 'rh_accept_justification', 'rh_refuse_justification',
 	# notifications
 	'list_notifications', 'mark_notification_read',
 	# formation

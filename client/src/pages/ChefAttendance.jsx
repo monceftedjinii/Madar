@@ -12,6 +12,13 @@ function formatTime(value) {
   return value.slice(0, 5);
 }
 
+function formatDate(value) {
+  if (!value) return "-";
+  const d = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export default function ChefAttendance() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
@@ -40,10 +47,11 @@ export default function ChefAttendance() {
 
   const stats = useMemo(() => {
     const total = rows.length;
-    const complete = rows.filter((row) => row.status_today === "Complet").length;
-    const inProgress = rows.filter((row) => row.status_today === "En cours").length;
-    const absent = rows.filter((row) => row.status_today === "Absent").length;
-    return { total, complete, inProgress, absent };
+    const complete = rows.filter((r) => r.today_check_in && r.today_check_out).length;
+    const inProgress = rows.filter((r) => r.today_check_in && !r.today_check_out).length;
+    const absent = rows.filter((r) => !r.today_check_in).length;
+    const unjustified = rows.reduce((sum, r) => sum + (r.unjustified_absences || 0), 0);
+    return { total, complete, inProgress, absent, unjustified };
   }, [rows]);
 
   return (
@@ -124,6 +132,13 @@ export default function ChefAttendance() {
                 <strong>{stats.absent}</strong>
                 <p>Employés sans présence sur la journée.</p>
               </article>
+              <article className="chef-kpi-card">
+                <span>Non justifiées</span>
+                <strong style={{ color: stats.unjustified > 0 ? "#ef4444" : undefined }}>
+                  {stats.unjustified}
+                </strong>
+                <p>Absences sans justificatif sur la période.</p>
+              </article>
             </div>
           </section>
 
@@ -156,7 +171,6 @@ export default function ChefAttendance() {
                 <h2>Suivi de présence équipe</h2>
                 <p>Données remontées par le backend pour la période en cours.</p>
               </div>
-              <div className="chef-action-pill">Pointages du jour</div>
             </div>
 
             <div className="activite-table-scroll">
@@ -164,13 +178,13 @@ export default function ChefAttendance() {
               <thead>
                 <tr>
                   <th>Employé</th>
-                  <th>Poste</th>
+                  <th>Dernière absence</th>
                   <th>Entrée</th>
                   <th>Sortie</th>
                   <th>Journées complètes</th>
                   <th>Sorties manquantes</th>
                   <th>Absences</th>
-                  <th>Statut du jour</th>
+                  <th>Abs. non justifiées</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,24 +203,26 @@ export default function ChefAttendance() {
                         <div>{row.full_name}</div>
                         <div style={{ fontSize: 12, color: "#94a3b8" }}>{row.email}</div>
                       </td>
-                      <td>{row.position || "-"}</td>
+                      <td>
+                        {row.last_absence ? (
+                          <span style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {formatDate(row.last_absence)}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>-</span>
+                        )}
+                      </td>
                       <td>{formatTime(row.today_check_in)}</td>
                       <td>{formatTime(row.today_check_out)}</td>
                       <td>{row.complete_days}</td>
                       <td>{row.pending_checkout_days}</td>
                       <td>{row.absent_days}</td>
                       <td>
-                        <span
-                          className={`badge ${
-                            row.status_today === "Complet"
-                              ? "badge-termine"
-                              : row.status_today === "En cours"
-                                ? "badge-attente"
-                                : "badge-refuse"
-                          }`}
-                        >
-                          {row.status_today}
-                        </span>
+                        {row.unjustified_absences > 0 ? (
+                          <span className="badge badge-refuse">{row.unjustified_absences}</span>
+                        ) : (
+                          <span className="badge badge-termine">0</span>
+                        )}
                       </td>
                     </tr>
                   ))

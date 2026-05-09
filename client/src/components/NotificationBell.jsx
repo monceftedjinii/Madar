@@ -100,7 +100,15 @@ export default function NotificationBell({ dark = false }) {
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  onClick={() => { setOpen(false); navigate(n.link || "/notifications"); }}
+                  onClick={() => {
+                    if (!n.is_read) {
+                      axios.post(`/api/notifications/${n.id}/read/`).catch(() => {});
+                      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x));
+                      setUnread((prev) => Math.max(0, prev - 1));
+                    }
+                    setOpen(false);
+                    navigate(n.link || "/notifications");
+                  }}
                   style={{
                     padding: "11px 16px",
                     borderBottom: `1px solid ${border}`,

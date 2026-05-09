@@ -1,5 +1,5 @@
 import NotificationBell from "../components/NotificationBell";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
@@ -116,6 +116,12 @@ export default function Attendance() {
   const [fromDate, setFromDate] = useState(defaultRange.from);
   const [toDate, setToDate] = useState(defaultRange.to);
   const [appliedRange, setAppliedRange] = useState(defaultRange);
+  const [justifications, setJustifications] = useState({});
+  const [justifyModal, setJustifyModal] = useState(null);
+  const [justifyFile, setJustifyFile] = useState(null);
+  const [justifyLoading, setJustifyLoading] = useState(false);
+  const [justifyError, setJustifyError] = useState("");
+  const fileInputRef = useRef(null);
 
   const accessToken = localStorage.getItem("access_token");
   const authConfig = useMemo(
@@ -165,10 +171,46 @@ export default function Attendance() {
     }
   }, [authConfig]);
 
+  const fetchJustifications = useCallback(async (from, to) => {
+    try {
+      const res = await axios.get("/api/absences/me/", { ...authConfig, params: { from, to } });
+      setJustifications(res.data || {});
+    } catch {
+      setJustifications({});
+    }
+  }, [authConfig]);
+
+  const submitJustification = async () => {
+    if (!justifyModal) return;
+    setJustifyLoading(true);
+    setJustifyError("");
+    try {
+      if (!justifyFile) {
+        setJustifyError("Veuillez sélectionner un document.");
+        setJustifyLoading(false);
+        return;
+      }
+      const form = new FormData();
+      form.append("date", justifyModal);
+      form.append("document", justifyFile);
+      const res = await axios.post("/api/absences/justify/", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setJustifications((prev) => ({ ...prev, [justifyModal]: res.data }));
+      setJustifyModal(null);
+      setJustifyFile(null);
+    } catch (err) {
+      setJustifyError(err?.response?.data?.detail || "Erreur lors de la soumission.");
+    } finally {
+      setJustifyLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAttendance(defaultRange.from, defaultRange.to);
     fetchTodayAttendance();
-  }, [defaultRange, fetchAttendance, fetchTodayAttendance]);
+    fetchJustifications(defaultRange.from, defaultRange.to);
+  }, [defaultRange, fetchAttendance, fetchTodayAttendance, fetchJustifications]);
 
   useEffect(() => {
     let isMounted = true;
@@ -333,7 +375,7 @@ export default function Attendance() {
       setError("La date de début doit être avant la date de fin.");
       return;
     }
-    await fetchAttendance(fromDate, toDate);
+    await Promise.all([fetchAttendance(fromDate, toDate), fetchJustifications(fromDate, toDate)]);
   };
 
   const handlePinConfirm = async () => {
@@ -648,12 +690,14 @@ export default function Attendance() {
                       <th>Entrée</th>
                       <th>Sortie</th>
                       <th>Statut</th>
+                      <th>Justification</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedRecords.map((record) => {
                       const isComplete =
                         record.check_in_time && record.check_out_time;
+                      const isAbsent = !record.check_in_time;
                       const statusLabel = isComplete
                         ? "Complet"
                         : record.check_in_time
@@ -664,6 +708,20 @@ export default function Attendance() {
                         : record.check_in_time
                           ? "badge-attente"
                           : "badge-absent";
+                      const justif = justifications[record.date];
+                      const justifStatus = justif?.status || (isAbsent ? "NON_JUSTIFIE" : null);
+                      const justifLabels = {
+                        NON_JUSTIFIE: "Non justifié",
+                        EN_COURS: "En cours",
+                        JUSTIFIE: "Justifié",
+                        NON_ACCEPTE: "Justif. non acceptée",
+                      };
+                      const justifColors = {
+                        NON_JUSTIFIE: "badge-absent",
+                        EN_COURS: "badge-attente",
+                        JUSTIFIE: "badge-termine",
+                        NON_ACCEPTE: "badge-absent",
+                      };
 
                       return (
                         <tr
@@ -676,6 +734,29 @@ export default function Attendance() {
                             <span className={`badge ${statusClass}`}>
                               {statusLabel}
                             </span>
+                          </td>
+                          <td>
+                            {isAbsent && justifStatus ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span className={`badge ${justifColors[justifStatus] || "badge-absent"}`}>
+                                  {justifLabels[justifStatus] || justifStatus}
+                                </span>
+                                {(justifStatus === "NON_JUSTIFIE" || justifStatus === "NON_ACCEPTE") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setJustifyModal(record.date); setJustifyFile(null); setJustifyError(""); }}
+                                    style={{
+                                      border: "none", borderRadius: 8, padding: "4px 10px",
+                                      fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                      background: dark ? "#334155" : "#e2e8f0",
+                                      color: dark ? "#f1f5f9" : "#0f172a",
+                                    }}
+                                  >
+                                    Justifier
+                                  </button>
+                                )}
+                              </div>
+                            ) : null}
                           </td>
                         </tr>
                       );
@@ -760,6 +841,104 @@ export default function Attendance() {
                   cursor: actionInProgress ? "not-allowed" : "pointer",
                   background: dark ? "#0f172a" : "#ffffff",
                   color: dark ? "#e2e8f0" : "#0f172a",
+                }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {justifyModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(15,23,42,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 600, padding: 16,
+          }}
+          onClick={() => { if (!justifyLoading) { setJustifyModal(null); setJustifyFile(null); setJustifyError(""); } }}
+        >
+          <div
+            style={{
+              background: dark ? "#1e293b" : "#ffffff",
+              borderRadius: 24, padding: 28,
+              width: "100%", maxWidth: 440,
+              boxShadow: "0 16px 48px rgba(0,0,0,0.24)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: dark ? "#f1f5f9" : "#0f172a" }}>
+              Justifier l'absence
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>
+              {justifyModal}
+            </p>
+
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: dark ? "#94a3b8" : "#64748b" }}>
+                Document justificatif
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setJustifyFile(f);
+                  setJustifyError("");
+                }}
+              />
+              <div
+                role="button"
+                tabIndex={0}
+                style={{
+                  marginTop: 8, border: `2px dashed ${justifyFile ? (dark ? "#3b82f6" : "#2563eb") : (dark ? "#334155" : "#cbd5e1")}`,
+                  borderRadius: 14, padding: "20px 16px", textAlign: "center", cursor: "pointer",
+                  background: dark ? "#0f172a" : "#f8fafc",
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+              >
+                {justifyFile ? (
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: dark ? "#93c5fd" : "#2563eb" }}>
+                    {justifyFile.name}
+                  </p>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>
+                    Cliquer pour choisir un fichier
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {justifyError && (
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#ef4444" }}>{justifyError}</p>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button
+                type="button"
+                disabled={justifyLoading}
+                onClick={submitJustification}
+                style={{
+                  flex: 1, border: "none", borderRadius: 12, padding: "12px 0",
+                  fontWeight: 700, fontSize: 14, cursor: justifyLoading ? "not-allowed" : "pointer",
+                  background: "#3b82f6", color: "#fff", opacity: justifyLoading ? 0.6 : 1,
+                }}
+              >
+                {justifyLoading ? "Envoi..." : "Soumettre"}
+              </button>
+              <button
+                type="button"
+                disabled={justifyLoading}
+                onClick={() => { setJustifyModal(null); setJustifyFile(null); setJustifyError(""); }}
+                style={{
+                  flex: 1, border: `1px solid ${dark ? "#475569" : "#cbd5e1"}`, borderRadius: 12,
+                  padding: "12px 0", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a",
                 }}
               >
                 Annuler

@@ -495,6 +495,52 @@ def my_leave_balances(request):
 	return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def all_leaves_global(request):
+	"""RH/GRH: list all leave requests across all employees with optional filters."""
+	if not is_any_rh(request.user):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	qs = LeaveRequest.objects.select_related('employee', 'employee__service', 'type', 'decided_by').order_by('-created_at')
+
+	status_filter = request.query_params.get('status')
+	if status_filter:
+		qs = qs.filter(status=status_filter.upper())
+
+	service_filter = request.query_params.get('service')
+	if service_filter:
+		qs = qs.filter(employee__service__nomService__icontains=service_filter)
+
+	today = date.today()
+	active_only = request.query_params.get('active')
+	if active_only == '1':
+		qs = qs.filter(start_date__lte=today, end_date__gte=today, status='ACCEPTED')
+
+	data = [
+		{
+			'id': l.id,
+			'employee': {
+				'email': l.employee.email,
+				'first_name': l.employee.first_name,
+				'last_name': l.employee.last_name,
+				'service': l.employee.service.nomService if l.employee.service else None,
+			},
+			'start_date': l.start_date.isoformat(),
+			'end_date': l.end_date.isoformat(),
+			'type': l.type.code,
+			'type_label': l.type.libelle,
+			'reason': l.reason,
+			'status': l.status,
+			'created_at': l.created_at.isoformat() if l.created_at else None,
+			'decided_at': l.decided_at.isoformat() if l.decided_at else None,
+			'decided_by': _display_name_for_user(l.decided_by),
+		}
+		for l in qs
+	]
+	return Response(data)
+
+
 def _display_name_for_user(user):
 	"""Return full name from Employee record, falling back to User name then email."""
 	if not user:

@@ -1,13 +1,29 @@
-from datetime import date
+from datetime import date, timedelta
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
-from ..models import Employee, Attendance, LeaveRequest, AbsenceWarning, DisciplineFlag, User, RoleChoices
-from ..permissions import IsRH, CanIssueWarnings
+from ..models import Employee, Attendance, LeaveRequest, AbsenceWarning, AbsenceJustification, DisciplineFlag, User, RoleChoices
+from ..permissions import IsRH, CanIssueWarnings, is_any_rh
 from ..scopes import service_scope_ids_for_employee
 from .helpers import notify
+
+
+def _serialize_justification(j, request=None):
+	doc_url = None
+	if j.document and j.document.name:
+		doc_url = request.build_absolute_uri(j.document.url) if request else j.document.url
+	return {
+		'id': j.id,
+		'date': j.date.isoformat(),
+		'status': j.status,
+		'document_url': doc_url,
+		'submitted_at': j.submitted_at.isoformat() if j.submitted_at else None,
+		'reviewed_at': j.reviewed_at.isoformat() if j.reviewed_at else None,
+		'review_note': j.review_note,
+	}
 
 
 def _warning_notification_payload(employee, issuer_user, warning_date, warning_comment=''):
@@ -167,3 +183,181 @@ def discipline_flags(request):
 		for f in qs
 	]
 	return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_absence_justification(request):
+	"""Employee submits a justification document for an absence date."""
+	date_str = request.data.get('date')
+	document = request.FILES.get('document')
+
+	if not date_str:
+		return Response({'detail': 'date is required'}, status=status.HTTP_400_BAD_REQUEST)
+	try:
+		absence_date = date.fromisoformat(date_str)
+	except Exception:
+		return Response({'detail': 'invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'employee not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+	justif, _ = AbsenceJustification.objects.get_or_create(
+		employee=emp, date=absence_date,
+		defaults={'status': AbsenceJustification.Status.NON_JUSTIFIE}
+	)
+
+	if justif.status not in (AbsenceJustification.Status.NON_JUSTIFIE, AbsenceJustification.Status.NON_ACCEPTE):
+		return Response({'detail': 'justification already submitted or reviewed'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if not document:
+		return Response({'detail': 'document is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	justif.document = document
+	justif.status = AbsenceJustification.Status.EN_COURS
+	justif.submitted_at = timezone.now()
+	justif.save()
+
+	rh_users = User.objects.filter(role__in=[RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH])
+	for rh in rh_users:
+		notify(rh, 'Justification d\'absence soumise',
+			f'{emp.first_name} {emp.last_name} a soumis une justification pour le {absence_date.isoformat()}.',
+			link='/rh/conges')
+
+	return Response(_serialize_justification(justif, request), status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_absence_justifications(request):
+	"""Return employee's absence justification statuses for the date range."""
+	qfrom = request.query_params.get('from')
+	qto = request.query_params.get('to')
+	today = timezone.localdate()
+	from_date = date.fromisoformat(qfrom) if qfrom else today.replace(day=1)
+	to_date = date.fromisoformat(qto) if qto else today
+
+	try:
+		emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response({}, status=status.HTTP_200_OK)
+
+	justifs = AbsenceJustification.objects.filter(employee=emp, date__gte=from_date, date__lte=to_date)
+	data = {j.date.isoformat(): _serialize_justification(j, request) for j in justifs}
+	return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def rh_absences_global(request):
+	"""RH/GRH: all employee absences with justification status — 3 batched queries."""
+	if not is_any_rh(request.user):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	today = timezone.localdate()
+	days_back = int(request.query_params.get('days', 60))
+	from_date = today - timedelta(days=days_back)
+
+	# 1 — all check-in dates per employee
+	attended_by_emp = {}
+	for row in Attendance.objects.filter(
+		date__gte=from_date, date__lte=today, check_in_time__isnull=False
+	).values('employee_id', 'date'):
+		attended_by_emp.setdefault(row['employee_id'], set()).add(row['date'])
+
+	# 2 — all approved-leave date ranges per employee
+	on_leave_by_emp = {}
+	for lr in LeaveRequest.objects.filter(
+		status=LeaveRequest.Status.ACCEPTED,
+		start_date__lte=today, end_date__gte=from_date
+	).values('employee_id', 'start_date', 'end_date'):
+		d = max(lr['start_date'], from_date)
+		while d <= min(lr['end_date'], today):
+			on_leave_by_emp.setdefault(lr['employee_id'], set()).add(d)
+			d += timedelta(days=1)
+
+	# 3 — existing justification records
+	justifs_map = {}
+	for j in AbsenceJustification.objects.filter(date__gte=from_date, date__lte=today):
+		justifs_map[(j.employee_id, j.date.isoformat())] = j
+
+	employees = Employee.objects.select_related('service').all()
+	result = []
+
+	for emp in employees:
+		attended = attended_by_emp.get(emp.id, set())
+		on_leave = on_leave_by_emp.get(emp.id, set())
+		d = from_date
+		while d <= today:
+			if d.weekday() < 5 and d not in attended and d not in on_leave:
+				j = justifs_map.get((emp.id, d.isoformat()))
+				doc_url = None
+				if j and j.document and j.document.name:
+					doc_url = request.build_absolute_uri(j.document.url)
+				result.append({
+					'justification_id': j.id if j else None,
+					'employee_id': emp.id,
+					'employee_name': f"{emp.first_name} {emp.last_name}".strip(),
+					'employee_email': emp.email,
+					'service': emp.service.nomService if emp.service else None,
+					'date': d.isoformat(),
+					'justification_status': j.status if j else 'NON_JUSTIFIE',
+					'document_url': doc_url,
+					'review_note': j.review_note if j else '',
+				})
+			d += timedelta(days=1)
+
+	result.sort(key=lambda x: x['date'], reverse=True)
+	return Response(result)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def rh_accept_justification(request, pk):
+	"""RH accepts an absence justification."""
+	if not is_any_rh(request.user):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+	try:
+		j = AbsenceJustification.objects.select_related('employee').get(pk=pk)
+	except AbsenceJustification.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+	if j.status != AbsenceJustification.Status.EN_COURS:
+		return Response({'detail': 'justification is not pending review'}, status=status.HTTP_400_BAD_REQUEST)
+	j.status = AbsenceJustification.Status.JUSTIFIE
+	j.reviewed_by = request.user
+	j.reviewed_at = timezone.now()
+	j.review_note = request.data.get('note', '')
+	j.save()
+	emp_user = User.objects.filter(email=j.employee.email).first()
+	if emp_user:
+		notify(emp_user, 'Justification acceptée',
+			f'Votre justification d\'absence du {j.date.isoformat()} a été acceptée.',
+			link='/attendance')
+	return Response(_serialize_justification(j, request))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def rh_refuse_justification(request, pk):
+	"""RH refuses an absence justification."""
+	if not is_any_rh(request.user):
+		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+	try:
+		j = AbsenceJustification.objects.select_related('employee').get(pk=pk)
+	except AbsenceJustification.DoesNotExist:
+		return Response({'detail': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+	if j.status != AbsenceJustification.Status.EN_COURS:
+		return Response({'detail': 'justification is not pending review'}, status=status.HTTP_400_BAD_REQUEST)
+	j.status = AbsenceJustification.Status.NON_ACCEPTE
+	j.reviewed_by = request.user
+	j.reviewed_at = timezone.now()
+	j.review_note = request.data.get('note', '')
+	j.save()
+	emp_user = User.objects.filter(email=j.employee.email).first()
+	if emp_user:
+		notify(emp_user, 'Justification refusée',
+			f'Votre justification d\'absence du {j.date.isoformat()} a été refusée. {j.review_note}'.strip(),
+			link='/attendance')
+	return Response(_serialize_justification(j, request))

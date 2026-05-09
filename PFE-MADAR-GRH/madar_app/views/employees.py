@@ -17,6 +17,8 @@ _EMPLOYEE_ROLE_TO_USER_ROLE = {
 }
 _RH_EMPLOYEE_ROLES = {'RH', 'RH_CONGE', 'RH_FORMATION', 'DRH'}
 from ..scopes import employee_queryset_for, employee_team_queryset_for
+from ..models import Attendance
+from datetime import date, timedelta
 import secrets
 
 
@@ -63,10 +65,30 @@ def employees_list(request):
 	employees = list(qs.order_by('id'))
 	emails = [e.email for e in employees]
 	users_by_email = {u.email: u for u in User.objects.filter(email__in=emails)}
-	
+
+	# Batch last-absence lookup for team scope (30-day lookback)
+	is_team_scope = (not for_messaging) and (request.query_params.get('scope', '').lower() == 'team')
+	last_absence_by_emp = {}
+	if is_team_scope and employees:
+		lookback = date.today() - timedelta(days=30)
+		attended = {}
+		for row in Attendance.objects.filter(
+			employee__in=employees, date__gte=lookback
+		).values('employee_id', 'date'):
+			attended.setdefault(row['employee_id'], set()).add(row['date'])
+		today_d = date.today()
+		for emp in employees:
+			emp_attended = attended.get(emp.id, set())
+			d = today_d
+			while d >= lookback:
+				if d.weekday() < 5 and d not in emp_attended:
+					last_absence_by_emp[emp.id] = d.isoformat()
+					break
+				d -= timedelta(days=1)
+
 	data = []
 	current_user_id = request.user.id
-	
+
 	for e in employees:
 		related_user = users_by_email.get(e.email)
 		employee_data = {
@@ -90,6 +112,7 @@ def employees_list(request):
 				'code': e.service.code,
 				'nomService': e.service.nomService,
 			} if e.service else None,
+			'last_absence': last_absence_by_emp.get(e.id) if is_team_scope else None,
 		}
 		
 		# For messaging, find the User ID for this employee

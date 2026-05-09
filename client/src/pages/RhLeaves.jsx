@@ -99,9 +99,22 @@ function MetricCard({ dark, eyebrow, value, helper, accent }) {
   );
 }
 
+const globalStatusLabels = {
+  PENDING: "En attente",
+  ACCEPTED: "Acceptée",
+  REFUSED: "Refusée",
+};
+
+const globalStatusThemes = {
+  PENDING: "bg-amber-100 text-amber-800 ring-amber-200",
+  ACCEPTED: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  REFUSED: "bg-rose-100 text-rose-800 ring-rose-200",
+};
+
 export default function RhLeaves() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
+  const [activeTab, setActiveTab] = useState("validation");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -110,6 +123,18 @@ export default function RhLeaves() {
   const [decisionTarget, setDecisionTarget] = useState(null);
   const [decisionAction, setDecisionAction] = useState("approve");
   const [decisionComment, setDecisionComment] = useState("");
+  const [allLeaves, setAllLeaves] = useState([]);
+  const [allLeavesLoading, setAllLeavesLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [absences, setAbsences] = useState([]);
+  const [absencesLoading, setAbsencesLoading] = useState(false);
+  const [absenceActionId, setAbsenceActionId] = useState(null);
+  const [absenceReviewModal, setAbsenceReviewModal] = useState(null);
+  const [absenceReviewAction, setAbsenceReviewAction] = useState("accept");
+  const [absenceReviewNote, setAbsenceReviewNote] = useState("");
+  const [absenceMsg, setAbsenceMsg] = useState("");
+  const [absenceSearch, setAbsenceSearch] = useState("");
+  const [absenceStatusFilter, setAbsenceStatusFilter] = useState("");
 
   const pendingRequests = requests.filter((item) => item.status === "PENDING");
   const fieldClassName = `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
@@ -136,9 +161,69 @@ export default function RhLeaves() {
     }
   };
 
+  const fetchAllLeaves = async () => {
+    try {
+      setAllLeavesLoading(true);
+      const res = await axios.get("/api/leaves/all/");
+      setAllLeaves(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Erreur chargement congés globaux:", err);
+      setAllLeaves([]);
+    } finally {
+      setAllLeavesLoading(false);
+    }
+  };
+
+  const fetchAbsences = async () => {
+    try {
+      setAbsencesLoading(true);
+      const res = await axios.get("/api/absences/rh/");
+      setAbsences(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Erreur chargement absences:", err);
+      setAbsences([]);
+    } finally {
+      setAbsencesLoading(false);
+    }
+  };
+
+  const warnEmployee = async (absence) => {
+    try {
+      setAbsenceActionId(`warn-${absence.employee_id}-${absence.date}`);
+      setAbsenceMsg("");
+      await axios.post("/api/warnings/", { employee_id: absence.employee_id, date: absence.date });
+      setAbsenceMsg(`Avertissement envoyé à ${absence.employee_name}.`);
+    } catch (err) {
+      setAbsenceMsg(err?.response?.data?.detail || "Erreur lors de l'avertissement.");
+    } finally {
+      setAbsenceActionId(null);
+    }
+  };
+
+  const submitAbsenceReview = async () => {
+    if (!absenceReviewModal) return;
+    try {
+      setAbsenceActionId(`review-${absenceReviewModal.justification_id}`);
+      setAbsenceMsg("");
+      await axios.post(`/api/absences/${absenceReviewModal.justification_id}/${absenceReviewAction}/`, { note: absenceReviewNote });
+      setAbsenceMsg(absenceReviewAction === "accept" ? "Justification acceptée." : "Justification refusée.");
+      setAbsenceReviewModal(null);
+      await fetchAbsences();
+    } catch (err) {
+      setAbsenceMsg(err?.response?.data?.detail || "Erreur.");
+    } finally {
+      setAbsenceActionId(null);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "global") fetchAllLeaves();
+    if (activeTab === "absences") fetchAbsences();
+  }, [activeTab]);
 
   const stats = useMemo(() => {
     const pending = requests.filter((item) => item.status === "PENDING").length;
@@ -146,6 +231,39 @@ export default function RhLeaves() {
     const refused = requests.filter((item) => item.status === "REFUSED").length;
     return { total: requests.length, pending, accepted, refused };
   }, [requests]);
+
+  const filteredAllLeaves = useMemo(() => {
+    if (!globalFilter) return allLeaves;
+    const q = globalFilter.toLowerCase();
+    return allLeaves.filter(
+      (l) =>
+        `${l.employee?.first_name} ${l.employee?.last_name}`.toLowerCase().includes(q) ||
+        (l.employee?.service || "").toLowerCase().includes(q) ||
+        (l.type_label || "").toLowerCase().includes(q),
+    );
+  }, [allLeaves, globalFilter]);
+
+  const filteredAbsences = useMemo(() => {
+    return absences.filter((ab) => {
+      if (absenceStatusFilter && ab.justification_status !== absenceStatusFilter) return false;
+      if (absenceSearch) {
+        const q = absenceSearch.toLowerCase();
+        return (
+          (ab.employee_name || "").toLowerCase().includes(q) ||
+          (ab.service || "").toLowerCase().includes(q) ||
+          (ab.employee_email || "").toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [absences, absenceSearch, absenceStatusFilter]);
+
+  const absenceStats = useMemo(() => ({
+    non_justifie: absences.filter(a => a.justification_status === "NON_JUSTIFIE").length,
+    en_cours: absences.filter(a => a.justification_status === "EN_COURS").length,
+    justifie: absences.filter(a => a.justification_status === "JUSTIFIE").length,
+    non_accepte: absences.filter(a => a.justification_status === "NON_ACCEPTE").length,
+  }), [absences]);
 
   const openDecisionModal = (requestItem, action) => {
     setDecisionTarget(requestItem);
@@ -202,9 +320,9 @@ export default function RhLeaves() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">Validation RH des congés</h1>
+              <h1 className="monprofile">Congés RH</h1>
               <p className="morinfo">
-                Traitez les demandes validées par le directeur de direction. La décision RH clôture le congé.
+                Traitez les demandes de congés et consultez les absences globales de tous les employés.
               </p>
             </div>
             <div className="yamin">
@@ -220,7 +338,244 @@ export default function RhLeaves() {
         </div>
 
         <div className="mx-auto flex w-[96%] max-w-[1500px] flex-col gap-6 py-6">
-          <section
+          <div className={`flex gap-2 rounded-[20px] border p-1.5 ${dark ? "border-slate-800 bg-slate-900/80" : "border-slate-200 bg-white/80"}`}>
+            {[
+              { key: "validation", label: "Validation des congés" },
+              { key: "absences", label: "Absences globales" },
+              { key: "global", label: "Tous les congés" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-[14px] px-5 py-2.5 text-sm font-semibold transition ${
+                  activeTab === tab.key
+                    ? dark
+                      ? "bg-slate-700 text-slate-50"
+                      : "bg-slate-900 text-white"
+                    : dark
+                      ? "text-slate-400 hover:text-slate-200"
+                      : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "absences" && (
+            <div className="flex flex-col gap-6">
+              <section className={`rounded-[32px] border p-6 shadow-sm ${dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"}`}>
+                <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Vue globale</p>
+                    <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Absences globales</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                      Tous les jours ouvrables sans pointage sur 60 jours. Chaque ligne = un jour d'absence d'un employé.
+                    </p>
+                  </div>
+                  <button type="button" onClick={fetchAbsences} className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+                    Actualiser
+                  </button>
+                </div>
+
+                {/* stats chips */}
+                {!absencesLoading && absences.length > 0 && (
+                  <div className="mb-5 flex flex-wrap gap-2">
+                    {[
+                      { key: "", label: `Tout (${absences.length})`, theme: dark ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700" },
+                      { key: "NON_JUSTIFIE", label: `Non justifié (${absenceStats.non_justifie})`, theme: "bg-rose-100 text-rose-800" },
+                      { key: "EN_COURS", label: `En cours (${absenceStats.en_cours})`, theme: "bg-amber-100 text-amber-800" },
+                      { key: "JUSTIFIE", label: `Justifié (${absenceStats.justifie})`, theme: "bg-emerald-100 text-emerald-800" },
+                      { key: "NON_ACCEPTE", label: `Non accepté (${absenceStats.non_accepte})`, theme: "bg-slate-100 text-slate-600" },
+                    ].map(chip => (
+                      <button key={chip.key} type="button"
+                        onClick={() => setAbsenceStatusFilter(chip.key)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ring-2 ${chip.theme} ${absenceStatusFilter === chip.key ? "ring-slate-500" : "ring-transparent"}`}>
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* search */}
+                <div className="mb-4">
+                  <input type="text" value={absenceSearch} onChange={e => setAbsenceSearch(e.target.value)}
+                    placeholder="Filtrer par employé ou service..."
+                    className={`w-full max-w-sm rounded-2xl border px-4 py-2.5 text-sm outline-none transition ${dark ? "border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500 focus:border-sky-400" : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-sky-500"}`}
+                  />
+                </div>
+
+                {absenceMsg && (
+                  <div className={`mb-4 rounded-[20px] border px-4 py-3 text-sm font-medium ${dark ? "border-sky-800 bg-sky-950/40 text-sky-100" : "border-sky-200 bg-sky-50 text-sky-800"}`}>
+                    {absenceMsg}
+                  </div>
+                )}
+
+                {absencesLoading ? (
+                  <div className="grid gap-3">{[1,2,3,4].map(i => <div key={i} className={`h-14 animate-pulse rounded-[20px] ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />)}</div>
+                ) : filteredAbsences.length === 0 ? (
+                  <div className={`rounded-[24px] border border-dashed px-6 py-10 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucun résultat</p>
+                    <h3 className={`mt-2 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                      {absences.length === 0 ? "Aucune absence détectée sur 60 jours." : "Aucune absence ne correspond aux filtres."}
+                    </h3>
+                  </div>
+                ) : (
+                  <div className={`overflow-x-auto rounded-[24px] border ${dark ? "border-slate-800" : "border-slate-200"}`}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className={dark ? "bg-slate-800/60" : "bg-slate-50"}>
+                          {["Employé", "Service", "Date", "Statut", "Actions"].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAbsences.map((ab) => {
+                          const jStatus = ab.justification_status;
+                          const statusLabels = { NON_JUSTIFIE: "Non justifié", EN_COURS: "En cours", JUSTIFIE: "Justifié", NON_ACCEPTE: "Non acceptée" };
+                          const statusTheme = {
+                            NON_JUSTIFIE: "bg-rose-100 text-rose-800 ring-rose-200",
+                            EN_COURS: "bg-amber-100 text-amber-800 ring-amber-200",
+                            JUSTIFIE: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+                            NON_ACCEPTE: "bg-slate-100 text-slate-600 ring-slate-200",
+                          };
+                          const rowKey = `${ab.employee_id}-${ab.date}`;
+                          const isActing = absenceActionId === `warn-${ab.employee_id}-${ab.date}`;
+                          return (
+                            <tr key={rowKey} className={`border-t transition ${dark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-100 hover:bg-slate-50"}`}>
+                              <td className={`px-4 py-3 font-semibold ${dark ? "text-slate-100" : "text-slate-900"}`}>{ab.employee_name || ab.employee_email}</td>
+                              <td className="px-4 py-3 text-slate-500">{ab.service || "-"}</td>
+                              <td className={`px-4 py-3 font-medium ${dark ? "text-slate-200" : "text-slate-700"}`}>{formatDate(ab.date)}</td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusTheme[jStatus] || statusTheme.NON_JUSTIFIE}`}>
+                                  {statusLabels[jStatus] || jStatus}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {jStatus === "NON_JUSTIFIE" && (
+                                    <button type="button" disabled={isActing} onClick={() => warnEmployee(ab)}
+                                      className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60">
+                                      {isActing ? "..." : "Avertir l'employé"}
+                                    </button>
+                                  )}
+                                  {jStatus === "EN_COURS" && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {ab.document_url && (
+                                        <a href={ab.document_url} target="_blank" rel="noreferrer"
+                                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${dark ? "bg-slate-700 text-slate-100 hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"}`}>
+                                          Voir le document
+                                        </a>
+                                      )}
+                                      <button type="button"
+                                        onClick={() => { setAbsenceReviewModal(ab); setAbsenceReviewAction("accept"); setAbsenceReviewNote(""); setAbsenceMsg(""); }}
+                                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500">
+                                        Accepter
+                                      </button>
+                                      <button type="button"
+                                        onClick={() => { setAbsenceReviewModal(ab); setAbsenceReviewAction("refuse"); setAbsenceReviewNote(""); setAbsenceMsg(""); }}
+                                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${dark ? "border-slate-600 text-slate-200 hover:border-rose-500 hover:text-rose-300" : "border-slate-300 text-slate-600 hover:border-rose-400 hover:text-rose-600"}`}>
+                                        Refuser
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {activeTab === "global" && (
+            <div className="flex flex-col gap-6">
+              <section className={`rounded-[32px] border p-6 shadow-sm ${dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"}`}>
+                <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Vue globale</p>
+                    <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Absences globales</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                      Toutes les demandes de congés de l'ensemble des employés, tous services confondus.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchAllLeaves}
+                    className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                  >
+                    Actualiser
+                  </button>
+                </div>
+
+                <div className="mb-5">
+                  <input
+                    type="text"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Filtrer par employé, service ou type..."
+                    className={`w-full max-w-sm rounded-2xl border px-4 py-2.5 text-sm outline-none transition ${dark ? "border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500 focus:border-sky-400" : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-sky-500"}`}
+                  />
+                </div>
+
+                {allLeavesLoading ? (
+                  <div className="grid gap-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className={`h-16 animate-pulse rounded-[20px] ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />
+                    ))}
+                  </div>
+                ) : filteredAllLeaves.length === 0 ? (
+                  <div className={`rounded-[24px] border border-dashed px-6 py-10 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucun résultat</p>
+                    <h3 className={`mt-2 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Aucune absence trouvée.</h3>
+                  </div>
+                ) : (
+                  <div className={`overflow-x-auto rounded-[24px] border ${dark ? "border-slate-800" : "border-slate-200"}`}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className={dark ? "bg-slate-800/60" : "bg-slate-50"}>
+                          {["Employé", "Service", "Type", "Début", "Fin", "Statut"].map((h) => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAllLeaves.map((l) => (
+                          <tr
+                            key={l.id}
+                            className={`border-t transition ${dark ? "border-slate-800 hover:bg-slate-800/50" : "border-slate-100 hover:bg-slate-50"}`}
+                          >
+                            <td className={`px-4 py-3 font-medium ${dark ? "text-slate-100" : "text-slate-900"}`}>
+                              {`${l.employee?.first_name || ""} ${l.employee?.last_name || ""}`.trim() || l.employee?.email || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500">{l.employee?.service || "-"}</td>
+                            <td className="px-4 py-3 text-slate-500">{l.type_label || l.type || "-"}</td>
+                            <td className="px-4 py-3 text-slate-500">{formatDate(l.start_date)}</td>
+                            <td className="px-4 py-3 text-slate-500">{formatDate(l.end_date)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${globalStatusThemes[l.status] || "bg-slate-100 text-slate-700 ring-slate-200"}`}>
+                                {globalStatusLabels[l.status] || l.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {activeTab === "validation" && (
+            <>
+            <section
             className={`overflow-hidden rounded-[36px] border p-6 md:p-8 ${
               dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/85"
             }`}
@@ -547,6 +902,8 @@ export default function RhLeaves() {
               </section>
             </aside>
           </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -628,6 +985,60 @@ export default function RhLeaves() {
           </div>
         </div>
       ) : null}
+
+      {absenceReviewModal && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+          onClick={() => { if (!absenceActionId) setAbsenceReviewModal(null); }}>
+          <div className={`w-full max-w-lg rounded-[32px] border p-6 shadow-2xl ${dark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-white bg-white text-slate-900"}`}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  {absenceReviewAction === "accept" ? "Accepter la justification" : "Refuser la justification"}
+                </p>
+                <h3 className="mt-2 text-xl font-black">{absenceReviewModal.employee_name}</h3>
+                <p className="mt-1 text-sm text-slate-500">{formatDate(absenceReviewModal.date)} • {absenceReviewModal.service || "-"}</p>
+              </div>
+              <button type="button" onClick={() => setAbsenceReviewModal(null)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${dark ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+                Fermer
+              </button>
+            </div>
+
+            {absenceReviewModal.document_url && (
+              <div className={`mt-4 rounded-[20px] p-4 ${dark ? "bg-slate-950/70" : "bg-slate-50"}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-2">Document soumis</p>
+                <a href={absenceReviewModal.document_url} target="_blank" rel="noreferrer"
+                  className="inline-flex rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500">
+                  Voir le document
+                </a>
+              </div>
+            )}
+
+            <div className={`mt-4 rounded-[20px] p-4 ${dark ? "bg-slate-950/70" : "bg-slate-50"}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Note</p>
+              <textarea
+                rows={3}
+                value={absenceReviewNote}
+                onChange={(e) => setAbsenceReviewNote(e.target.value)}
+                className={`${fieldClassName} mt-2 resize-y`}
+                placeholder="Note optionnelle..."
+              />
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setAbsenceReviewModal(null)} disabled={!!absenceActionId}
+                className={`rounded-full border px-5 py-3 text-sm font-semibold ${dark ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-300 bg-white text-slate-700"} disabled:opacity-60`}>
+                Annuler
+              </button>
+              <button type="button" onClick={submitAbsenceReview} disabled={!!absenceActionId}
+                className={`rounded-full px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${absenceReviewAction === "accept" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-rose-600 hover:bg-rose-500"}`}>
+                {absenceActionId ? "..." : absenceReviewAction === "accept" ? "Confirmer l'acceptation" : "Confirmer le refus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

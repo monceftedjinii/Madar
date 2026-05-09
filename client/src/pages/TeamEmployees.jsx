@@ -191,45 +191,65 @@ export default function TeamEmployees() {
               <thead>
                 <tr>
                   <th>Employé</th>
-                  <th>Poste</th>
-                  <th>E-mail</th>
-                  <th>Téléphone</th>
+                  <th>Sexe</th>
+                  <th>Service</th>
+                  <th>Rôle</th>
                   <th>Contrat</th>
-                  <th>Entrée entreprise</th>
-                  <th>Statut</th>
+                  <th>En ligne</th>
+                  <th>Dernière absence</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7">Chargement de l'équipe...</td>
+                    <td colSpan="8">Chargement de l'équipe...</td>
                   </tr>
                 ) : employees.length === 0 ? (
                   <tr>
-                    <td colSpan="7">Aucun employé n'est visible pour ce service.</td>
+                    <td colSpan="8">Aucun employé n'est visible pour ce service.</td>
                   </tr>
                 ) : (
                   employees.map((employee) => {
                     const fullName = `${employee.first_name || ""} ${employee.last_name || ""}`.trim();
+                    const roleLabels = {
+                      EMPLOYEE: "Employé",
+                      CHEF: "Chef",
+                      RH_SIMPLE: "RH Congé",
+                      RH_AGENT: "RH Agent",
+                      GRH: "DRH",
+                    };
+                    const sexeLabel = employee.sexe === "FEMME" ? "Femme" : employee.sexe === "HOMME" ? "Homme" : "-";
 
                     return (
-                      <tr
-                        key={employee.id}
-                        onClick={() => setSelectedEmployee(employee)}
-                        style={{ cursor: "pointer" }}
-                      >
+                      <tr key={employee.id}>
                         <td>{fullName || employee.email || "-"}</td>
-                        <td>{employee.position || "-"}</td>
-                        <td>{employee.email || "-"}</td>
-                        <td>{employee.phone_number || "-"}</td>
+                        <td>{sexeLabel}</td>
+                        <td>{employee.service?.nomService || "-"}</td>
+                        <td>{roleLabels[employee.role] || employee.role || "-"}</td>
                         <td>{employee.contract_type || "-"}</td>
-                        <td>{formatDate(employee.hired_at)}</td>
                         <td>
-                          <span
-                            className={`badge ${employee.is_online ? "badge-termine" : "badge-refuse"}`}
-                          >
+                          <span className={`badge ${employee.is_online ? "badge-termine" : "badge-refuse"}`}>
                             {employee.is_online ? "En ligne" : "Hors ligne"}
                           </span>
+                        </td>
+                        <td>
+                          {employee.last_absence ? (
+                            <span className="badge badge-absent" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
+                              {formatDate(employee.last_absence)}
+                            </span>
+                          ) : (
+                            <span style={{ color: "#94a3b8", fontSize: 12 }}>-</span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            className="modifier"
+                            type="button"
+                            onClick={() => setSelectedEmployee(employee)}
+                          >
+                            Détails
+                          </button>
                         </td>
                       </tr>
                     );

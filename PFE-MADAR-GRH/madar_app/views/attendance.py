@@ -4,8 +4,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
-from ..models import Employee, Attendance
+from ..models import Employee, Attendance, AbsenceJustification, Notification, User
 from ..permissions import CanUseAttendance, IsServiceManager
+from .helpers import notify
 
 
 @api_view(['POST'])
@@ -133,6 +134,7 @@ def attendance_team(request):
 	team = list(
 		Employee.objects.select_related('service', 'position')
 		.filter(service=chef_emp.service)
+		.exclude(id=chef_emp.id)
 		.order_by('first_name', 'last_name')
 	)
 	attendance_qs = Attendance.objects.filter(
@@ -145,24 +147,57 @@ def attendance_team(request):
 	for item in attendance_qs:
 		attendance_by_employee.setdefault(item.employee_id, []).append(item)
 
+	# Batch: justified absence counts per employee in date range
+	justified_dates_by_emp = {}
+	for j in AbsenceJustification.objects.filter(
+		employee__in=team,
+		date__gte=from_date,
+		date__lte=to_date,
+		status__in=['EN_COURS', 'JUSTIFIE'],
+	).values('employee_id', 'date'):
+		justified_dates_by_emp.setdefault(j['employee_id'], set()).add(j['date'])
+
+	# Batch: already-notified absent employees for today (avoid duplicates)
+	already_notified_today = set(
+		Notification.objects.filter(
+			user=request.user,
+			title='Absence détectée',
+			created_at__date=today,
+		).values_list('message', flat=True)
+	)
+
 	data = []
 	for employee in team:
 		records = attendance_by_employee.get(employee.id, [])
 		complete_days = len([item for item in records if item.check_in_time and item.check_out_time])
 		pending_checkout = len([item for item in records if item.check_in_time and not item.check_out_time])
 		absent_days = 0
+		unjustified_absences = 0
+		last_absence_date = None
 
 		current_date = from_date
 		record_map = {item.date: item for item in records}
+		justified_dates = justified_dates_by_emp.get(employee.id, set())
 		while current_date <= to_date:
 			if current_date.weekday() < 5 and current_date not in record_map:
 				absent_days += 1
+				last_absence_date = current_date
+				if current_date not in justified_dates:
+					unjustified_absences += 1
 			current_date = current_date + timedelta(days=1)
 
+		# Notify chef if this employee is absent today
 		today_record = record_map.get(today)
+		full_name = f"{employee.first_name} {employee.last_name}".strip() or employee.email
+		if today.weekday() < 5 and not today_record:
+			notif_message = f"{full_name} n'est pas venu(e) au travail le {today.isoformat()}."
+			if notif_message not in already_notified_today:
+				notify(request.user, 'Absence détectée', notif_message, link='/chef/attendance')
+				already_notified_today.add(notif_message)
+
 		data.append({
 			'id': employee.id,
-			'full_name': f"{employee.first_name} {employee.last_name}".strip() or employee.email,
+			'full_name': full_name,
 			'email': employee.email,
 			'position': employee.position.name if employee.position else '',
 			'service': employee.service.nomService if employee.service else '',
@@ -171,9 +206,10 @@ def attendance_team(request):
 			'complete_days': complete_days,
 			'pending_checkout_days': pending_checkout,
 			'absent_days': absent_days,
+			'unjustified_absences': unjustified_absences,
+			'last_absence': last_absence_date.isoformat() if last_absence_date else None,
 			'today_check_in': today_record.check_in_time.isoformat() if today_record and today_record.check_in_time else None,
 			'today_check_out': today_record.check_out_time.isoformat() if today_record and today_record.check_out_time else None,
-			'status_today': 'Complet' if today_record and today_record.check_in_time and today_record.check_out_time else 'En cours' if today_record and today_record.check_in_time else 'Absent',
 		})
 
 	return Response(data)

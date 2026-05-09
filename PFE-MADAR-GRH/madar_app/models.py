@@ -1019,6 +1019,32 @@ class SoldeConge(models.Model):
         return cls.objects.filter(employee=employee, annee=annee).select_related('leaveType')
 
 
+class AbsenceJustification(models.Model):
+    class Status(models.TextChoices):
+        NON_JUSTIFIE = 'NON_JUSTIFIE', 'Non justifié'
+        EN_COURS = 'EN_COURS', 'En cours'
+        JUSTIFIE = 'JUSTIFIE', 'Justifié'
+        NON_ACCEPTE = 'NON_ACCEPTE', 'Justification non acceptée'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='absence_justifications')
+    date = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NON_JUSTIFIE)
+    document = models.FileField(upload_to='absence_justifications/', null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_justifications')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['employee', 'date'], name='unique_absence_justification_per_day')
+        ]
+
+    def __str__(self):
+        return f"AbsenceJustification {self.employee} {self.date} [{self.status}]"
+
+
 class AbsenceWarning(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='absence_warnings')
     date = models.DateField()
