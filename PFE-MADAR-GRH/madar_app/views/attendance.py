@@ -90,13 +90,23 @@ def attendance_me(request):
 	qto = request.query_params.get('to')
 	today = timezone.localdate()
 
-	from_date = datetime.fromisoformat(qfrom).date() if qfrom else today.replace(day=1)
+	if qfrom:
+		from_date = datetime.fromisoformat(qfrom).date()
+	else:
+		first = today.replace(day=1)
+		for _ in range(2):
+			first = (first - timedelta(days=1)).replace(day=1)
+		from_date = first
 	to_date = datetime.fromisoformat(qto).date() if qto else today
 
 	try:
 		emp = Employee.objects.get(email=request.user.email)
 	except Employee.DoesNotExist:
 		return Response([], status=status.HTTP_200_OK)
+
+	# Never show absences before the employee was hired
+	if emp.hired_at and from_date < emp.hired_at:
+		from_date = emp.hired_at
 
 	qs = Attendance.objects.filter(
 		employee=emp,
@@ -175,9 +185,10 @@ def attendance_team(request):
 		unjustified_absences = 0
 		last_absence_date = None
 
-		current_date = from_date
 		record_map = {item.date: item for item in records}
 		justified_dates = justified_dates_by_emp.get(employee.id, set())
+		emp_start = max(from_date, employee.hired_at) if employee.hired_at else from_date
+		current_date = emp_start
 		while current_date <= to_date:
 			if current_date.weekday() < 5 and current_date not in record_map:
 				absent_days += 1
@@ -213,3 +224,82 @@ def attendance_team(request):
 		})
 
 	return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsServiceManager])
+def attendance_employee_detail(request, employee_id):
+	"""Chef: full daily attendance log for one employee in their team."""
+	today = timezone.localdate()
+	qfrom = request.query_params.get('from')
+	qto = request.query_params.get('to')
+	if qfrom:
+		from_date = datetime.fromisoformat(qfrom).date()
+	else:
+		first = today.replace(day=1)
+		for _ in range(2):
+			first = (first - timedelta(days=1)).replace(day=1)
+		from_date = first
+	to_date = datetime.fromisoformat(qto).date() if qto else today
+
+	try:
+		chef_emp = Employee.objects.get(email=request.user.email)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'validator has no Employee record'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		emp = Employee.objects.select_related('service', 'position').get(id=employee_id)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if emp.service_id != chef_emp.service_id:
+		return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+	attendance_map = {a.date: a for a in Attendance.objects.filter(
+		employee=emp, date__gte=from_date, date__lte=to_date
+	)}
+	justif_map = {j.date: j for j in AbsenceJustification.objects.filter(
+		employee=emp, date__gte=from_date, date__lte=to_date
+	)}
+
+	JUSTIF_LABELS = {
+		'NON_JUSTIFIE': 'Non justifié', 'EN_COURS': 'En cours',
+		'JUSTIFIE': 'Justifié', 'NON_ACCEPTE': 'Non acceptée',
+	}
+
+	days = []
+	d = from_date
+	while d <= to_date:
+		a = attendance_map.get(d)
+		j = justif_map.get(d)
+		is_weekend = d.weekday() >= 5
+		if a:
+			day_status = 'Complet' if a.check_in_time and a.check_out_time else 'Entrée seule'
+		elif is_weekend:
+			day_status = 'Weekend'
+		else:
+			day_status = 'Absent'
+
+		days.append({
+			'date': d.isoformat(),
+			'is_weekend': is_weekend,
+			'check_in': a.check_in_time.isoformat()[:5] if a and a.check_in_time else None,
+			'check_out': a.check_out_time.isoformat()[:5] if a and a.check_out_time else None,
+			'status': day_status,
+			'justification_status': JUSTIF_LABELS.get(j.status, j.status) if j else None,
+			'raw_justif_status': j.status if j else None,
+		})
+		d += timedelta(days=1)
+
+	return Response({
+		'employee': {
+			'id': emp.id,
+			'full_name': f"{emp.first_name} {emp.last_name}".strip(),
+			'email': emp.email,
+			'service': emp.service.nomService if emp.service else '',
+			'position': emp.position.name if emp.position else '',
+		},
+		'from': from_date.isoformat(),
+		'to': to_date.isoformat(),
+		'days': days,
+	})

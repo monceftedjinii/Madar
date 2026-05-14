@@ -1,5 +1,13 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 import Login from "../pages/Auth/Login";
 import Profile from "../pages/Profile/Profile";
 import Home from "../pages/Home";
@@ -34,8 +42,9 @@ import PublicRoute from "./PublicRoute";
 export default function Routers() {
   return (
     <>
+      <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />

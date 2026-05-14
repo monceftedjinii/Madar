@@ -7,6 +7,7 @@ from madar_app.models import (
     Announcement,
     Attendance,
     Employee,
+    Evaluation,
     LeaveRequest,
     Message,
     Notification,
@@ -64,8 +65,11 @@ class EmployeeDashboardService:
             unread_notifications,
         )
 
+        latest_eval = self._get_latest_evaluation()
+
         return {
             "profile": self._build_profile(attendance_rate, overall_progress, final_score),
+            "latestEvaluation": latest_eval,
             "header": {
                 "department": self.employee.service.nomService
                 if self.employee.service
@@ -327,12 +331,6 @@ class EmployeeDashboardService:
                 "value": f"{monthly_performance}%",
                 "helper": "Performance du mois",
             },
-            {
-                "id": "score",
-                "label": "Note mensuelle",
-                "value": f"{final_score:.1f}/20",
-                "helper": "Score estimé actuel",
-            },
         ]
 
     def _build_charts(
@@ -553,6 +551,33 @@ class EmployeeDashboardService:
         if final_score >= 8:
             return "Moyen"
         return "À améliorer"
+
+    def _get_latest_evaluation(self):
+        """Return the evaluation for the selected month, or None."""
+        eval_obj = (
+            Evaluation.objects.filter(
+                employee=self.employee,
+                evaluation_date__year=self.period_start.year,
+                evaluation_date__month=self.period_start.month,
+            )
+            .order_by("-evaluation_date", "-created_at")
+            .first()
+        )
+        if not eval_obj:
+            return None
+        rec_labels = {
+            "EXCELLENT": "Excellent",
+            "GOOD": "Bon",
+            "AVERAGE": "Moyen",
+            "IMPROVEMENT": "À améliorer",
+        }
+        return {
+            "score": float(eval_obj.global_score),
+            "period": eval_obj.period,
+            "recommendation": rec_labels.get(eval_obj.recommendation, eval_obj.recommendation),
+            "overall_comment": eval_obj.overall_comment,
+            "evaluation_date": eval_obj.evaluation_date.isoformat(),
+        }
 
     def _get_task_priority(self, due_date):
         if not due_date:

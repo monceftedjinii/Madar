@@ -2,10 +2,10 @@
 # Central re-export: keeps config/urls.py intact (no changes needed there).
 
 from .auth import ping, rbac_test, whoami, token_obtain_pair, logout
-from .employees import employees_list, services_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password, update_employee_role, create_service, update_service, delete_service
+from .employees import employees_list, services_list, positions_list, create_employee, update_employee, delete_employee, reset_employee_password, update_employee_role, create_service, update_service, delete_service, create_position, delete_position
 from .profile import get_profile, update_profile, change_password
 from .tasks import create_task, my_tasks, chef_tasks, update_chef_task, delete_chef_task, submit_task_work, review_task_submission, mark_task_done
-from .attendance import attendance_check_in, attendance_check_out, attendance_me, attendance_team
+from .attendance import attendance_check_in, attendance_check_out, attendance_me, attendance_team, attendance_employee_detail
 from .leaves import create_leave, my_leaves, update_my_leave, cancel_my_leave, department_pending_leaves, approve_leave, reject_leave, leave_types_list, my_leave_balances, all_leaves_global
 from .absences import absences_yesterday, create_warning, discipline_flags, submit_absence_justification, my_absence_justifications, rh_absences_global, rh_accept_justification, rh_refuse_justification
 from .notifications import list_notifications, mark_notification_read
@@ -77,7 +77,7 @@ __all__ = [
 	# tasks
 	'create_task', 'my_tasks', 'chef_tasks', 'update_chef_task', 'delete_chef_task', 'submit_task_work', 'review_task_submission', 'mark_task_done',
 	# attendance
-	'attendance_check_in', 'attendance_check_out', 'attendance_me', 'attendance_team',
+	'attendance_check_in', 'attendance_check_out', 'attendance_me', 'attendance_team', 'attendance_employee_detail',
 	# leaves
 	'create_leave', 'my_leaves', 'update_my_leave', 'cancel_my_leave', 'department_pending_leaves', 'approve_leave', 'reject_leave', 'leave_types_list', 'my_leave_balances', 'all_leaves_global',
 	# absences & discipline

@@ -93,6 +93,43 @@ def create_leave(request):
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
+	# Annual leave 2-split rule (code CA, 30 days max, at most 2 fractions per year)
+	ANNUAL_CODE = 'CA'
+	if leave_type.code == ANNUAL_CODE:
+		year = sd.year
+		accepted_annual = list(LeaveRequest.objects.filter(
+			employee=emp,
+			type__code=ANNUAL_CODE,
+			status=LeaveRequest.Status.ACCEPTED,
+			start_date__year=year,
+		))
+		accepted_count = len(accepted_annual)
+		requested_days = (ed - sd).days + 1
+
+		if accepted_count >= 2:
+			return Response(
+				{'detail': 'Vous avez déjà utilisé vos 2 fractions de congé annuel pour cette année.'},
+				status=status.HTTP_400_BAD_REQUEST
+			)
+
+		if accepted_count == 1:
+			days_taken = sum((lr.end_date - lr.start_date).days + 1 for lr in accepted_annual)
+			days_remaining = leave_type.nbrJoursDroit - days_taken
+			if days_remaining <= 0:
+				return Response(
+					{'detail': 'Votre solde de congé annuel est épuisé pour cette année.'},
+					status=status.HTTP_400_BAD_REQUEST
+				)
+			if requested_days != days_remaining:
+				return Response(
+					{
+						'detail': f'Pour votre 2ème fraction de congé annuel, vous devez demander exactement {days_remaining} jour(s) restant(s).',
+						'code': 'ANNUAL_EXACT_REMAINING',
+						'days_remaining': days_remaining,
+					},
+					status=status.HTTP_400_BAD_REQUEST
+				)
+
 	is_drh_user = is_drh(request.user)
 	is_rh_user = is_any_rh(request.user)
 	is_unlimited = leave_type.nbrJoursDroit == 0
@@ -478,8 +515,20 @@ def my_leave_balances(request):
 
 	current_year = date.today().year
 	balances = SoldeConge.get_employee_balances(emp, current_year)
-	data = [
-		{
+
+	# Annual leave: count accepted fractions this year
+	accepted_annual = list(LeaveRequest.objects.filter(
+		employee=emp,
+		type__code='CA',
+		status=LeaveRequest.Status.ACCEPTED,
+		start_date__year=current_year,
+	))
+	annual_fractions_used = len(accepted_annual)
+	annual_days_taken = sum((lr.end_date - lr.start_date).days + 1 for lr in accepted_annual)
+
+	data = []
+	for b in balances:
+		entry = {
 			'id': b.id,
 			'type_code': b.leaveType.code,
 			'type_label': b.leaveType.libelle,
@@ -490,8 +539,13 @@ def my_leave_balances(request):
 			'joursRestants': str(b.joursRestants),
 			'annee': b.annee,
 		}
-		for b in balances
-	]
+		if b.leaveType.code == 'CA':
+			entry['annual_fractions_used'] = annual_fractions_used
+			entry['annual_days_taken'] = annual_days_taken
+			entry['annual_days_remaining'] = b.leaveType.nbrJoursDroit - annual_days_taken
+			entry['annual_can_request'] = annual_fractions_used < 2
+			entry['annual_must_request_exact'] = annual_fractions_used == 1
+		data.append(entry)
 	return Response(data)
 
 

@@ -96,6 +96,7 @@ def employees_list(request):
 			'first_name': e.first_name,
 			'last_name': e.last_name,
 			'sexe': e.sexe,
+			'birth_date': e.birth_date.isoformat() if e.birth_date else None,
 			'position': e.position.name if e.position else '',
 			'position_id': e.position.id if e.position else None,
 			'email': e.email,
@@ -219,11 +220,47 @@ def delete_service(request, code):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def positions_list(request):
+	service_code = request.query_params.get('service')
+	qs = Position.objects.order_by('name')
+	if service_code:
+		qs = qs.filter(service__code=service_code)
 	data = [
-		{'id': p.id, 'name': p.name}
-		for p in Position.objects.order_by('name')
+		{'id': p.id, 'name': p.name, 'service': p.service.code if p.service else None}
+		for p in qs
 	]
 	return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsGRH])
+def create_position(request):
+	"""GRH: create a new position linked to a service."""
+	name = request.data.get('name', '').strip()
+	service_code = request.data.get('service_code', '').strip()
+	if not name or not service_code:
+		return Response({'detail': 'name and service_code are required'}, status=status.HTTP_400_BAD_REQUEST)
+	try:
+		service = Service.objects.get(code=service_code)
+	except Service.DoesNotExist:
+		return Response({'detail': 'Service not found'}, status=status.HTTP_404_NOT_FOUND)
+	if Position.objects.filter(name__iexact=name, service=service).exists():
+		return Response({'detail': 'Ce poste existe déjà pour ce service'}, status=status.HTTP_400_BAD_REQUEST)
+	pos = Position.objects.create(name=name, service=service)
+	return Response({'id': pos.id, 'name': pos.name, 'service': service_code}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, IsGRH])
+def delete_position(request, pk):
+	"""GRH: delete a position."""
+	try:
+		pos = Position.objects.get(pk=pk)
+	except Position.DoesNotExist:
+		return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+	if pos.employees.exists():
+		return Response({'detail': 'Impossible de supprimer un poste assigné à des employés'}, status=status.HTTP_400_BAD_REQUEST)
+	pos.delete()
+	return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])
@@ -234,6 +271,7 @@ def create_employee(request):
 	last_name = request.data.get('last_name', '').strip()
 	email = request.data.get('email', '').strip().lower()
 	sexe = request.data.get('sexe', 'HOMME').strip().upper()
+	birth_date_str = request.data.get('birth_date', '').strip()
 	service_code = request.data.get('service')
 	position_value = request.data.get('position', '')
 	phone_number = request.data.get('phone_number', '').strip()
@@ -244,6 +282,12 @@ def create_employee(request):
 	employee_role = request.data.get('employee_role', EmployeeRoleChoices.EMPLOYEE).strip()
 	if sexe not in ('HOMME', 'FEMME'):
 		sexe = 'HOMME'
+	birth_date = None
+	if birth_date_str:
+		try:
+			birth_date = date.fromisoformat(birth_date_str)
+		except ValueError:
+			pass
 
 	# Validation
 	if not all([first_name, last_name, email, service_code]):
@@ -311,6 +355,7 @@ def create_employee(request):
 			last_name=last_name,
 			email=email,
 			sexe=sexe,
+			birth_date=birth_date,
 			position=position,
 			phone_number=phone_number,
 			address=address,
@@ -337,6 +382,7 @@ def create_employee(request):
 			'position': employee.position.name if employee.position else '',
 			'position_id': employee.position.id if employee.position else None,
 			'email': employee.email,
+			'birth_date': employee.birth_date.isoformat() if employee.birth_date else None,
 			'phone_number': employee.phone_number,
 			'address': employee.address,
 			'contract_type': employee.contract_type,
@@ -370,6 +416,14 @@ def update_employee(request, pk):
 	sexe = request.data.get('sexe', employee.sexe).strip().upper()
 	if sexe not in ('HOMME', 'FEMME'):
 		sexe = employee.sexe
+	birth_date_str = request.data.get('birth_date', '')
+	if birth_date_str:
+		try:
+			birth_date = date.fromisoformat(str(birth_date_str).strip())
+		except ValueError:
+			birth_date = employee.birth_date
+	else:
+		birth_date = employee.birth_date
 	new_employee_role = request.data.get('employee_role', employee.role or 'EMPLOYEE').strip()
 	valid_employee_roles = [r.value for r in EmployeeRoleChoices]
 	if new_employee_role not in valid_employee_roles:
@@ -428,6 +482,7 @@ def update_employee(request, pk):
 	employee.last_name = last_name
 	employee.email = email
 	employee.sexe = sexe
+	employee.birth_date = birth_date
 	employee.role = new_employee_role
 	employee.position = position
 	employee.phone_number = phone_number

@@ -146,7 +146,7 @@ export default function Evaluations() {
                       <td>{formatDate(item.evaluation_date)}</td>
                       <td>{item.period}</td>
                       <td>{item.evaluator?.full_name || "-"}</td>
-                      <td>{Number(item.global_score).toFixed(2)}/5</td>
+                      <td>{Number(item.global_score).toFixed(2)}/10</td>
                       <td><span className={`badge ${getBadgeClass(item.recommendation)}`}>{item.recommendation}</span></td>
                       <td>{item.overall_comment || "-"}</td>
                     </tr>

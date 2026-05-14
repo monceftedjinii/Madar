@@ -218,10 +218,15 @@ class Service(models.Model):
 
 
 class Position(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
+    service = models.ForeignKey(
+        'Service', on_delete=models.CASCADE, to_field='code',
+        null=True, blank=True, related_name='positions'
+    )
 
     class Meta:
         ordering = ['name']
+        unique_together = [('name', 'service')]
 
     def __str__(self):
         return self.name
@@ -363,6 +368,7 @@ class Employee(models.Model):
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
     sexe = models.CharField(max_length=10, choices=Sexe.choices, default=Sexe.HOMME, verbose_name="Sexe")
+    birth_date = models.DateField(null=True, blank=True, verbose_name="Date de naissance")
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     phone_number = models.CharField(max_length=30, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')
@@ -1002,20 +1008,10 @@ class SoldeConge(models.Model):
 
     @classmethod
     def get_employee_balances(cls, employee, annee=None):
-        """Get all leave balances for an employee for a specific year."""
+        """Get all leave balances for an employee for a specific year (read-only, no auto-create)."""
         from datetime import date
         if annee is None:
             annee = date.today().year
-
-        leave_types = list(LeaveType.objects.order_by('code'))
-        existing_balances = {
-            b.leaveType_id: b for b in cls.objects.filter(employee=employee, annee=annee)
-        }
-        
-        for leave_type in leave_types:
-            if leave_type.code not in existing_balances:
-                cls.get_or_create_balance(employee, leave_type, annee)
-
         return cls.objects.filter(employee=employee, annee=annee).select_related('leaveType')
 
 

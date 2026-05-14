@@ -236,7 +236,13 @@ def my_absence_justifications(request):
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
 	today = timezone.localdate()
-	from_date = date.fromisoformat(qfrom) if qfrom else today.replace(day=1)
+	if qfrom:
+		from_date = date.fromisoformat(qfrom)
+	else:
+		first = today.replace(day=1)
+		for _ in range(2):
+			first = (first - timedelta(days=1)).replace(day=1)
+		from_date = first
 	to_date = date.fromisoformat(qto) if qto else today
 
 	try:
@@ -289,7 +295,8 @@ def rh_absences_global(request):
 	for emp in employees:
 		attended = attended_by_emp.get(emp.id, set())
 		on_leave = on_leave_by_emp.get(emp.id, set())
-		d = from_date
+		emp_start = max(from_date, emp.hired_at) if emp.hired_at else from_date
+		d = emp_start
 		while d <= today:
 			if d.weekday() < 5 and d not in attended and d not in on_leave:
 				j = justifs_map.get((emp.id, d.isoformat()))

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import axios from "axios";
 import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
@@ -113,7 +113,7 @@ export default function Navbar(props) {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const navMenu = navMenuRef.current;
     if (!navMenu || typeof window === "undefined") return;
 
@@ -172,7 +172,7 @@ export default function Navbar(props) {
         { to: "/conge", label: "Congés" },
         { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
-        { to: "/evaluations", label: "Évaluations" },
+        ...(!isChef ? [{ to: "/evaluations", label: "Évaluations" }] : []),
         ...(!isChef && !isDrh ? [{ to: "/tasks", label: "Mes tâches" }] : []),
       ],
     },
@@ -190,8 +190,7 @@ export default function Navbar(props) {
               { to: "/rh/absences", label: "Absences globales" },
               { to: "/rh/formations", label: "Formations globales" },
               { to: "/rh/employees", label: "Gérer les employés" },
-              { to: "/rh/services", label: "Gérer les services" },
-              { to: "/rh/archive", label: "Archives RH" },
+              { to: "/rh/services", label: "Services & Postes" },
             ],
           },
         ]

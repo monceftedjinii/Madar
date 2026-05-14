@@ -38,9 +38,10 @@ const getDatesInRange = (from, to) => {
 
 const getDefaultRange = () => {
   const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Start from 2 months ago (1st of that month) so March + April records are visible
+  const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
   return {
-    from: toISODate(firstDay),
+    from: toISODate(twoMonthsAgo),
     to: toISODate(today),
   };
 };
@@ -111,6 +112,7 @@ export default function Attendance() {
   const [pinValue, setPinValue] = useState("");
   const [pinError, setPinError] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [hiredAt, setHiredAt] = useState(null);
 
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [fromDate, setFromDate] = useState(defaultRange.from);
@@ -210,6 +212,7 @@ export default function Attendance() {
     fetchAttendance(defaultRange.from, defaultRange.to);
     fetchTodayAttendance();
     fetchJustifications(defaultRange.from, defaultRange.to);
+    setAppliedRange(defaultRange);
   }, [defaultRange, fetchAttendance, fetchTodayAttendance, fetchJustifications]);
 
   useEffect(() => {
@@ -220,6 +223,7 @@ export default function Attendance() {
         const response = await axios.get("/api/whoami/", authConfig);
         if (isMounted) {
           setCurrentUserRole(response.data?.role || "");
+          if (response.data?.hired_at) setHiredAt(response.data.hired_at);
         }
       } catch {
         if (isMounted) {
@@ -271,7 +275,12 @@ export default function Attendance() {
 
     const recordsMap = new Map(records.map((item) => [item.date, item]));
 
-    return getDatesInRange(appliedRange.from, cappedToDate)
+    // Never show absent rows before hired_at
+    const effectiveFrom = hiredAt && appliedRange.from < hiredAt
+      ? hiredAt
+      : appliedRange.from;
+
+    return getDatesInRange(effectiveFrom, cappedToDate)
       .map(
         (date) =>
           recordsMap.get(date) || {
@@ -281,7 +290,7 @@ export default function Attendance() {
           },
       )
       .reverse();
-  }, [records, historyLoaded, appliedRange]);
+  }, [records, historyLoaded, appliedRange, hiredAt]);
 
   const completedDays = displayedRecords.filter(
     (item) => item.check_in_time && item.check_out_time,

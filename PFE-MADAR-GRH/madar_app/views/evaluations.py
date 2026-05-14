@@ -25,16 +25,17 @@ def _ensure_default_criteria():
     for label, weight in DEFAULT_CRITERIA:
         EvaluationCriteria.objects.get_or_create(
             label=label,
-            defaults={"weight": weight, "note_min": 0, "note_max": 5, "is_active": True},
+            defaults={"weight": weight, "note_min": 0, "note_max": 10, "is_active": True},
         )
 
 
 def _recommendation_from_score(score):
-    if score >= Decimal("4.50"):
+    """Thresholds on a /10 scale."""
+    if score >= Decimal("9.0"):
         return Evaluation.Recommendation.EXCELLENT
-    if score >= Decimal("3.50"):
+    if score >= Decimal("7.0"):
         return Evaluation.Recommendation.GOOD
-    if score >= Decimal("2.50"):
+    if score >= Decimal("5.0"):
         return Evaluation.Recommendation.AVERAGE
     return Evaluation.Recommendation.IMPROVEMENT
 

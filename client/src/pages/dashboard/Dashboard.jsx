@@ -35,6 +35,7 @@ const MONTH_LABELS = [
 ];
 
 const emptyDashboard = {
+  latestEvaluation: null,
   profile: {
     fullName: "",
     role: "",
@@ -217,6 +218,48 @@ export default function Dashboard() {
             onMonthChange={setSelectedMonth}
           />
           <StatsCards dark={dark} items={dashboardData.stats} />
+
+          {/* Latest evaluation note */}
+          {dashboardData.latestEvaluation && (() => {
+            const ev = dashboardData.latestEvaluation;
+            const score = ev.score;
+            const scoreColor = score >= 9 ? "#16a34a" : score >= 7 ? "#d97706" : score >= 5 ? "#2563eb" : "#dc2626";
+            const recColor = score >= 9 ? "#dcfce7" : score >= 7 ? "#fef9c3" : score >= 5 ? "#eff6ff" : "#fee2e2";
+            const recBorder = score >= 9 ? "#86efac" : score >= 7 ? "#fde047" : score >= 5 ? "#93c5fd" : "#fca5a5";
+            return (
+              <section className={`flex flex-wrap items-center gap-6 rounded-[28px] border p-5 ${dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/90"}`}>
+                <div style={{ display: "flex", alignItems: "center", gap: 20, flex: 1, minWidth: 240 }}>
+                  <div style={{
+                    minWidth: 80, height: 80, borderRadius: "50%",
+                    border: `3px solid ${scoreColor}`,
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    background: dark ? "#0f172a" : "#f8fafc",
+                  }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>{score.toFixed(1)}</span>
+                    <span style={{ fontSize: 11, color: dark ? "#94a3b8" : "#64748b", letterSpacing: "0.05em" }}>/10</span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Note mensuelle</p>
+                    <h3 className={`mt-1 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                      {ev.period}
+                    </h3>
+                    {ev.overall_comment && (
+                      <p className="mt-1 text-sm text-slate-500 max-w-xl">{ev.overall_comment}</p>
+                    )}
+                  </div>
+                </div>
+                <div style={{
+                  background: recColor, border: `1px solid ${recBorder}`,
+                  borderRadius: 16, padding: "10px 20px",
+                  fontSize: 14, fontWeight: 700, color: scoreColor,
+                  whiteSpace: "nowrap",
+                }}>
+                  {ev.recommendation}
+                </div>
+              </section>
+            );
+          })()}
 
           <section className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
             <EmployeeSummaryCard dark={dark} employee={dashboardData.profile} />

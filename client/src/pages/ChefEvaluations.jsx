@@ -7,6 +7,21 @@ import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
 import "../styles/chef-space.css";
 
+function getMonthInfo() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const today = now.getDate();
+  const daysLeft = lastDay - today;
+  const UNLOCK_DAYS = 5; // unlocks in last 5 days of month
+  const isUnlocked = daysLeft < UNLOCK_DAYS;
+  const monthLabel = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  // Capitalize first letter
+  const monthDisplay = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  return { daysLeft, isUnlocked, monthDisplay, lastDay, today };
+}
+
 export default function ChefEvaluations() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
@@ -17,9 +32,9 @@ export default function ChefEvaluations() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { daysLeft, isUnlocked, monthDisplay } = useMemo(() => getMonthInfo(), []);
   const [form, setForm] = useState({
     employeeId: "",
-    period: "Semestre 1",
     campaignTitle: "",
     overallComment: "",
     scores: {},
@@ -103,6 +118,10 @@ export default function ChefEvaluations() {
 
   const submitEvaluation = async (event) => {
     event.preventDefault();
+    if (!isUnlocked) {
+      setErrorMessage(`Les évaluations s'ouvrent dans ${daysLeft} jour(s).`);
+      return;
+    }
     if (!form.employeeId) {
       setErrorMessage("Choisissez un employé à évaluer.");
       return;
@@ -127,7 +146,7 @@ export default function ChefEvaluations() {
       setErrorMessage("");
       await axios.post("/api/evaluations/chef/", {
         employee_id: Number(form.employeeId),
-        period: form.period,
+        period: monthDisplay,
         campaign_title: form.campaignTitle,
         overall_comment: form.overallComment,
         scores: scoresPayload,
@@ -204,6 +223,13 @@ export default function ChefEvaluations() {
                 <strong>{stats.average}</strong>
                 <p>Score global moyen observe dans l&apos;historique chef.</p>
               </article>
+              <article className="chef-kpi-card">
+                <span>{isUnlocked ? "Ouvert" : "Ouverture dans"}</span>
+                <strong style={{ color: isUnlocked ? "#16a34a" : "#d97706" }}>
+                  {isUnlocked ? "✓" : `${daysLeft}j`}
+                </strong>
+                <p>{isUnlocked ? `Évaluation ${monthDisplay} disponible.` : `Jours restants avant évaluation ${monthDisplay}.`}</p>
+              </article>
             </div>
           </section>
 
@@ -217,33 +243,72 @@ export default function ChefEvaluations() {
             <div className="chef-panel-head">
               <div>
                 <h2>Nouvelle évaluation</h2>
-                <p>Renseignez l'employé, la campagne et les scores par critère.</p>
+                <p>Évaluation du mois en cours — disponible les 5 derniers jours du mois.</p>
               </div>
               <div className="chef-action-pill">Notation</div>
             </div>
 
-            <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14 }}>
+            {/* Countdown / unlock banner */}
+            {!isUnlocked ? (
+              <div style={{
+                background: dark ? "#1e293b" : "#f0f9ff",
+                border: `1px solid ${dark ? "#334155" : "#bae6fd"}`,
+                borderRadius: 16, padding: "20px 24px",
+                display: "flex", alignItems: "center", gap: 20,
+              }}>
+                <div style={{
+                  minWidth: 72, height: 72, borderRadius: "50%",
+                  background: dark ? "#0f172a" : "#e0f2fe",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  border: `2px solid ${dark ? "#334155" : "#7dd3fc"}`,
+                }}>
+                  <span style={{ fontSize: 26, fontWeight: 900, color: dark ? "#38bdf8" : "#0284c7", lineHeight: 1 }}>{daysLeft}</span>
+                  <span style={{ fontSize: 10, color: dark ? "#94a3b8" : "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>jours</span>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: dark ? "#f1f5f9" : "#0f172a" }}>
+                    Évaluation verrouillée — {monthDisplay}
+                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>
+                    Le formulaire s'ouvre dans <strong>{daysLeft} jour{daysLeft > 1 ? "s" : ""}</strong>. Les évaluations sont disponibles durant les 5 derniers jours du mois.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: dark ? "#052e16" : "#f0fdf4",
+                border: `1px solid ${dark ? "#166534" : "#86efac"}`,
+                borderRadius: 16, padding: "12px 20px",
+                fontSize: 13, fontWeight: 600,
+                color: dark ? "#86efac" : "#166534",
+              }}>
+                Évaluation ouverte pour {monthDisplay} — vous pouvez noter votre équipe.
+              </div>
+            )}
+
+            <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14, opacity: isUnlocked ? 1 : 0.45, pointerEvents: isUnlocked ? "auto" : "none" }}>
               <div className="chef-form-grid">
                 <div>
-                <p className="chef-form-label">Employé</p>
-                <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
-                  <option value="">Choisir un employé</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.full_name || `${employee.first_name} ${employee.last_name}`.trim() || employee.email}
-                    </option>
-                  ))}
-                </select>
+                  <p className="chef-form-label">Employé</p>
+                  <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
+                    <option value="">Choisir un employé</option>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.full_name || `${employee.first_name} ${employee.last_name}`.trim() || employee.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="chef-form-label">Mois</p>
+                  <input value={monthDisplay} readOnly style={{ ...fieldStyle, background: dark ? "#1e293b" : "#f8fafc", cursor: "default", fontWeight: 600 }} />
+                </div>
+                <div>
+                  <p className="chef-form-label">Campagne</p>
+                  <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={fieldStyle} />
+                </div>
               </div>
-              <div>
-                <p className="chef-form-label">Période</p>
-                <input value={form.period} onChange={(e) => setForm((p) => ({ ...p, period: e.target.value }))} style={fieldStyle} />
-              </div>
-              <div>
-                <p className="chef-form-label">Campagne</p>
-                <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={fieldStyle} />
-              </div>
-            </div>
 
             {criteria.map((criterion) => (
               <div key={criterion.id} style={{ border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#ffffff", borderRadius: 14, padding: 14 }}>
@@ -256,7 +321,7 @@ export default function ChefEvaluations() {
                     step="0.1"
                     value={form.scores[criterion.id] || ""}
                     onChange={(e) => updateScore(criterion.id, e.target.value)}
-                    placeholder={`Note / ${criterion.note_max}`}
+                    placeholder={`Note / 10`}
                     style={fieldStyle}
                   />
                   <input
@@ -312,7 +377,7 @@ export default function ChefEvaluations() {
                       <td>{item.employee?.full_name || "-"}</td>
                       <td>{item.period}</td>
                       <td>{item.evaluation_date}</td>
-                      <td>{Number(item.global_score).toFixed(2)}/5</td>
+                      <td>{Number(item.global_score).toFixed(2)}/10</td>
                       <td>{item.recommendation}</td>
                     </tr>
                   ))

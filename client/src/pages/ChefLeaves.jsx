@@ -277,10 +277,10 @@ export default function ChefLeaves() {
               <tbody>
                 {loading ? (
                   <tr><td colSpan="6">Chargement...</td></tr>
-                ) : requests.filter((r) => r.status !== "PENDING").length === 0 ? (
+                ) : requests.filter((r) => r.status !== "PENDING" || !r.can_decide).length === 0 ? (
                   <tr><td colSpan="6">Aucun historique pour le moment.</td></tr>
                 ) : (
-                  requests.filter((r) => r.status !== "PENDING").map((requestItem) => {
+                  requests.filter((r) => r.status !== "PENDING" || !r.can_decide).map((requestItem) => {
                     const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
                     return (
                       <tr key={requestItem.id}>
@@ -288,9 +288,13 @@ export default function ChefLeaves() {
                         <td>{requestItem.type_label || requestItem.type || "-"}</td>
                         <td>{formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}</td>
                         <td>
-                          <span className={`badge ${getStatusClass(requestItem.status)}`}>
-                            {getStatusLabel(requestItem.status)}
-                          </span>
+                          {requestItem.status === "PENDING" && !requestItem.can_decide ? (
+                            <span className="badge badge-attente">En attente RH</span>
+                          ) : (
+                            <span className={`badge ${getStatusClass(requestItem.status)}`}>
+                              {getStatusLabel(requestItem.status)}
+                            </span>
+                          )}
                         </td>
                         <td>{requestItem.decided_by || "-"}</td>
                         <td>{requestItem.decided_at ? new Date(requestItem.decided_at).toLocaleDateString("fr-FR") : "-"}</td>

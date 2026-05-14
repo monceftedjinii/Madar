@@ -25,6 +25,12 @@ export default function ChefAttendance() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [detailEmployee, setDetailEmployee] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailFromDate, setDetailFromDate] = useState("");
+  const [detailToDate, setDetailToDate] = useState("");
+  const [detailStatusFilter, setDetailStatusFilter] = useState("all");
 
   const fetchAttendance = async () => {
     try {
@@ -44,6 +50,23 @@ export default function ChefAttendance() {
   useEffect(() => {
     fetchAttendance();
   }, []);
+
+  const openDetail = async (row) => {
+    setDetailEmployee(row);
+    setDetailData(null);
+    setDetailFromDate("");
+    setDetailToDate("");
+    setDetailStatusFilter("all");
+    setDetailLoading(true);
+    try {
+      const res = await axios.get(`/api/attendance/team/${row.id}/`);
+      setDetailData(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = rows.length;
@@ -185,6 +208,7 @@ export default function ChefAttendance() {
                   <th>Sorties manquantes</th>
                   <th>Absences</th>
                   <th>Abs. non justifiées</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -224,6 +248,11 @@ export default function ChefAttendance() {
                           <span className="badge badge-termine">0</span>
                         )}
                       </td>
+                      <td>
+                        <button className="modifier" type="button" onClick={() => openDetail(row)}>
+                          Détails
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -233,6 +262,129 @@ export default function ChefAttendance() {
           </section>
         </div>
       </div>
+
+      {/* Employee Detail Modal */}
+      {detailEmployee && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setDetailEmployee(null)}
+        >
+          <div
+            style={{ background: dark ? "#1e293b" : "#fff", borderRadius: 28, width: "100%", maxWidth: 820, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.28)", overflow: "hidden" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: "20px 24px", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#64748b" }}>Détails de présence</p>
+                <h2 style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>{detailEmployee.full_name}</h2>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#94a3b8" }}>{detailEmployee.email} • {detailEmployee.service}</p>
+              </div>
+              <button onClick={() => setDetailEmployee(null)} type="button" style={{ border: "none", borderRadius: 12, padding: "8px 16px", fontWeight: 700, cursor: "pointer", background: dark ? "#334155" : "#f1f5f9", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }}>
+                Fermer
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div style={{ padding: "14px 24px", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap" }}>Du</span>
+                <input type="date" lang="fr" value={detailFromDate} onChange={e => setDetailFromDate(e.target.value)}
+                  style={{ padding: "7px 12px", borderRadius: 12, border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap" }}>Au</span>
+                <input type="date" lang="fr" value={detailToDate} onChange={e => setDetailToDate(e.target.value)}
+                  style={{ padding: "7px 12px", borderRadius: 12, border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }} />
+                {(detailFromDate || detailToDate) && (
+                  <button type="button" onClick={() => { setDetailFromDate(""); setDetailToDate(""); }}
+                    style={{ border: "none", borderRadius: 10, padding: "6px 10px", fontSize: 12, cursor: "pointer", background: dark ? "#334155" : "#e2e8f0", color: dark ? "#e2e8f0" : "#64748b", fontWeight: 600 }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+              {["all", "Complet", "Entrée seule", "Absent"].map(s => (
+                <button key={s} type="button"
+                  onClick={() => setDetailStatusFilter(s)}
+                  style={{ border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    background: detailStatusFilter === s ? (dark ? "#3b82f6" : "#0f172a") : (dark ? "#334155" : "#e2e8f0"),
+                    color: detailStatusFilter === s ? "#fff" : (dark ? "#cbd5e1" : "#475569") }}>
+                  {s === "all" ? "Tous" : s}
+                </button>
+              ))}
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {detailLoading ? (
+                <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Chargement...</div>
+              ) : detailData ? (() => {
+                const filtered = detailData.days.filter(day => {
+                  if (day.is_weekend) return false;
+                  if (detailStatusFilter !== "all" && day.status !== detailStatusFilter) return false;
+                  if (detailFromDate && day.date < detailFromDate) return false;
+                  if (detailToDate && day.date > detailToDate) return false;
+                  return true;
+                });
+                const statusColor = s => s === "Complet" ? "#16a34a" : s === "Absent" ? "#dc2626" : "#d97706";
+                const statusBg = s => s === "Complet" ? "#dcfce7" : s === "Absent" ? "#fee2e2" : "#fef9c3";
+                const justifColor = s => s === "Justifié" ? "#16a34a" : s === "En cours" ? "#d97706" : s === "Non acceptée" ? "#dc2626" : "#64748b";
+
+                return filtered.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Aucun enregistrement correspondant.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: dark ? "#0f172a" : "#f8fafc" }}>
+                        {["Date", "Entrée", "Sortie", "Statut", "Justification"].map(h => (
+                          <th key={h} style={{ padding: "10px 20px", textAlign: "left", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#64748b", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(day => (
+                        <tr key={day.date} style={{ borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}` }}>
+                          <td style={{ padding: "11px 20px", fontWeight: 600, color: dark ? "#e2e8f0" : "#0f172a" }}>
+                            {new Date(`${day.date}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                          </td>
+                          <td style={{ padding: "11px 20px", color: day.check_in ? (dark ? "#86efac" : "#16a34a") : "#94a3b8", fontWeight: day.check_in ? 600 : 400 }}>{day.check_in || "--:--"}</td>
+                          <td style={{ padding: "11px 20px", color: day.check_out ? (dark ? "#e2e8f0" : "#0f172a") : "#94a3b8" }}>{day.check_out || "--:--"}</td>
+                          <td style={{ padding: "11px 20px" }}>
+                            <span style={{ background: statusBg(day.status), color: statusColor(day.status), borderRadius: 20, padding: "3px 12px", fontWeight: 700, fontSize: 12 }}>{day.status}</span>
+                          </td>
+                          <td style={{ padding: "11px 20px" }}>
+                            {day.justification_status ? (
+                              <span style={{ color: justifColor(day.justification_status), fontWeight: 600, fontSize: 12 }}>{day.justification_status}</span>
+                            ) : day.status === "Absent" ? (
+                              <span style={{ color: "#94a3b8", fontSize: 12 }}>Non justifié</span>
+                            ) : <span style={{ color: "#94a3b8" }}>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })() : null}
+            </div>
+
+            {/* Footer stats */}
+            {detailData && !detailLoading && (
+              <div style={{ padding: "14px 24px", borderTop: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", gap: 24, flexWrap: "wrap" }}>
+                {[
+                  { label: "Complets", val: detailData.days.filter(d => !d.is_weekend && d.status === "Complet").length, color: "#16a34a" },
+                  { label: "Entrée seule", val: detailData.days.filter(d => !d.is_weekend && d.status === "Entrée seule").length, color: "#d97706" },
+                  { label: "Absences", val: detailData.days.filter(d => !d.is_weekend && d.status === "Absent").length, color: "#dc2626" },
+                  { label: "Justifiés", val: detailData.days.filter(d => d.raw_justif_status === "JUSTIFIE").length, color: "#2563eb" },
+                ].map(item => (
+                  <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.color, display: "inline-block" }} />
+                    <span style={{ fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>{item.label}:</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: item.color }}>{item.val}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

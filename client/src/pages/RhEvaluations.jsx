@@ -41,12 +41,12 @@ function getRecommendationTheme(recommendation, dark) {
     ? {
         badge: "bg-slate-800 text-slate-100 ring-slate-700",
         dot: "bg-slate-400",
-        panel: "from-slate-500/15 to-slate-500/5",
+        panel: "from-slate-500/15 to-slate-500/10",
       }
     : {
         badge: "bg-slate-100 text-slate-700 ring-slate-200",
         dot: "bg-slate-400",
-        panel: "from-slate-500/10 to-slate-500/5",
+        panel: "from-slate-500/10 to-slate-500/10",
       };
   return recommendationThemes[recommendation] || fallback;
 }
@@ -157,7 +157,7 @@ export default function RhEvaluations() {
             <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
               <div className="relative overflow-hidden rounded-[30px] border border-emerald-300/20 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_40%),linear-gradient(135deg,#0f172a_0%,#133241_45%,#1d6f57_100%)] p-6 text-white shadow-2xl shadow-emerald-950/20">
                 <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-                <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
+                <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/10" />
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200/80">
                   {isGrh ? "Vision globale" : "Lecture RH"}
                 </p>
@@ -176,8 +176,8 @@ export default function RhEvaluations() {
                   >
                     Actualiser les évaluations
                   </button>
-                  <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
-                    Score moyen : {stats.averageScore}/5
+                  <div className="rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-medium text-slate-100">
+                    Score moyen : {stats.averageScore}/10
                   </div>
                 </div>
               </div>
@@ -263,7 +263,7 @@ export default function RhEvaluations() {
                           <div className={`min-w-[220px] rounded-[24px] bg-gradient-to-br p-4 ${theme.panel} ${dark ? "border border-slate-800" : "border border-white/70"}`}>
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Performance</p>
                             <p className={`mt-3 text-4xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                              {item.global_score}/5
+                              {item.global_score}/10
                             </p>
                             <p className="mt-2 text-sm text-slate-500">Période {item.period || "-"}</p>
                           </div>
@@ -309,7 +309,7 @@ export default function RhEvaluations() {
                   {[
                     { label: "Périmètre", value: isGrh ? "Global GRH" : "RH", helper: "Scope de lecture appliqué" },
                     { label: "Top recommandation", value: stats.excellent, helper: "Évaluations au plus haut niveau" },
-                    { label: "Score moyen", value: `${stats.averageScore}/5`, helper: "Lecture globale des performances" },
+                    { label: "Score moyen", value: `${stats.averageScore}/10`, helper: "Lecture globale des performances" },
                   ].map((item) => (
                     <div
                       key={item.label}

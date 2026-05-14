@@ -29,14 +29,15 @@ export default function Conge() {
 
   const fetchData = async () => {
     try {
-      const typesRes = await axios.get("/api/leave-types/");
+      const t = Date.now();
+      const [typesRes, balancesRes, leavesRes] = await Promise.all([
+        axios.get("/api/leave-types/", { params: { _t: t } }),
+        axios.get("/api/leaves/balances/", { params: { _t: t } }),
+        axios.get("/api/leaves/me/", { params: { _t: t } }),
+      ]);
       setLeaveTypes(typesRes.data);
-
-      const balancesRes = await axios.get("/api/leaves/balances/");
       setBalances(balancesRes.data);
-
-      const leavesRes = await axios.get("/api/leaves/me/");
-      setRequests(leavesRes.data);
+      setRequests(Array.isArray(leavesRes.data) ? leavesRes.data : []);
     } catch (err) {
       console.error("Error fetching leave data:", err);
     }
@@ -44,6 +45,9 @@ export default function Conge() {
 
   useEffect(() => {
     fetchData();
+    const onVisible = () => { if (document.visibilityState === "visible") fetchData(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const selectedLeaveType = useMemo(
@@ -118,6 +122,12 @@ export default function Conge() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Annual leave balance info derived from balances
+  const annualBalance = useMemo(
+    () => balances.find((b) => b.type_code === "CA"),
+    [balances],
+  );
+
   const validateForm = () => {
     if (selectedLeaveType?.requires_attachment && !selectedAttachment) {
       setFeedback("");
@@ -139,6 +149,28 @@ export default function Conge() {
         setFeedback("");
         setErrorMessage(
           `Ce type de congé demande un préavis de ${selectedLeaveType.notice_days} jour(s). La première date possible est le ${earliestDate.toLocaleDateString("fr-FR")}.`,
+        );
+        return false;
+      }
+    }
+
+    // Annual leave 2-split rule (front-end guard)
+    if (form.type === "CA" && annualBalance && form.startDate && form.endDate) {
+      const fractionsUsed = annualBalance.annual_fractions_used ?? 0;
+      const daysRemaining = annualBalance.annual_days_remaining ?? 30;
+      const requested =
+        Math.round(
+          Math.abs(new Date(`${form.endDate}T00:00:00`) - new Date(`${form.startDate}T00:00:00`)) /
+            86400000,
+        ) + 1;
+
+      if (fractionsUsed >= 2) {
+        setErrorMessage("Vous avez déjà utilisé vos 2 fractions de congé annuel pour cette année.");
+        return false;
+      }
+      if (fractionsUsed === 1 && requested !== daysRemaining) {
+        setErrorMessage(
+          `2ème fraction : vous devez demander exactement ${daysRemaining} jour(s) restant(s) (ni plus, ni moins).`,
         );
         return false;
       }
@@ -197,6 +229,10 @@ export default function Conge() {
         const earliestDate = formatIsoDateLabel(errorData.earliest_start_date);
         setErrorMessage(
           `Préavis non respecté: ${errorData.required_notice_days} jour(s) requis.${earliestDate ? ` Première date possible: ${earliestDate}.` : ""}`,
+        );
+      } else if (errorData?.code === "ANNUAL_EXACT_REMAINING") {
+        setErrorMessage(
+          `2ème fraction : vous devez demander exactement ${errorData.days_remaining} jour(s) restant(s).`,
         );
       } else {
         setErrorMessage(
@@ -373,6 +409,27 @@ export default function Conge() {
                     )}
                   </label>
 
+                  {form.type === "CA" && annualBalance && (() => {
+                    const used = annualBalance.annual_fractions_used ?? 0;
+                    const remaining = annualBalance.annual_days_remaining ?? 30;
+                    const total = annualBalance.nbrJoursDroit ?? 30;
+                    if (used >= 2) return (
+                      <div style={{ gridColumn: "1/-1", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#991b1b", fontWeight: 600 }}>
+                        Vous avez déjà utilisé vos 2 fractions de congé annuel pour cette année. Aucune nouvelle demande possible.
+                      </div>
+                    );
+                    if (used === 1) return (
+                      <div style={{ gridColumn: "1/-1", background: "#fef9c3", border: "1px solid #fde047", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#713f12", fontWeight: 600 }}>
+                        2ème fraction : vous devez demander exactement <strong>{remaining} jour(s)</strong> (solde restant sur {total} jours).
+                      </div>
+                    );
+                    return (
+                      <div style={{ gridColumn: "1/-1", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#1e40af" }}>
+                        Congé annuel : vous pouvez prendre tout ou une partie ({total} jours). Maximum <strong>2 fractions</strong> par an. La 2ème fraction devra couvrir exactement le solde restant.
+                      </div>
+                    );
+                  })()}
+
                   <label className="main-field">
                     Date de début
                     <input
@@ -478,7 +535,6 @@ export default function Conge() {
                   <th>Type</th>
                   <th>Jours</th>
                   <th>Statut</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -493,46 +549,6 @@ export default function Conge() {
                       <span className={`badge ${getStatusClass(item.status)}`}>
                         {getStatusLabel(item.status)}
                       </span>
-                    </td>
-                    <td>
-                      {item.status === "PENDING" ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            className="btn-save"
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: 13,
-                              background: "#2563eb",
-                            }}
-                            onClick={() => startEditingRequest(item)}
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-save"
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: 13,
-                              background: "#dc2626",
-                            }}
-                            onClick={() => cancelPendingRequest(item.id)}
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ color: "#64748b", fontSize: 13 }}>
-                          Aucune action
-                        </span>
-                      )}
                     </td>
                   </tr>
                 ))}
