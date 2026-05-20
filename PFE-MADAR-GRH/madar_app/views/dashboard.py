@@ -188,12 +188,12 @@ def get_rh_dashboard(request):
         unread_notifications = notifications_qs.filter(is_read=False).count()
 
         raw_score = 8 + attendance_rate * 0.05 + overall_progress * 0.06 - late_count * 0.7 - unread_notifications * 0.15
-        final_score = round(max(6, min(20, raw_score)), 1)
-        if final_score >= 16:
+        final_score = round(max(0, min(10, raw_score)), 1)
+        if final_score >= 8:
             status_label = 'Excellent'
-        elif final_score >= 12:
+        elif final_score >= 6:
             status_label = 'Bon'
-        elif final_score >= 8:
+        elif final_score >= 4:
             status_label = 'Moyen'
         else:
             status_label = 'À améliorer'
@@ -291,7 +291,7 @@ def get_rh_dashboard(request):
             {'id': 'late', 'label': 'Tâches en retard', 'value': late_count, 'helper': 'Délais dépassés'},
             {'id': 'attendance', 'label': 'Taux de présence', 'value': f'{attendance_rate}%', 'helper': 'Présence personnelle'},
             {'id': 'performance', 'label': 'Performance mensuelle', 'value': f'{round(sum(weekly_performance) / len(weekly_performance))}%', 'helper': 'Performance du mois'},
-            {'id': 'score', 'label': 'Note mensuelle', 'value': f'{final_score:.1f}/20', 'helper': 'Score estimé actuel'},
+            {'id': 'score', 'label': 'Note mensuelle', 'value': f'{final_score:.1f}/10', 'helper': 'Score estimé actuel'},
         ]
 
         response_data = {

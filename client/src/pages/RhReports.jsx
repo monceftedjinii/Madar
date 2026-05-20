@@ -11,9 +11,8 @@ function getCurrentMonthRange() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-  const firstDay = `${year}-${month}-01`;
-  const lastDate = new Date(year, now.getMonth() + 1, 0).getDate();
-  return { from: firstDay, to: `${year}-${month}-${String(lastDate).padStart(2, "0")}` };
+  const today = String(now.getDate()).padStart(2, "0");
+  return { from: `${year}-${month}-01`, to: `${year}-${month}-${today}` };
 }
 
 function MetricCard({ dark, eyebrow, value, helper, accent }) {
@@ -45,6 +44,7 @@ export default function RhReports() {
   const [roleCtx, setRoleCtx] = useState({});
   const [filters, setFilters] = useState(getCurrentMonthRange);
   const [summary, setSummary] = useState(null);
+  const [todaySummary, setTodaySummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -58,15 +58,19 @@ export default function RhReports() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const [meResponse, response] = await Promise.all([
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [meResponse, response, todayResponse] = await Promise.all([
         axios.get("/api/whoami/"),
         axios.get("/api/reports/summary/", { params: filters }),
+        axios.get("/api/reports/summary/", { params: { from: todayStr, to: todayStr } }),
       ]);
       setRoleCtx(getRoleContext({ role: meResponse.data?.role, service: meResponse.data?.service, employee_role: meResponse.data?.employee_role }));
       setSummary(response.data || null);
+      setTodaySummary(todayResponse.data || null);
     } catch (error) {
       console.error("Erreur chargement rapports RH:", error);
       setSummary(null);
+      setTodaySummary(null);
       setErrorMessage("Impossible de charger les indicateurs RH.");
     } finally {
       setLoading(false);
@@ -80,16 +84,10 @@ export default function RhReports() {
   const cards = useMemo(() => {
     if (!summary) return [];
     return [
-      { label: "Employés", value: summary.employees_count ?? 0 },
-      { label: "Jours de présence", value: summary.attendance_days_count ?? 0 },
-      { label: "Absences détectées", value: summary.absences_detected_count ?? 0 },
-      { label: "Congés en attente", value: summary.leaves_pending_count ?? 0 },
-      { label: "Congés acceptés", value: summary.leaves_accepted_count ?? 0 },
-      { label: "Documents créés", value: summary.documents_created_count ?? 0 },
-      { label: "Documents validés", value: summary.documents_validated_count ?? 0 },
-      { label: "Flags disciplinaires", value: summary.discipline_flags_count ?? 0 },
+      { label: "Employés actifs", value: summary.employees_count ?? 0, sub: `Ont travaillé sur la période` },
+      { label: "Absences détectées", value: summary.absences_detected_count ?? 0, sub: `${filters.from} → ${filters.to}` },
     ];
-  }, [summary]);
+  }, [summary, filters]);
 
   const isGrh = roleCtx.isDrh ?? false;
 
@@ -131,7 +129,7 @@ export default function RhReports() {
         >
           <div className="profile-naaav">
             <div className="yasar">
-              <h1 className="monprofile">{isGrh ? "Pilotage et rapports GRH" : "Rapports RH"}</h1>
+              <h1 className="monprofile">Rapport d'absence</h1>
               <p className="morinfo">
                 {isGrh
                   ? "Pilotez les exports globaux et l'activité RH depuis un cockpit plus lisible."
@@ -161,7 +159,7 @@ export default function RhReports() {
                 <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
                 <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200/80">
-                  {isGrh ? "Pilotage global" : "Vue rapports RH"}
+                  Rapport d'absence
                 </p>
                 <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
                   Un cockpit RH plus net pour filtrer, lire les indicateurs et lancer les exports utiles.
@@ -185,10 +183,10 @@ export default function RhReports() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <MetricCard dark={dark} eyebrow="Employés" value={summary?.employees_count ?? 0} helper="Effectif visible" accent="from-cyan-400 via-cyan-500 to-blue-500" />
-                <MetricCard dark={dark} eyebrow="Présence" value={summary?.attendance_days_count ?? 0} helper="Jours de présence comptabilisés" accent="from-emerald-400 via-emerald-500 to-lime-500" />
-                <MetricCard dark={dark} eyebrow="Absences" value={summary?.absences_detected_count ?? 0} helper="Absences détectées sur la période" accent="from-amber-400 via-orange-500 to-rose-500" />
-                <MetricCard dark={dark} eyebrow="Documents" value={summary?.documents_validated_count ?? 0} helper="Documents validés" accent="from-fuchsia-400 via-pink-500 to-rose-500" />
+                <MetricCard dark={dark} eyebrow="Employés actifs" value={summary?.employees_count ?? 0} helper="Ont travaillé sur la période" accent="from-cyan-400 via-cyan-500 to-blue-500" />
+                <MetricCard dark={dark} eyebrow="Présence aujourd'hui" value={todaySummary?.attendance_days_count ?? 0} helper="Employés présents ce jour" accent="from-emerald-400 via-emerald-500 to-lime-500" />
+                <MetricCard dark={dark} eyebrow="Absences aujourd'hui" value={Math.max(0, (summary?.employees_count ?? 0) - (todaySummary?.attendance_days_count ?? 0))} helper="Employés absents ce jour" accent="from-amber-400 via-orange-500 to-rose-500" />
+                <MetricCard dark={dark} eyebrow="Absences (période)" value={summary?.absences_detected_count ?? 0} helper={`Sur la période sélectionnée`} accent="from-rose-400 via-red-500 to-orange-500" />
               </div>
             </div>
           </section>
@@ -212,11 +210,31 @@ export default function RhReports() {
                 <div className="mt-5 grid gap-4">
                   <div>
                     <FilterLabel>Du</FilterLabel>
-                    <input type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} className={fieldClassName} />
+                    <input
+                      type="date"
+                      value={filters.from}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => {
+                        const newFrom = e.target.value;
+                        setFilters((p) => ({
+                          ...p,
+                          from: newFrom,
+                          to: p.to < newFrom ? newFrom : p.to,
+                        }));
+                      }}
+                      className={fieldClassName}
+                    />
                   </div>
                   <div>
                     <FilterLabel>Au</FilterLabel>
-                    <input type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} className={fieldClassName} />
+                    <input
+                      type="date"
+                      value={filters.to}
+                      min={filters.from}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
+                      className={fieldClassName}
+                    />
                   </div>
                 </div>
               </section>
@@ -233,8 +251,6 @@ export default function RhReports() {
                   {[
                     { label: "Présence PDF", action: () => downloadReport("attendance", "pdf") },
                     { label: "Présence Excel", action: () => downloadReport("attendance", "xlsx") },
-                    { label: "Congés PDF", action: () => downloadReport("leaves", "pdf") },
-                    { label: "Tâches Excel", action: () => downloadReport("tasks", "xlsx") },
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -286,6 +302,7 @@ export default function RhReports() {
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{card.label}</p>
                       <p className={`mt-4 text-4xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{card.value}</p>
+                      {card.sub && <p className="mt-1 text-[11px] text-slate-400">{card.sub}</p>}
                     </div>
                   ))
                 )}

@@ -51,16 +51,18 @@ def employees_list(request):
 	# Check if this is for messaging (should return all employees for message recipients)
 	for_messaging = request.query_params.get('for_messaging', 'false').lower() == 'true'
 	
+	include_inactive = request.query_params.get('include_inactive', 'false').lower() == 'true'
+
 	if for_messaging:
-		# For messaging, return all employees so users can message anyone (except themselves)
-		qs = Employee.objects.all()
+		qs = Employee.objects.filter(is_active=True)
+	elif include_inactive:
+		qs = Employee.objects.filter(is_active=False)
 	else:
 		scope = request.query_params.get('scope', '').lower()
 		if scope == 'team':
-			qs = employee_team_queryset_for(request.user)
+			qs = employee_team_queryset_for(request.user).filter(is_active=True)
 		else:
-			# Use normal scoped queryset for other purposes (tasks, leaves, etc.)
-			qs = employee_queryset_for(request.user)
+			qs = employee_queryset_for(request.user).filter(is_active=True)
 
 	employees = list(qs.order_by('id'))
 	emails = [e.email for e in employees]
@@ -106,8 +108,11 @@ def employees_list(request):
 			'phone_number': e.phone_number if not for_messaging else None,
 			'address': e.address if not for_messaging else None,
 			'contract_type': e.contract_type if not for_messaging else None,
+			'contract_file_url': (request.build_absolute_uri(e.contract_file.url) if e.contract_file and e.contract_file.name else None) if not for_messaging else None,
 			'salary': str(e.salary) if not for_messaging else None,
 			'hired_at': e.hired_at.isoformat() if e.hired_at else None,
+			'is_active': e.is_active,
+			'terminated_at': e.terminated_at.isoformat() if e.terminated_at else None,
 			'attendance_pin': e.attendance_pin if not for_messaging else None,
 			'service': {
 				'code': e.service.code,
@@ -360,6 +365,7 @@ def create_employee(request):
 			phone_number=phone_number,
 			address=address,
 			contract_type=contract_type,
+			contract_file=request.FILES.get('contract_file') or None,
 			service=service,
 			salary=salary,
 			attendance_pin=attendance_pin,
@@ -488,6 +494,8 @@ def update_employee(request, pk):
 	employee.phone_number = phone_number
 	employee.address = address
 	employee.contract_type = contract_type
+	if request.FILES.get('contract_file'):
+		employee.contract_file = request.FILES.get('contract_file')
 	employee.service = service
 	employee.salary = salary
 	employee.attendance_pin = attendance_pin or ''
@@ -512,6 +520,7 @@ def update_employee(request, pk):
 			'phone_number': employee.phone_number,
 			'address': employee.address,
 			'contract_type': employee.contract_type,
+			'contract_file_url': request.build_absolute_uri(employee.contract_file.url) if employee.contract_file and employee.contract_file.name else None,
 			'service': {
 				'code': employee.service.code,
 				'nomService': employee.service.nomService,
@@ -540,6 +549,36 @@ def delete_employee(request, pk):
 		related_user.delete()
 
 	return Response({'success': True, 'detail': 'Employee deleted successfully'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsGRH])
+def terminate_employee(request, pk):
+	"""Mark employee as terminated (fin de contrat) — keeps record."""
+	try:
+		employee = Employee.objects.get(id=pk)
+	except Employee.DoesNotExist:
+		return Response({'detail': 'Employé introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+	# Verify DRH PIN
+	pin = request.data.get('pin', '').strip()
+	if pin:
+		emp_profile = Employee.objects.filter(email=request.user.email).first()
+		if not emp_profile or emp_profile.attendance_pin != pin:
+			return Response({'detail': 'PIN incorrect.'}, status=status.HTTP_403_FORBIDDEN)
+
+	from django.utils import timezone as tz
+	employee.is_active = False
+	employee.terminated_at = tz.localdate()
+	employee.save(update_fields=['is_active', 'terminated_at'])
+
+	# Disable linked user account
+	related_user = User.objects.filter(email=employee.email).first()
+	if related_user:
+		related_user.is_active = False
+		related_user.save(update_fields=['is_active'])
+
+	return Response({'success': True, 'detail': f'{employee.first_name} {employee.last_name} marqué comme ancien employé.'})
 
 
 @api_view(['POST'])

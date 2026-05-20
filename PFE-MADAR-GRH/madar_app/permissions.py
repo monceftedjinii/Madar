@@ -75,12 +75,16 @@ class HasRole(permissions.BasePermission):
         if not allowed:
             return False
 
-        # HR service has its own role mapping; all other services use user.role directly
+        # Always allow if user.role matches directly (e.g. DRH with role=CHEF)
+        if user.role in allowed:
+            return True
+
+        # HR service has its own role mapping for RH roles
         if user.service == ServiceChoices.HR:
             hr_roles = [RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH]
             return any(r in allowed for r in hr_roles)
 
-        return user.role in allowed
+        return False
 
 
 class HasService(permissions.BasePermission):

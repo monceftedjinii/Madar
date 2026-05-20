@@ -220,14 +220,15 @@ export default function ChefLeaves() {
                   <th>Type</th>
                   <th>Période</th>
                   <th>Motif</th>
+                  <th>Justificatif</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="5">Chargement...</td></tr>
+                  <tr><td colSpan="6">Chargement...</td></tr>
                 ) : requests.filter((r) => r.status === "PENDING" && r.can_decide).length === 0 ? (
-                  <tr><td colSpan="5">Aucune demande en attente de votre décision.</td></tr>
+                  <tr><td colSpan="6">Aucune demande en attente de votre décision.</td></tr>
                 ) : (
                   requests.filter((r) => r.status === "PENDING" && r.can_decide).map((requestItem) => {
                     const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
@@ -237,6 +238,16 @@ export default function ChefLeaves() {
                         <td>{requestItem.type_label || requestItem.type || "-"}</td>
                         <td>{formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}</td>
                         <td>{requestItem.reason || "-"}</td>
+                        <td>
+                          {requestItem.attachment ? (
+                            <a href={requestItem.attachment} target="_blank" rel="noreferrer"
+                              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "#eff6ff", border: "1px solid #93c5fd", color: "#2563eb", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+                              📎 Voir
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
                         <td>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button className="modifier" disabled={actionId === requestItem.id} onClick={() => decideRequest(requestItem.id, "approve")} type="button">Valider</button>
@@ -269,6 +280,7 @@ export default function ChefLeaves() {
                   <th>Employé</th>
                   <th>Type</th>
                   <th>Période</th>
+                  <th>Justificatif</th>
                   <th>Statut final</th>
                   <th>Décision finale par</th>
                   <th>Date décision</th>
@@ -276,9 +288,9 @@ export default function ChefLeaves() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="6">Chargement...</td></tr>
+                  <tr><td colSpan="7">Chargement...</td></tr>
                 ) : requests.filter((r) => r.status !== "PENDING" || !r.can_decide).length === 0 ? (
-                  <tr><td colSpan="6">Aucun historique pour le moment.</td></tr>
+                  <tr><td colSpan="7">Aucun historique pour le moment.</td></tr>
                 ) : (
                   requests.filter((r) => r.status !== "PENDING" || !r.can_decide).map((requestItem) => {
                     const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
@@ -287,6 +299,16 @@ export default function ChefLeaves() {
                         <td>{fullName}</td>
                         <td>{requestItem.type_label || requestItem.type || "-"}</td>
                         <td>{formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}</td>
+                        <td>
+                          {requestItem.attachment ? (
+                            <a href={requestItem.attachment} target="_blank" rel="noreferrer"
+                              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "#eff6ff", border: "1px solid #93c5fd", color: "#2563eb", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+                              📎 Voir
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
                         <td>
                           {requestItem.status === "PENDING" && !requestItem.can_decide ? (
                             <span className="badge badge-attente">En attente RH</span>

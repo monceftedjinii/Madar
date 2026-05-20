@@ -79,8 +79,17 @@ def update_profile(request):
             if 'last_name' in request.data:
                 user.last_name = request.data['last_name']
             
+            # Handle profile picture removal
+            if request.data.get('remove_profile_picture') in ('1', 'true', True):
+                if user.profile_picture:
+                    user.profile_picture.delete(save=False)
+                user.profile_picture = None
+                if employee and employee.profile_picture:
+                    employee.profile_picture.delete(save=False)
+                    employee.profile_picture = None
+
             # Handle profile picture upload
-            if 'profile_picture' in request.FILES:
+            elif 'profile_picture' in request.FILES:
                 # Delete old profile picture if exists
                 if user.profile_picture:
                     user.profile_picture.delete(save=False)
@@ -99,7 +108,7 @@ def update_profile(request):
                 if 'address' in request.data:
                     employee.address = request.data['address']
 
-                if 'profile_picture' in request.FILES:
+                if 'profile_picture' in request.FILES and request.data.get('remove_profile_picture') not in ('1', 'true', True):
                     if employee.profile_picture:
                         employee.profile_picture.delete(save=False)
                     employee.profile_picture = request.FILES['profile_picture']

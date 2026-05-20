@@ -11,7 +11,6 @@ import usePersistentNavState from "../../hooks/usePersistentNavState";
 import ActivityPanels from "../../components/dashboard/ActivityPanels";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import EmployeeSummaryCard from "../../components/dashboard/EmployeeSummaryCard";
-import MonthlyScoreCard from "../../components/dashboard/MonthlyScoreCard";
 import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
 import ProgressLineChart from "../../components/dashboard/ProgressLineChart";
 import SkillsRadarChart from "../../components/dashboard/SkillsRadarChart";
@@ -261,14 +260,8 @@ export default function Dashboard() {
             );
           })()}
 
-          <section className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
+          <section>
             <EmployeeSummaryCard dark={dark} employee={dashboardData.profile} />
-            <MonthlyScoreCard
-              dark={dark}
-              achievement={dashboardData.scoreInsights.achievement}
-              improvement={dashboardData.scoreInsights.improvement}
-              score={dashboardData.profile.finalScore}
-            />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">

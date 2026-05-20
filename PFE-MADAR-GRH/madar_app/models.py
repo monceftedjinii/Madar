@@ -373,12 +373,15 @@ class Employee(models.Model):
     phone_number = models.CharField(max_length=30, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')
     contract_type = models.CharField(max_length=10, choices=ContractType.choices, default=ContractType.CDI)
+    contract_file = models.FileField(upload_to='contracts/', null=True, blank=True)
     hired_at = models.DateField(auto_now_add=True)
     service = models.ForeignKey(Service, on_delete=models.CASCADE, to_field='code', null=True, blank=True)
     role = models.CharField(max_length=20, choices=EmployeeRoleChoices.choices, null=True, blank=True, verbose_name="Role")
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     attendance_pin = models.CharField(max_length=4, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    is_active = models.BooleanField(default=True, verbose_name="Actif")
+    terminated_at = models.DateField(null=True, blank=True, verbose_name="Date de fin de contrat")
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -1967,6 +1970,7 @@ class FormationRequest(models.Model):
     nom = models.CharField(max_length=255, help_text='Formation name')
     description = models.TextField(help_text='Formation description')
     reasons = models.TextField(blank=True, help_text='Reasons for requesting this formation')
+    people_count = models.PositiveIntegerField(default=1, help_text='Number of employees needed')
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
     approved_formation = models.ForeignKey('FormationCatalog', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests')
     created_at = models.DateTimeField(auto_now_add=True)

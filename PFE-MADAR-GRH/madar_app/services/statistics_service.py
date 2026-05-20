@@ -453,7 +453,7 @@ class StatisticsService:
     @classmethod
     def _employee_queryset(cls, filters=None):
         parsed = cls._parse_filters(filters)
-        queryset = Employee.objects.all()
+        queryset = Employee.objects.filter(is_active=True)
 
         if parsed['service']:
             queryset = queryset.filter(

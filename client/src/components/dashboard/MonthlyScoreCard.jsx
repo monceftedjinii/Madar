@@ -1,7 +1,7 @@
 function getComment(score) {
-  if (score >= 16) return "Excellente performance";
-  if (score >= 12) return "Bon travail";
-  if (score >= 8) return "À améliorer";
+  if (score >= 9) return "Excellente performance";
+  if (score >= 7) return "Bon travail";
+  if (score >= 5) return "À améliorer";
   return "Performance insuffisante";
 }
 
@@ -25,7 +25,7 @@ export default function MonthlyScoreCard({ score, achievement, improvement, dark
         </div>
         <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 px-5 py-4 text-white shadow-lg">
           <p className="text-xs uppercase tracking-[0.2em] text-blue-100">Note finale</p>
-          <strong className="mt-2 block text-3xl font-bold">{score.toFixed(1)}/20</strong>
+          <strong className="mt-2 block text-3xl font-bold">{score.toFixed(1)}/10</strong>
         </div>
       </div>
 

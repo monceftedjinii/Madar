@@ -535,6 +535,7 @@ export default function Conge() {
                   <th>Type</th>
                   <th>Jours</th>
                   <th>Statut</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -549,6 +550,26 @@ export default function Conge() {
                       <span className={`badge ${getStatusClass(item.status)}`}>
                         {getStatusLabel(item.status)}
                       </span>
+                    </td>
+                    <td>
+                      {item.status === "PENDING" && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => startEditingRequest(item)}
+                            style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #3b82f6", background: "#eff6ff", color: "#1d4ed8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cancelPendingRequest(item.id)}
+                            style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

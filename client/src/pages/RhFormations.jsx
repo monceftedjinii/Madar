@@ -96,6 +96,7 @@ export default function RhFormations() {
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [requests, setRequests] = useState([]);
   const [catalog, setCatalog] = useState([]);
+  const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogForm, setCatalogForm] = useState(initialCatalogForm);
   const [selectedCatalogByRequest, setSelectedCatalogByRequest] = useState({});
   const [roleCtx, setRoleCtx] = useState({});
@@ -426,25 +427,54 @@ export default function RhFormations() {
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Catalogue associe</p>
                             {isPending ? (
                               <div className="mt-3 space-y-3">
-                                <select
-                                  value={selectedCatalogByRequest[item.id] || ""}
-                                  onChange={(event) =>
-                                    setSelectedCatalogByRequest((previous) => ({
-                                      ...previous,
-                                      [item.id]: event.target.value,
-                                    }))
-                                  }
-                                  className={fieldClassName}
-                                >
-                                  <option value="">Choisir une formation du catalogue</option>
-                                  {catalog.map((catalogItem) => (
-                                    <option key={catalogItem.id} value={catalogItem.id}>
-                                      {catalogItem.name} • {catalogItem.people_required} pers.
-                                    </option>
-                                  ))}
-                                </select>
+                                {/* Search formation */}
+                                {(() => {
+                                  const reqSearch = (selectedCatalogByRequest[`search_${item.id}`] || "").toLowerCase();
+                                  const filteredCatalog = reqSearch
+                                    ? catalog.filter(c => c.name.toLowerCase().includes(reqSearch) || c.company_name.toLowerCase().includes(reqSearch))
+                                    : catalog;
+                                  const selectedFormation = catalog.find(c => String(c.id) === String(selectedCatalogByRequest[item.id]));
+                                  return (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={selectedCatalogByRequest[`search_${item.id}`] || ""}
+                                        onChange={e => setSelectedCatalogByRequest(p => ({ ...p, [`search_${item.id}`]: e.target.value }))}
+                                        placeholder="Rechercher une formation..."
+                                        className={fieldClassName}
+                                      />
+                                      {selectedFormation && (
+                                        <div className={`rounded-xl px-4 py-3 flex items-center justify-between gap-3 ${dark ? "bg-emerald-950/40 border border-emerald-800" : "bg-emerald-50 border border-emerald-200"}`}>
+                                          <div>
+                                            <p className="text-sm font-semibold text-emerald-700">{selectedFormation.name}</p>
+                                            <p className="text-xs text-slate-500">{selectedFormation.company_name} · {selectedFormation.duration_hours}h</p>
+                                          </div>
+                                          <button type="button" onClick={() => setSelectedCatalogByRequest(p => ({ ...p, [item.id]: "" }))}
+                                            style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>×</button>
+                                        </div>
+                                      )}
+                                      {!selectedFormation && filteredCatalog.length > 0 && (
+                                        <div className={`rounded-xl border overflow-hidden ${dark ? "border-slate-700" : "border-slate-200"}`} style={{ maxHeight: 200, overflowY: "auto" }}>
+                                          {filteredCatalog.map(c => (
+                                            <button key={c.id} type="button"
+                                              onClick={() => setSelectedCatalogByRequest(p => ({ ...p, [item.id]: String(c.id), [`search_${item.id}`]: "" }))}
+                                              className={`w-full text-left px-4 py-3 text-sm transition ${dark ? "hover:bg-slate-800 text-slate-100" : "hover:bg-slate-50 text-slate-900"}`}
+                                              style={{ borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}`, display: "block" }}
+                                            >
+                                              <span className="font-semibold">{c.name}</span>
+                                              <span className="text-slate-500 ml-2">· {c.company_name} · {c.duration_hours}h</span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {!selectedFormation && reqSearch && filteredCatalog.length === 0 && (
+                                        <p className="text-xs text-slate-400 px-1">Aucune formation trouvée pour "{reqSearch}".</p>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                 <p className="text-xs text-slate-500">
-                                  Associez une formation existante avant de valider la demande.
+                                  Recherchez et sélectionnez une formation avant de valider.
                                 </p>
                               </div>
                             ) : item.approved_formation ? (
@@ -549,8 +579,28 @@ export default function RhFormations() {
                   </button>
                 </div>
 
-                <div className="mt-5 grid gap-3">
-                  {catalog.length === 0 ? (
+                <input
+                  type="text"
+                  value={catalogSearch}
+                  onChange={e => setCatalogSearch(e.target.value)}
+                  placeholder="Rechercher une formation..."
+                  className={`mt-4 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
+                    dark
+                      ? "border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400"
+                      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-cyan-500"
+                  }`}
+                />
+
+                <div className="mt-4 grid gap-3">
+                  {(() => {
+                    const q = catalogSearch.trim().toLowerCase();
+                    const filtered = q
+                      ? catalog.filter(item =>
+                          item.name.toLowerCase().includes(q) ||
+                          item.company_name.toLowerCase().includes(q)
+                        )
+                      : catalog;
+                    if (catalog.length === 0) return (
                     <div
                       className={`rounded-[24px] border border-dashed px-5 py-8 text-center ${
                         dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"
@@ -558,8 +608,13 @@ export default function RhFormations() {
                     >
                       <p className="text-sm text-slate-500">Le catalogue est vide pour l'instant.</p>
                     </div>
-                  ) : (
-                    catalog.map((item) => (
+                    );
+                    if (filtered.length === 0) return (
+                      <div className={`rounded-[24px] border border-dashed px-5 py-8 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                        <p className="text-sm text-slate-500">Aucun résultat pour &quot;{catalogSearch}&quot;.</p>
+                      </div>
+                    );
+                    return filtered.map((item) => (
                       <div
                         key={item.id}
                         className={`rounded-[24px] border p-4 ${
@@ -590,8 +645,8 @@ export default function RhFormations() {
                           </div>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
               </section>
 

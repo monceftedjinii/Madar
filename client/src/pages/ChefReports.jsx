@@ -59,13 +59,7 @@ export default function ChefReports() {
     if (!summary) return [];
     return [
       { label: "Employés du scope", value: summary.employees_count ?? 0 },
-      { label: "Jours de présence", value: summary.attendance_days_count ?? 0 },
       { label: "Absences détectées", value: summary.absences_detected_count ?? 0 },
-      { label: "Congés en attente", value: summary.leaves_pending_count ?? 0 },
-      { label: "Documents créés", value: summary.documents_created_count ?? 0 },
-      { label: "Documents validés", value: summary.documents_validated_count ?? 0 },
-      { label: "Avertissements", value: summary.warnings_count ?? 0 },
-      { label: "Flags disciplinaires", value: summary.discipline_flags_count ?? 0 },
     ];
   }, [summary]);
 
@@ -183,9 +177,7 @@ export default function ChefReports() {
                 <h4>Exports disponibles</h4>
                 <div className="chef-action-row">
                   <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Présence PDF</button>
-                  <button className="modifier" onClick={() => downloadReport("attendance", "xlsx")} type="button">Présence Excel</button>
-                  <button className="modifier" onClick={() => downloadReport("leaves", "pdf")} type="button">Congés PDF</button>
-                  <button className="modifier" onClick={() => downloadReport("tasks", "xlsx")} type="button">Tâches Excel</button>
+                  <button className="modifier" onClick={() => downloadReport("attendance", "pdf")} type="button">Présence PDF</button>
                 </div>
               </div>
             </div>

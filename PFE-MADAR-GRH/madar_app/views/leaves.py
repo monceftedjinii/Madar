@@ -301,12 +301,15 @@ def cancel_my_leave(request, pk):
 @permission_classes([IsAuthenticated])
 def department_pending_leaves(request):
 	"""List leaves visible to current validator role, with workflow metadata."""
+	drh = is_drh(request.user)
 	is_chef = (
-		request.user.role == RoleChoices.CHEF or
-		(request.user.service != ServiceChoices.HR and
-		 request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+		not drh and (
+			request.user.role == RoleChoices.CHEF or
+			(request.user.service != ServiceChoices.HR and
+			 request.user.get_employee_role() == EmployeeRoleChoices.CHEF)
+		)
 	)
-	is_rh_conge = is_conge_rh(request.user)
+	is_rh_conge = drh or is_conge_rh(request.user)
 
 	if not is_chef and not is_rh_conge:
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)

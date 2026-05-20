@@ -39,12 +39,12 @@ class ChefDashboardService:
         # All employees in service (excluding chef) shown in team list
         team_members = list(
             Employee.objects.select_related("position", "service")
-            .filter(service=self.chef_employee.service)
+            .filter(service=self.chef_employee.service, is_active=True)
             .exclude(email=self.user.email)
             .order_by("first_name", "last_name")
         )
-        # Full service size including the chef
-        total_service_size = Employee.objects.filter(service=self.chef_employee.service).count()
+        # Team size excluding the chef himself
+        total_service_size = Employee.objects.filter(service=self.chef_employee.service, is_active=True).exclude(email=self.user.email).count()
         team_emails = [employee.email for employee in team_members]
         team_users = {
             item.email: item
@@ -75,7 +75,7 @@ class ChefDashboardService:
 
         # Include all service employees (including chef) for attendance tracking
         all_service_employees = list(
-            Employee.objects.filter(service=self.chef_employee.service)
+            Employee.objects.filter(service=self.chef_employee.service, is_active=True)
         )
         today_attendance = Attendance.objects.filter(
             employee__in=all_service_employees,

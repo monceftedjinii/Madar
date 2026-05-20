@@ -32,6 +32,8 @@ export default function Profile() {
     address: "",
     role: "",
     department: "",
+    serviceName: "",
+    position: "",
     contract: "",
     contractType: "",
     hireDate: "",
@@ -43,6 +45,7 @@ export default function Profile() {
   });
   const [formData, setFormData] = useState(profileData);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [deletePhoto, setDeletePhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activitiesData, setActivitiesData] = useState({
     leaves: [],
@@ -144,6 +147,8 @@ export default function Profile() {
         me.data.department ||
         me.data.employee_info?.department?.name ||
         "",
+      serviceName: me.data.service_name || "",
+      position: me.data.position || "",
       contract:
         me.data.contract ||
         me.data.employee_info?.contract ||
@@ -283,12 +288,14 @@ export default function Profile() {
       confirm_password: "",
     });
     setSelectedPhoto(null);
+    setDeletePhoto(false);
     setIsEditOpen(true);
   };
 
   const closeEditModal = () => {
     setIsEditOpen(false);
     setSelectedPhoto(null);
+    setDeletePhoto(false);
     setFormData((prev) => ({
       ...prev,
       current_password: "",
@@ -300,6 +307,11 @@ export default function Profile() {
   const handleFormChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDeletePhoto = () => {
+    setDeletePhoto(true);
+    setSelectedPhoto(null);
   };
 
   const handlePhotoChange = (event) => {
@@ -346,7 +358,9 @@ export default function Profile() {
       body.append("phone_number", formData.phone || "");
       body.append("address", formData.address || "");
 
-      if (selectedPhoto) {
+      if (deletePhoto) {
+        body.append("remove_profile_picture", "1");
+      } else if (selectedPhoto) {
         body.append("profile_picture", selectedPhoto);
       }
 
@@ -492,8 +506,8 @@ export default function Profile() {
                     </div>
                   </div>
                   <p>
-                    Rôle : {profileData.role} • Département :{" "}
-                    {profileData.department}
+                    Rôle : {profileData.role} • Service :{" "}
+                    {profileData.serviceName || profileData.department}
                   </p>
                   <div>
                     <div>{profileData.email}</div>
@@ -536,9 +550,15 @@ export default function Profile() {
                   <h3>{profileData.role || "-"}</h3>
                 </div>
                 <div>
-                  <p className="desc">Département</p>
-                  <h3>{profileData.department}</h3>
+                  <p className="desc">Service</p>
+                  <h3>{profileData.serviceName || profileData.department || "-"}</h3>
                 </div>
+                {profileData.position && !["RH", "RH_CONGE", "RH_FORMATION", "DRH"].includes(profileData.role) && (
+                  <div>
+                    <p className="desc">Poste</p>
+                    <h3>{profileData.position}</h3>
+                  </div>
+                )}
                 <div>
                   <p className="desc">Type de contrat</p>
                   <h3>{profileData.contractType || "-"}</h3>
@@ -595,6 +615,9 @@ export default function Profile() {
           formData={formData}
           onChange={handleFormChange}
           onPhotoChange={handlePhotoChange}
+          onDeletePhoto={handleDeletePhoto}
+          deletePhoto={deletePhoto}
+          onCancelDeletePhoto={() => setDeletePhoto(false)}
           isSaving={isSaving}
         />
       </div>

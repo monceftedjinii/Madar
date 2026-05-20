@@ -33,6 +33,10 @@ export default function ChefEvaluations() {
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const { daysLeft, isUnlocked, monthDisplay } = useMemo(() => getMonthInfo(), []);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyMonth, setHistoryMonth] = useState("");
+  const [historyYear, setHistoryYear] = useState("");
+
   const [form, setForm] = useState({
     employeeId: "",
     campaignTitle: "",
@@ -192,200 +196,190 @@ export default function ChefEvaluations() {
           </div>
         </div>
 
-        <div className="chef-page-stack">
-          <section className="chef-hero">
-            <div className="chef-hero-copy">
-              <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Évaluation structurée de l&apos;équipe</h2>
-              <p className="chef-hero-description">
-                Notez les collaborateurs du service selon les critères définis par le système et
-                conservez un historique plus lisible des campagnes déjà remontées.
-              </p>
+        <div style={{ width: "96%", margin: "12px auto 0" }}>
+
+          {/* Compact stats bar */}
+          <div style={{ borderRadius: 20, background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e40af 100%)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", boxShadow: "0 6px 28px rgba(15,23,42,0.35)", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <div>
+                <span style={{ fontSize: 42, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{stats.evaluations}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginLeft: 10 }}>évaluations</span>
+              </div>
+              <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.15)" }} />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[
+                  { label: `${stats.employees} employés`, color: "#7dd3fc", bg: "rgba(125,211,252,0.15)", border: "rgba(125,211,252,0.35)" },
+                  { label: `${stats.criteria} critères`, color: "#d8b4fe", bg: "rgba(216,180,254,0.15)", border: "rgba(216,180,254,0.35)" },
+                  { label: `moy. ${stats.average} / 10`, color: "#fcd34d", bg: "rgba(252,211,77,0.18)", border: "rgba(252,211,77,0.4)" },
+                ].map(p => (
+                  <span key={p.label} style={{ padding: "6px 14px", borderRadius: 20, background: p.bg, border: `1px solid ${p.border}`, fontSize: 13, fontWeight: 800, color: p.color, whiteSpace: "nowrap" }}>{p.label}</span>
+                ))}
+              </div>
             </div>
-            <div className="chef-hero-kpis">
-              <article className="chef-kpi-card">
-                <span>Employés</span>
-                <strong>{stats.employees}</strong>
-                <p>Collaborateurs sélectionnables pour une évaluation.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Critères</span>
-                <strong>{stats.criteria}</strong>
-                <p>Axes de notation disponibles dans le module.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Évaluations</span>
-                <strong>{stats.evaluations}</strong>
-                <p>Historique déjà enregistré pour votre équipe.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Moyenne</span>
-                <strong>{stats.average}</strong>
-                <p>Score global moyen observe dans l&apos;historique chef.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>{isUnlocked ? "Ouvert" : "Ouverture dans"}</span>
-                <strong style={{ color: isUnlocked ? "#16a34a" : "#d97706" }}>
-                  {isUnlocked ? "✓" : `${daysLeft}j`}
-                </strong>
-                <p>{isUnlocked ? `Évaluation ${monthDisplay} disponible.` : `Jours restants avant évaluation ${monthDisplay}.`}</p>
-              </article>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {isUnlocked ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 14, background: "rgba(34,197,94,0.2)", border: "1px solid rgba(34,197,94,0.45)" }}>
+                  <span style={{ fontSize: 18 }}>✅</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 900, color: "#4ade80" }}>Formulaire ouvert</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "rgba(74,222,128,0.7)" }}>{monthDisplay}</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 14, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.45)" }}>
+                  <span style={{ fontSize: 20 }}>🔒</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 900, color: "#fbbf24" }}>Ouverture dans {daysLeft} jours</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "rgba(251,191,36,0.7)" }}>{monthDisplay}</p>
+                  </div>
+                </div>
+              )}
+              <button type="button" onClick={fetchData} style={{ padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", fontSize: 14, fontWeight: 700, cursor: "pointer", color: "#fff" }}>↺</button>
             </div>
-          </section>
+          </div>
 
           {(feedback || errorMessage) && (
-            <div className={`page-feedback ${errorMessage ? "error" : ""}`}>
+            <div style={{ marginBottom: 10, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, background: errorMessage ? "#fee2e2" : "#f0fdf4", color: errorMessage ? "#dc2626" : "#15803d", border: `1px solid ${errorMessage ? "#fca5a5" : "#86efac"}` }}>
               {errorMessage || feedback}
             </div>
           )}
 
-          <section className="chef-panel">
-            <div className="chef-panel-head">
-              <div>
-                <h2>Nouvelle évaluation</h2>
-                <p>Évaluation du mois en cours — disponible les 5 derniers jours du mois.</p>
-              </div>
-              <div className="chef-action-pill">Notation</div>
-            </div>
+          {/* Two-column layout */}
+          <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: 14, alignItems: "start" }}>
 
-            {/* Countdown / unlock banner */}
-            {!isUnlocked ? (
-              <div style={{
-                background: dark ? "#1e293b" : "#f0f9ff",
-                border: `1px solid ${dark ? "#334155" : "#bae6fd"}`,
-                borderRadius: 16, padding: "20px 24px",
-                display: "flex", alignItems: "center", gap: 20,
-              }}>
-                <div style={{
-                  minWidth: 72, height: 72, borderRadius: "50%",
-                  background: dark ? "#0f172a" : "#e0f2fe",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center",
-                  border: `2px solid ${dark ? "#334155" : "#7dd3fc"}`,
-                }}>
-                  <span style={{ fontSize: 26, fontWeight: 900, color: dark ? "#38bdf8" : "#0284c7", lineHeight: 1 }}>{daysLeft}</span>
-                  <span style={{ fontSize: 10, color: dark ? "#94a3b8" : "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>jours</span>
+            {/* Left: evaluation form */}
+            <section style={{ borderRadius: 20, border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", overflow: "hidden", position: "sticky", top: 80, maxHeight: "calc(100vh - 180px)", overflowY: "auto" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}`, background: dark ? "#0a0f1a" : "#f8fafc", position: "sticky", top: 0, zIndex: 2 }}>
+                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>Nouvelle évaluation</h2>
+                <p style={{ margin: "3px 0 0", fontSize: 12, fontWeight: 700, color: isUnlocked ? "#22c55e" : "#f59e0b" }}>
+                  {isUnlocked ? `✓ ${monthDisplay} — formulaire ouvert` : `🔒 ${monthDisplay} — ouverture dans ${daysLeft} jour${daysLeft > 1 ? "s" : ""}`}
+                </p>
+              </div>
+
+              <form onSubmit={submitEvaluation} style={{ padding: "10px 14px", display: "grid", gap: 10, opacity: isUnlocked ? 1 : 0.5, pointerEvents: isUnlocked ? "auto" : "none" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: dark ? "#94a3b8" : "#64748b", marginBottom: 3 }}>Employé</label>
+                    <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 9, border: `1.5px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0a0f1a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box" }}>
+                      <option value="">Choisir</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.full_name || `${emp.first_name} ${emp.last_name}`.trim()}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: dark ? "#94a3b8" : "#64748b", marginBottom: 3 }}>Campagne</label>
+                    <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026"
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 9, border: `1.5px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0a0f1a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                  </div>
                 </div>
+
+                {criteria.map((criterion, idx) => {
+                  const accents = ["#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4"];
+                  const accent = accents[idx % accents.length];
+                  return (
+                  <div key={criterion.id} style={{ border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0a0f1a" : "#fff", borderRadius: 10, padding: "8px 10px", borderLeft: `3px solid ${accent}` }}>
+                    <p style={{ margin: "0 0 6px", fontWeight: 800, fontSize: 12, color: accent }}>{criterion.label}</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 8 }}>
+                      <input type="number" min={criterion.note_min} max={criterion.note_max} step="0.1"
+                        value={form.scores[criterion.id] || ""} onChange={(e) => updateScore(criterion.id, e.target.value)}
+                        placeholder="Note /10"
+                        style={{ padding: "6px 9px", borderRadius: 8, border: `1.5px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                      <input value={form.comments[criterion.id] || ""} onChange={(e) => updateComment(criterion.id, e.target.value)}
+                        placeholder="Commentaire"
+                        style={{ padding: "6px 9px", borderRadius: 8, border: `1.5px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                  </div>
+                  );
+                })}
+
                 <div>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: dark ? "#f1f5f9" : "#0f172a" }}>
-                    Évaluation verrouillée — {monthDisplay}
-                  </p>
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>
-                    Le formulaire s'ouvre dans <strong>{daysLeft} jour{daysLeft > 1 ? "s" : ""}</strong>. Les évaluations sont disponibles durant les 5 derniers jours du mois.
-                  </p>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: dark ? "#94a3b8" : "#64748b", marginBottom: 3 }}>Commentaire global</label>
+                  <textarea rows={3} value={form.overallComment} onChange={(e) => setForm((p) => ({ ...p, overallComment: e.target.value }))}
+                    style={{ width: "100%", padding: "7px 10px", borderRadius: 9, border: `1.5px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0a0f1a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical" }} />
                 </div>
-              </div>
-            ) : (
-              <div style={{
-                background: dark ? "#052e16" : "#f0fdf4",
-                border: `1px solid ${dark ? "#166534" : "#86efac"}`,
-                borderRadius: 16, padding: "12px 20px",
-                fontSize: 13, fontWeight: 600,
-                color: dark ? "#86efac" : "#166534",
-              }}>
-                Évaluation ouverte pour {monthDisplay} — vous pouvez noter votre équipe.
-              </div>
-            )}
 
-            <form onSubmit={submitEvaluation} style={{ width: "100%", display: "grid", gap: 14, opacity: isUnlocked ? 1 : 0.45, pointerEvents: isUnlocked ? "auto" : "none" }}>
-              <div className="chef-form-grid">
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button type="submit" disabled={submitting}
+                    style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: submitting ? "#94a3b8" : "linear-gradient(135deg,#3b82f6,#2563eb)", color: "#fff", fontWeight: 800, fontSize: 13, cursor: submitting ? "not-allowed" : "pointer", boxShadow: submitting ? "none" : "0 4px 14px rgba(59,130,246,0.35)" }}>
+                    {submitting ? "Enregistrement..." : "Enregistrer"}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* Right: history */}
+            <section style={{ borderRadius: 20, border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 180px)" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}`, background: dark ? "#0a0f1a" : "#f8fafc", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <p className="chef-form-label">Employé</p>
-                  <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} style={fieldStyle}>
-                    <option value="">Choisir un employé</option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.full_name || `${employee.first_name} ${employee.last_name}`.trim() || employee.email}
-                      </option>
-                    ))}
-                  </select>
+                  <h2 style={{ margin: 0, fontSize: 14, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>Historique des évaluations</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{evaluations.length} évaluation{evaluations.length > 1 ? "s" : ""} enregistrée{evaluations.length > 1 ? "s" : ""}</p>
                 </div>
-                <div>
-                  <p className="chef-form-label">Mois</p>
-                  <input value={monthDisplay} readOnly style={{ ...fieldStyle, background: dark ? "#1e293b" : "#f8fafc", cursor: "default", fontWeight: 600 }} />
-                </div>
-                <div>
-                  <p className="chef-form-label">Campagne</p>
-                  <input value={form.campaignTitle} onChange={(e) => setForm((p) => ({ ...p, campaignTitle: e.target.value }))} placeholder="Ex: Campagne 2026" style={fieldStyle} />
-                </div>
+                <span style={{ padding: "5px 14px", borderRadius: 20, background: dark ? "rgba(253,230,138,0.12)" : "rgba(253,230,138,0.25)", border: "1px solid rgba(253,230,138,0.4)", fontSize: 13, fontWeight: 800, color: "#d97706" }}>
+                  moy. {stats.average} / 10
+                </span>
               </div>
-
-            {criteria.map((criterion) => (
-              <div key={criterion.id} style={{ border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#ffffff", borderRadius: 14, padding: 14 }}>
-                <p style={{ fontWeight: 700, marginBottom: 8, color: dark ? "#e2e8f0" : "#0f172a" }}>{criterion.label}</p>
-                <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
-                  <input
-                    type="number"
-                    min={criterion.note_min}
-                    max={criterion.note_max}
-                    step="0.1"
-                    value={form.scores[criterion.id] || ""}
-                    onChange={(e) => updateScore(criterion.id, e.target.value)}
-                    placeholder={`Note / 10`}
-                    style={fieldStyle}
-                  />
-                  <input
-                    value={form.comments[criterion.id] || ""}
-                    onChange={(e) => updateComment(criterion.id, e.target.value)}
-                    placeholder="Commentaire sur ce critère"
-                    style={fieldStyle}
-                  />
-                </div>
+              <div style={{ padding: "10px 14px", borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}`, flexShrink: 0, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input type="text" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Rechercher par nom..."
+                  style={{ flex: "1 1 140px", padding: "6px 12px", borderRadius: 9, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                <select value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 9, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none" }}>
+                  <option value="">Tous mois</option>
+                  {["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"].map((m, i) => (
+                    <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>
+                  ))}
+                </select>
+                <select value={historyYear} onChange={e => setHistoryYear(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 9, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#fff", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 12, outline: "none" }}>
+                  <option value="">Toutes années</option>
+                  {[...new Set(evaluations.map(e => e.year))].sort((a, b) => b - a).map(y => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
               </div>
-            ))}
-
-            <div>
-              <p className="chef-form-label">Commentaire global</p>
-              <textarea rows={4} value={form.overallComment} onChange={(e) => setForm((p) => ({ ...p, overallComment: e.target.value }))} style={{ ...fieldStyle, resize: "vertical" }} />
-            </div>
-
-            <div className="chef-actions">
-              <button className="modifier" disabled={submitting} type="submit">
-                {submitting ? "Enregistrement..." : "Enregistrer l'évaluation"}
-              </button>
-            </div>
-          </form>
-          </section>
-
-          <section className="chef-panel">
-            <div className="chef-panel-head">
-              <div>
-                <h2>Historique des évaluations équipe</h2>
-                <p>Évaluations déjà remontées pour les employés de votre service.</p>
-              </div>
-              <div className="chef-action-pill">Historique</div>
-            </div>
-            <div className="activite-table-scroll">
-              <table className="activite-table">
-              <thead>
-                <tr>
-                  <th>Employé</th>
-                  <th>Période</th>
-                  <th>Date</th>
-                  <th>Note</th>
-                  <th>Recommandation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="5">Chargement des évaluations...</td></tr>
-                ) : evaluations.length === 0 ? (
-                  <tr><td colSpan="5">Aucune évaluation enregistrée pour l'instant.</td></tr>
-                ) : (
-                  evaluations.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.employee?.full_name || "-"}</td>
-                      <td>{item.period}</td>
-                      <td>{item.evaluation_date}</td>
-                      <td>{Number(item.global_score).toFixed(2)}/10</td>
-                      <td>{item.recommendation}</td>
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                    <tr style={{ background: dark ? "#0a0f1a" : "#f8fafc" }}>
+                      {["Employé", "Période", "Date", "Note", "Recommandation"].map(h => (
+                        <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8", borderBottom: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
                     </tr>
-                  ))
-                )}
-              </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan="5" style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>Chargement...</td></tr>
+                    ) : (() => {
+                      const q = historySearch.trim().toLowerCase();
+                      const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+                      const filtered = evaluations.filter(item => {
+                        const name = (item.employee?.full_name || "").toLowerCase();
+                        const matchName = !q || name.split(" ").some(p => p.startsWith(q)) || name.includes(q);
+                        const matchMonth = !historyMonth || (() => { const idx = MONTHS.findIndex(m => (item.period || "").toLowerCase().includes(m)); return idx !== -1 && String(idx + 1).padStart(2, "0") === historyMonth; })();
+                        const matchYear = !historyYear || String(item.year) === historyYear;
+                        return matchName && matchMonth && matchYear;
+                      });
+                      if (!filtered.length) return <tr><td colSpan="5" style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>Aucun résultat.</td></tr>;
+                      return filtered.map((item, idx) => (
+                        <tr key={item.id} style={{ background: idx % 2 === 0 ? "transparent" : (dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)"), borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}` }}>
+                          <td style={{ padding: "8px 12px", fontWeight: 600, color: dark ? "#e2e8f0" : "#0f172a", whiteSpace: "nowrap" }}>{item.employee?.full_name || "-"}</td>
+                          <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{item.period}</td>
+                          <td style={{ padding: "8px 12px", color: "#94a3b8", whiteSpace: "nowrap" }}>{item.evaluation_date}</td>
+                          <td style={{ padding: "8px 12px" }}>
+                            <span style={{ fontWeight: 900, fontSize: 15, color: Number(item.global_score) >= 8 ? "#22c55e" : Number(item.global_score) >= 6 ? "#f59e0b" : "#ef4444" }}>
+                              {Number(item.global_score).toFixed(1)}<span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>/10</span>
+                            </span>
+                          </td>
+                          <td style={{ padding: "8px 12px", color: dark ? "#94a3b8" : "#64748b" }}>{item.recommendation || "—"}</td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

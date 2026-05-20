@@ -74,6 +74,7 @@ def whoami(request):
 		'first_name': first_name,
 		'last_name': last_name,
 		'position': employee.position.name if employee and employee.position else None,
+		'service_name': employee.service.nomService if employee and employee.service else None,
 		'phone_number': employee.phone_number if employee else None,
 		'address': employee.address if employee else None,
 		'contract_type': employee.contract_type if employee else None,

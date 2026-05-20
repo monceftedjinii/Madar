@@ -1,89 +1,94 @@
-const badgeStyles = {
-  Excellent: "bg-emerald-100 text-emerald-700",
-  Bon: "bg-blue-100 text-blue-700",
-  Moyen: "bg-amber-100 text-amber-700",
-  "A ameliorer": "bg-rose-100 text-rose-700",
-  "À améliorer": "bg-rose-100 text-rose-700",
+const badgeConfig = {
+  Excellent:      { bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.4)",  color: "#22c55e" },
+  Bon:            { bg: "rgba(59,130,246,0.15)",  border: "rgba(59,130,246,0.4)", color: "#3b82f6" },
+  Moyen:          { bg: "rgba(245,158,11,0.15)",  border: "rgba(245,158,11,0.4)", color: "#f59e0b" },
+  "A ameliorer":  { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
+  "À améliorer":  { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
 };
 
 function getAccountInitials(fullName) {
-  const parts = (fullName || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
+  const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "U";
-  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
-
-  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 export default function EmployeeSummaryCard({ employee, dark = false }) {
-  const cardClass = dark
-    ? "rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm"
-    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+  const badge = badgeConfig[employee.statusLabel] || badgeConfig["Moyen"];
 
-  const statBoxClass = dark ? "rounded-2xl bg-slate-800 p-4" : "rounded-2xl bg-slate-50 p-4";
+  const statItems = [
+    { label: "Taux de présence",   value: `${employee.attendanceRate}%`,   color: "#3b82f6" },
+    { label: "Progression globale", value: `${employee.overallProgress}%`, color: "#8b5cf6" },
+  ];
 
   return (
-    <article className={cardClass}>
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        {employee.avatar ? (
-          <img
-            alt={employee.fullName}
-            className="h-24 w-24 rounded-2xl object-cover shadow-md"
-            src={employee.avatar}
-          />
-        ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-2xl font-extrabold uppercase tracking-[0.12em] text-white shadow-md">
-            {getAccountInitials(employee.fullName)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className={`text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-              {employee.fullName}
-            </h2>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                badgeStyles[employee.statusLabel] || "bg-slate-200 text-slate-700"
-              }`}
-            >
-              {employee.statusLabel}
-            </span>
-          </div>
-          <p className={`mt-1 text-sm font-medium ${dark ? "text-slate-300" : "text-slate-500"}`}>
-            {employee.role} • {employee.department}
-          </p>
-          <p className="mt-1 text-sm text-slate-400">{employee.email}</p>
+    <article style={{
+      borderRadius: 20,
+      border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`,
+      background: dark
+        ? "linear-gradient(135deg,#0f172a,#1e293b)"
+        : "linear-gradient(135deg,#ffffff,#f8fafc)",
+      padding: "20px 24px",
+      display: "flex",
+      alignItems: "center",
+      gap: 24,
+      flexWrap: "wrap",
+      boxShadow: dark ? "0 4px 24px rgba(0,0,0,0.3)" : "0 4px 24px rgba(15,23,42,0.07)",
+    }}>
+
+      {/* Avatar */}
+      {employee.avatar ? (
+        <img alt={employee.fullName}
+          style={{ width: 64, height: 64, borderRadius: 16, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+          src={employee.avatar} />
+      ) : (
+        <div style={{
+          width: 64, height: 64, borderRadius: 16, flexShrink: 0,
+          background: "linear-gradient(135deg,#059669,#0d9488)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, fontWeight: 900, color: "#fff", letterSpacing: "0.05em",
+          boxShadow: "0 4px 14px rgba(5,150,105,0.35)",
+        }}>
+          {getAccountInitials(employee.fullName)}
         </div>
+      )}
+
+      {/* Name + info */}
+      <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>
+            {employee.fullName}
+          </h2>
+          <span style={{
+            padding: "3px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+            background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color,
+          }}>
+            {employee.statusLabel}
+          </span>
+        </div>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: dark ? "#94a3b8" : "#64748b", fontWeight: 500 }}>
+          {employee.role}{employee.role && employee.department ? " · " : ""}{employee.department}
+        </p>
+        <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{employee.email}</p>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className={statBoxClass}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Taux de présence
-          </p>
-          <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-            {employee.attendanceRate}%
-          </p>
-        </div>
-        <div className={statBoxClass}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Progression globale
-          </p>
-          <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-            {employee.overallProgress}%
-          </p>
-        </div>
-        <div className={statBoxClass}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Note finale
-          </p>
-          <p className={`mt-3 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-            {employee.finalScore.toFixed(1)}/20
-          </p>
-        </div>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
+        {statItems.map(s => (
+          <div key={s.label} style={{
+            minWidth: 110, padding: "12px 16px", borderRadius: 14,
+            background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+            border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`,
+            textAlign: "center",
+          }}>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#94a3b8" }}>
+              {s.label}
+            </p>
+            <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }}>
+              {s.value}
+            </p>
+          </div>
+        ))}
       </div>
     </article>
   );

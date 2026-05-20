@@ -112,6 +112,7 @@ export default function Attendance() {
   const [pinValue, setPinValue] = useState("");
   const [pinError, setPinError] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [currentEmployeeRole, setCurrentEmployeeRole] = useState("");
   const [hiredAt, setHiredAt] = useState(null);
 
   const defaultRange = useMemo(() => getDefaultRange(), []);
@@ -223,6 +224,7 @@ export default function Attendance() {
         const response = await axios.get("/api/whoami/", authConfig);
         if (isMounted) {
           setCurrentUserRole(response.data?.role || "");
+          setCurrentEmployeeRole(response.data?.employee_role || "");
           if (response.data?.hired_at) setHiredAt(response.data.hired_at);
         }
       } catch {
@@ -311,6 +313,9 @@ export default function Attendance() {
   const canUseAttendance =
     !currentUserRole ||
     ["EMPLOYEE", "CHEF", "RH_SIMPLE", "RH_AGENT", "RH_SENIOR", "GRH"].includes(currentUserRole);
+
+  const canJustifyAbsence = !["GRH", "RH_SIMPLE", "RH_AGENT"].includes(currentUserRole)
+    && !["DRH", "RH", "RH_FORMATION", "RH_CONGE"].includes(currentEmployeeRole);
 
   const canCheckIn =
     canUseAttendance && !todayRecord?.check_in_time && !actionInProgress;
@@ -699,7 +704,7 @@ export default function Attendance() {
                       <th>Entrée</th>
                       <th>Sortie</th>
                       <th>Statut</th>
-                      <th>Justification</th>
+                      {canJustifyAbsence && <th>Justification</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -744,6 +749,7 @@ export default function Attendance() {
                               {statusLabel}
                             </span>
                           </td>
+                          {canJustifyAbsence && (
                           <td>
                             {isAbsent && justifStatus ? (
                               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -767,6 +773,7 @@ export default function Attendance() {
                               </div>
                             ) : null}
                           </td>
+                          )}
                         </tr>
                       );
                     })}

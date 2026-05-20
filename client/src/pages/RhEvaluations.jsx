@@ -77,6 +77,10 @@ export default function RhEvaluations() {
   const [evaluations, setEvaluations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [evalSearch, setEvalSearch] = useState("");
+  const [evalMonth, setEvalMonth] = useState("");
+  const [evalYear, setEvalYear] = useState("");
+  const [evalService, setEvalService] = useState("");
 
   const fetchEvaluations = async () => {
     try {
@@ -218,22 +222,103 @@ export default function RhEvaluations() {
                 </div>
               </div>
 
+              {/* Search + filters */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  value={evalSearch}
+                  onChange={e => setEvalSearch(e.target.value)}
+                  placeholder="Rechercher par nom ou prénom..."
+                  style={{
+                    flex: "1 1 200px", padding: "10px 14px", borderRadius: 12,
+                    border: `1.5px solid ${dark ? "#334155" : "#cbd5e1"}`,
+                    background: dark ? "#0f172a" : "#f8fafc",
+                    color: dark ? "#e2e8f0" : "#0f172a",
+                    fontSize: 14, outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <select
+                  value={evalMonth}
+                  onChange={e => setEvalMonth(e.target.value)}
+                  style={{
+                    padding: "10px 14px", borderRadius: 12,
+                    border: `1.5px solid ${dark ? "#334155" : "#cbd5e1"}`,
+                    background: dark ? "#0f172a" : "#f8fafc",
+                    color: dark ? "#e2e8f0" : "#0f172a",
+                    fontSize: 14, outline: "none",
+                  }}
+                >
+                  <option value="">Tous les mois</option>
+                  {["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"].map((m, i) => (
+                    <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={evalYear}
+                  onChange={e => setEvalYear(e.target.value)}
+                  style={{
+                    padding: "10px 14px", borderRadius: 12,
+                    border: `1.5px solid ${dark ? "#334155" : "#cbd5e1"}`,
+                    background: dark ? "#0f172a" : "#f8fafc",
+                    color: dark ? "#e2e8f0" : "#0f172a",
+                    fontSize: 14, outline: "none",
+                  }}
+                >
+                  <option value="">Toutes les années</option>
+                  {[...new Set(evaluations.map(e => e.year))].sort((a, b) => b - a).map(y => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+                <select
+                  value={evalService}
+                  onChange={e => setEvalService(e.target.value)}
+                  style={{
+                    padding: "10px 14px", borderRadius: 12,
+                    border: `1.5px solid ${dark ? "#334155" : "#cbd5e1"}`,
+                    background: dark ? "#0f172a" : "#f8fafc",
+                    color: dark ? "#e2e8f0" : "#0f172a",
+                    fontSize: 14, outline: "none",
+                  }}
+                >
+                  <option value="">Tous les services</option>
+                  {[...new Set(evaluations.map(e => e.employee?.service).filter(Boolean))].sort().map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
               {loading ? (
                 <div className="grid gap-4">
                   {[1, 2, 3].map((item) => (
                     <div key={item} className={`h-40 animate-pulse rounded-[28px] ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />
                   ))}
                 </div>
-              ) : evaluations.length === 0 ? (
-                <div className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucune évaluation</p>
-                  <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Aucune évaluation RH disponible pour le moment.
-                  </h3>
-                </div>
-              ) : (
+              ) : (() => {
+                const q = evalSearch.trim().toLowerCase();
+                const filtered = evaluations.filter(item => {
+                  const name = (item.employee?.full_name || "").toLowerCase();
+                  const matchName = !q || name.split(" ").some(p => p.startsWith(q)) || name.includes(q);
+                  const matchMonth = !evalMonth || (() => {
+                    const period = item.period || "";
+                    const months = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+                    const idx = months.findIndex(m => period.toLowerCase().includes(m));
+                    return idx !== -1 && String(idx + 1).padStart(2, "0") === evalMonth;
+                  })();
+                  const matchYear = !evalYear || String(item.year) === evalYear;
+                  const matchService = !evalService || (item.employee?.service || "") === evalService;
+                  return matchName && matchMonth && matchYear && matchService;
+                });
+                if (filtered.length === 0) return (
+                  <div className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"}`}>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucun résultat</p>
+                    <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                      Aucune évaluation ne correspond à vos filtres.
+                    </h3>
+                  </div>
+                );
+                return (
                 <div className="grid gap-4">
-                  {evaluations.map((item) => {
+                  {filtered.map((item) => {
                     const theme = getRecommendationTheme(item.recommendation, dark);
                     return (
                       <article
@@ -289,7 +374,8 @@ export default function RhEvaluations() {
                     );
                   })}
                 </div>
-              )}
+                );
+              })()}
             </section>
 
             <aside className="grid gap-6">
@@ -308,7 +394,6 @@ export default function RhEvaluations() {
                 <div className="mt-5 grid gap-3">
                   {[
                     { label: "Périmètre", value: isGrh ? "Global GRH" : "RH", helper: "Scope de lecture appliqué" },
-                    { label: "Top recommandation", value: stats.excellent, helper: "Évaluations au plus haut niveau" },
                     { label: "Score moyen", value: `${stats.averageScore}/10`, helper: "Lecture globale des performances" },
                   ].map((item) => (
                     <div

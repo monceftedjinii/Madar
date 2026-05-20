@@ -341,7 +341,6 @@ export default function RhLeaves() {
           <div className={`flex gap-2 rounded-[20px] border p-1.5 ${dark ? "border-slate-800 bg-slate-900/80" : "border-slate-200 bg-white/80"}`}>
             {[
               { key: "validation", label: "Validation des congés" },
-              { key: "absences", label: "Absences globales" },
               { key: "global", label: "Tous les congés" },
             ].map((tab) => (
               <button
@@ -363,7 +362,7 @@ export default function RhLeaves() {
             ))}
           </div>
 
-          {activeTab === "absences" && (
+          {activeTab === "absences_disabled_removed" && (
             <div className="flex flex-col gap-6">
               <section className={`rounded-[32px] border p-6 shadow-sm ${dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"}`}>
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -575,71 +574,31 @@ export default function RhLeaves() {
 
           {activeTab === "validation" && (
             <>
-            <section
-            className={`overflow-hidden rounded-[36px] border p-6 md:p-8 ${
-              dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/85"
-            }`}
-          >
-            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-              <div className="relative overflow-hidden rounded-[30px] border border-sky-300/20 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.22),_transparent_40%),linear-gradient(135deg,#0f172a_0%,#13213c_45%,#165c75_100%)] p-6 text-white shadow-2xl shadow-sky-950/20">
-                <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-                <div className="absolute bottom-0 right-0 h-28 w-28 rounded-tl-[40px] border-l border-t border-white/10 bg-white/5" />
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-200/80">
-                  Hub validation RH
-                </p>
-                <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight md:text-4xl">
-                  Une lecture plus nette des demandes de congés avant validation ou refus.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200">
-                  Les demandes actives sont maintenant présentées sous forme de cartes détaillées avec l'étape en cours,
-                  la période, le type, le service et un panneau de décision plus propre que l'ancien prompt navigateur.
-                </p>
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={fetchRequests}
-                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-sky-50"
-                  >
-                    Actualiser les demandes
-                  </button>
-                  <div className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100">
-                    {pendingRequests.length} demande{pendingRequests.length > 1 ? "s" : ""} en attente
-                  </div>
+            {/* Compact stats bar */}
+            <div style={{ borderRadius: 20, background: dark ? "linear-gradient(135deg,#0f172a,#1e3a5f)" : "linear-gradient(135deg,#1e40af,#2563eb)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", boxShadow: "0 4px 24px rgba(37,99,235,0.25)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                <div>
+                  <span style={{ fontSize: 40, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{stats.total}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.55)", marginLeft: 10 }}>demandes</span>
+                </div>
+                <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.15)" }} />
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {[
+                    { count: stats.pending,  label: "en attente", bg: "rgba(251,191,36,0.2)",  border: "rgba(251,191,36,0.5)",  color: "#fbbf24" },
+                    { count: stats.accepted, label: "acceptées",  bg: "rgba(34,197,94,0.2)",   border: "rgba(34,197,94,0.5)",   color: "#4ade80" },
+                    { count: stats.refused,  label: "refusées",   bg: "rgba(239,68,68,0.18)",  border: "rgba(239,68,68,0.45)",  color: "#f87171" },
+                  ].map(p => (
+                    <div key={p.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 18px", borderRadius: 14, background: p.bg, border: `1px solid ${p.border}`, minWidth: 80 }}>
+                      <span style={{ fontSize: 26, fontWeight: 900, color: p.color, lineHeight: 1 }}>{p.count}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 3 }}>{p.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <MetricCard
-                  dark={dark}
-                  eyebrow="Total"
-                  value={stats.total}
-                  helper="Demandes visibles dans votre périmètre"
-                  accent="from-sky-400 via-cyan-500 to-blue-500"
-                />
-                <MetricCard
-                  dark={dark}
-                  eyebrow="En attente"
-                  value={stats.pending}
-                  helper="Demandes encore decisionnelles"
-                  accent="from-amber-400 via-orange-500 to-rose-500"
-                />
-                <MetricCard
-                  dark={dark}
-                  eyebrow="Acceptées"
-                  value={stats.accepted}
-                  helper="Demandes déjà validées"
-                  accent="from-emerald-400 via-emerald-500 to-lime-500"
-                />
-                <MetricCard
-                  dark={dark}
-                  eyebrow="Refusées"
-                  value={stats.refused}
-                  helper="Demandes clôturées par refus"
-                  accent="from-rose-400 via-rose-500 to-red-500"
-                />
-              </div>
+              <button type="button" onClick={fetchRequests} style={{ padding: "10px 20px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.1)", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#fff", backdropFilter: "blur(4px)" }}>
+                ↺ Actualiser
+              </button>
             </div>
-          </section>
 
           {(feedback || errorMessage) && (
             <div
@@ -657,164 +616,86 @@ export default function RhLeaves() {
             </div>
           )}
 
-          <div className="grid gap-6 xl:grid-cols-[1.45fr_0.92fr]">
-            <section
-              className={`rounded-[32px] border p-6 shadow-sm ${
-                dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
-              }`}
-            >
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <section className={`rounded-[24px] border shadow-sm ${dark ? "border-slate-800 bg-slate-900/90" : "border-white/80 bg-white/90"}`}>
+              <div className={`flex items-center justify-between gap-4 px-5 py-3 border-b ${dark ? "border-slate-800 bg-slate-950/60" : "border-slate-100 bg-slate-50/80"}`} style={{ borderRadius: "24px 24px 0 0" }}>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Demandes de congés</p>
-                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    File de validation
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                    Chaque carte présente le collaborateur, la période demandée, le type, le motif et l'étape de workflow.
-                  </p>
+                  <h2 className={`text-sm font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>File de validation</h2>
+                  <p className="text-xs text-slate-500">{loading ? "Chargement..." : `${requests.length} demande${requests.length > 1 ? "s" : ""} dans votre périmètre`}</p>
                 </div>
-                <div
-                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${
-                    dark ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {loading ? "Chargement..." : `${requests.length} element${requests.length > 1 ? "s" : ""}`}
-                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pendingRequests.length > 0 ? "bg-amber-100 text-amber-800" : (dark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600")}`}>
+                  {pendingRequests.length} en attente
+                </span>
               </div>
 
               {loading ? (
-                <div className="grid gap-4">
-                  {[1, 2, 3].map((item) => (
-                    <div
-                      key={item}
-                      className={`h-48 animate-pulse rounded-[28px] ${
-                        dark ? "bg-slate-800/70" : "bg-slate-100"
-                      }`}
-                    />
-                  ))}
-                </div>
+                <div className="grid gap-3 p-4">{[1,2,3].map(i => <div key={i} className={`h-16 animate-pulse rounded-2xl ${dark ? "bg-slate-800/70" : "bg-slate-100"}`} />)}</div>
               ) : requests.length === 0 ? (
-                <div
-                  className={`rounded-[28px] border border-dashed px-6 py-12 text-center ${
-                    dark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-slate-50"
-                  }`}
-                >
+                <div className="px-6 py-10 text-center">
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Aucune demande</p>
-                  <h3 className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Aucune demande RH visible pour le moment.
-                  </h3>
-                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
-                    Les nouvelles demandes apparaîtront ici avec leur étape de workflow et les actions de validation disponibles.
-                  </p>
+                  <h3 className={`mt-2 text-lg font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>Aucune demande RH visible.</h3>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-3 p-4">
                   {requests.map((requestItem) => {
                     const canDecide = !!requestItem.can_decide && requestItem.status === "PENDING";
                     const theme = getStatusTheme(requestItem.status, dark);
 
                     return (
-                      <article
-                        key={requestItem.id}
-                        className={`rounded-[28px] border p-5 transition ${
-                          dark ? "border-slate-800 bg-slate-950/65 hover:border-slate-700" : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div className="max-w-3xl">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className={`h-3 w-3 rounded-full ${theme.dot}`} />
-                              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                Demande #{requestItem.id}
+                      <article key={requestItem.id} className={`rounded-2xl border p-4 transition ${dark ? "border-slate-800 bg-slate-950/65 hover:border-slate-700" : "border-slate-200 bg-slate-50/80 hover:border-slate-300"}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${theme.dot}`} />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className={`text-sm font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{getEmployeeName(requestItem)}</h3>
+                                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${theme.badge}`}>{getStatusLabel(requestItem.status)}</span>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {requestItem.type_label || requestItem.type || "-"} · {formatDate(requestItem.start_date)} → {formatDate(requestItem.end_date)}
+                                {requestItem.employee?.service ? ` · ${requestItem.employee.service}` : ""}
                               </p>
-                              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${theme.badge}`}>
-                                {getStatusLabel(requestItem.status)}
-                              </span>
+                              {requestItem.reason && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-lg">{requestItem.reason}</p>}
                             </div>
-                            <h3 className={`mt-3 text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                              {getEmployeeName(requestItem)}
-                            </h3>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">
-                              {requestItem.type_label || requestItem.type || "-"} • {formatDate(requestItem.start_date)} au{" "}
-                              {formatDate(requestItem.end_date)}
-                            </p>
                           </div>
-
-                          <div className={`min-w-[240px] rounded-[24px] bg-gradient-to-br p-4 ${theme.panel} ${dark ? "border border-slate-800" : "border border-white/70"}`}>
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Workflow</p>
-                            <div className="mt-3 space-y-2 text-sm">
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-slate-500">Service</span>
-                                <span className={dark ? "text-slate-100" : "text-slate-900"}>{requestItem.employee?.service || "-"}</span>
-                              </div>
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-slate-500">Étape</span>
-                                <span className={`text-right ${dark ? "text-slate-100" : "text-slate-900"}`}>
-                                  {getStepLabel(requestItem.current_step)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-slate-500">Decision</span>
-                                <span className={dark ? "text-slate-100" : "text-slate-900"}>
-                                  {canDecide ? "Action requise" : "Lecture seule"}
-                                </span>
-                              </div>
-                            </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`text-xs px-2.5 py-1 rounded-full ${dark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                              {getStepLabel(requestItem.current_step)}
+                            </span>
+                            {canDecide ? (
+                              <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">Action requise</span>
+                            ) : null}
                           </div>
                         </div>
 
-                        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
-                          <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Motif</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-600">{requestItem.reason || "Aucun motif renseigné."}</p>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          {requestItem.chef_comment && (
+                            <span className={`text-xs px-2.5 py-1 rounded-full ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}>
+                              Chef: {requestItem.chef_comment}
+                            </span>
+                          )}
+                          {requestItem.decided_by && (
+                            <span className="text-xs text-slate-400">Décidé par: {requestItem.decided_by?.email || requestItem.decided_by}</span>
+                          )}
+                          <div className="ml-auto flex gap-2">
+                            {requestItem.attachment && (
+                              <a href={requestItem.attachment} target="_blank" rel="noreferrer"
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${dark ? "border-sky-700 bg-sky-950/40 text-sky-300 hover:bg-sky-900/60" : "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"}`}>
+                                📎 Justificatif
+                              </a>
+                            )}
+                            {canDecide && (
+                              <>
+                                <button type="button" onClick={() => openDecisionModal(requestItem, "approve")}
+                                  className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition">
+                                  Valider
+                                </button>
+                                <button type="button" onClick={() => openDecisionModal(requestItem, "refuse")}
+                                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${dark ? "border-slate-600 text-slate-200 hover:border-rose-500 hover:text-rose-300" : "border-slate-300 text-slate-600 hover:border-rose-400 hover:text-rose-600"}`}>
+                                  Refuser
+                                </button>
+                              </>
+                            )}
                           </div>
-
-                          <div className={`rounded-[22px] p-4 ${dark ? "bg-slate-900" : "bg-white"}`}>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Commentaires de validation</p>
-                            <div className="mt-2 space-y-2 text-sm text-slate-600">
-                              <p>
-                                <span className="font-semibold text-slate-500">Chef:</span>{" "}
-                                {requestItem.chef_comment || "Aucun commentaire"}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-500">Décisionnaire :</span>{" "}
-                                {requestItem.decided_by?.email || requestItem.decided_by || "-"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/10 pt-5">
-                          <div className="text-sm text-slate-500">
-                            {canDecide
-                              ? "Cette demande attend votre arbitrage."
-                              : "Cette demande n'est pas décisionnelle pour votre rôle ou son statut actuel."}
-                          </div>
-
-                          {canDecide ? (
-                            <div className="flex flex-wrap gap-3">
-                              <button
-                                className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-                                disabled={actionId === requestItem.id}
-                                onClick={() => openDecisionModal(requestItem, "approve")}
-                                type="button"
-                              >
-                                Valider
-                              </button>
-                              <button
-                                className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
-                                  dark
-                                    ? "border-slate-700 bg-slate-900 text-slate-100 hover:border-rose-500 hover:text-rose-300"
-                                    : "border-slate-300 bg-white text-slate-700 hover:border-rose-400 hover:text-rose-600"
-                                } disabled:cursor-not-allowed disabled:opacity-60`}
-                                disabled={actionId === requestItem.id}
-                                onClick={() => openDecisionModal(requestItem, "reject")}
-                                type="button"
-                              >
-                                Refuser
-                              </button>
-                            </div>
-                          ) : null}
                         </div>
                       </article>
                     );
@@ -822,86 +703,6 @@ export default function RhLeaves() {
                 </div>
               )}
             </section>
-
-            <aside className="grid gap-6">
-              <section
-                className={`rounded-[32px] border p-6 shadow-sm ${
-                  dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
-                }`}
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Vue rapide</p>
-                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Priorités du jour
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Résumé des points qui demandent une action immédiate dans le circuit de congés.
-                  </p>
-                </div>
-
-                <div className="mt-5 grid gap-3">
-                  {[
-                    {
-                      label: "Demandes en attente",
-                      value: stats.pending,
-                      helper: "Arbitrages encore ouverts",
-                    },
-                    {
-                      label: "Traitements RH",
-                      value: pendingRequests.filter((item) => item.can_decide).length,
-                      helper: "Actions directement disponibles",
-                    },
-                    {
-                      label: "Période couverte",
-                      value: requests.length ? formatDate(requests[0]?.created_at?.slice?.(0, 10)) : "-",
-                      helper: "Date de la demande la plus récente visible",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className={`rounded-[24px] border p-4 ${
-                        dark ? "border-slate-800 bg-slate-950/70" : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
-                      <p className={`mt-3 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{item.value}</p>
-                      <p className="mt-1 text-sm text-slate-500">{item.helper}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section
-                className={`rounded-[32px] border p-6 shadow-sm ${
-                  dark ? "border-slate-800 bg-slate-900/90 shadow-black/20" : "border-white/80 bg-white/90 shadow-slate-200/70"
-                }`}
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Mode d'emploi</p>
-                  <h2 className={`mt-2 text-2xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Comment traiter une demande
-                  </h2>
-                </div>
-
-                <div className="mt-5 grid gap-3">
-                  {[
-                    "Lisez la période, le type de congé et le motif avant toute décision.",
-                    "Vérifiez l'étape courante pour confirmer que la demande est bien dans votre file.",
-                    "Ajoutez un commentaire avant validation ou refus pour garder une trace claire.",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className={`rounded-[22px] px-4 py-4 text-sm leading-6 ${
-                        dark ? "bg-slate-950/70 text-slate-300" : "bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </aside>
-          </div>
             </>
           )}
         </div>

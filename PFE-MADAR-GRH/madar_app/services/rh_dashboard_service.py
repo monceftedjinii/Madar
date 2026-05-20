@@ -68,7 +68,7 @@ class RhDashboardService:
         if not is_new_rh and not is_old_rh:
             raise ValueError("role RH requis")
 
-        employees_qs = Employee.objects.select_related("service", "position").order_by("first_name", "last_name")
+        employees_qs = Employee.objects.select_related("service", "position").filter(is_active=True).order_by("first_name", "last_name")
         employees = list(employees_qs)
         users_by_email = {item.email: item for item in User.objects.filter(email__in=[emp.email for emp in employees])}
 
@@ -88,7 +88,7 @@ class RhDashboardService:
         online_count = sum(1 for employee in employees if self._is_user_online(users_by_email.get(employee.email)))
 
         service_distribution = list(
-            Employee.objects.filter(service__isnull=False)
+            Employee.objects.filter(service__isnull=False, is_active=True)
             .values("service__nomService")
             .annotate(total=Count("id"))
             .order_by("-total", "service__nomService")[:6]

@@ -107,6 +107,7 @@ const toUiMail = (mail, boxType) => {
     recipientId: mail.recipient?.id || "",
     hasRepliedByMe: Boolean(mail.has_replied_by_me),
     isImportantForMe: Boolean(mail.is_important_for_me),
+    attachments: Array.isArray(mail.attachments) ? mail.attachments : [],
   };
 };
 
@@ -120,6 +121,11 @@ export default function Messagrie() {
   const [replyText, setReplyText] = useState("");
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [composeForm, setComposeForm] = useState(INITIAL_COMPOSE_FORM);
+  const [composeFiles, setComposeFiles] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = React.useRef(null);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
   const [recipients, setRecipients] = useState([]);
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -279,6 +285,10 @@ export default function Messagrie() {
   const closeCompose = () => {
     setIsComposeOpen(false);
     setComposeError("");
+    setComposeFiles([]);
+    setDragOver(false);
+    setRecipientSearch("");
+    setShowRecipientDropdown(false);
   };
 
   const switchBox = (nextBox) => {
@@ -312,6 +322,7 @@ export default function Messagrie() {
         formData.append("recipient_id", composeForm.recipientId);
         formData.append("subject", composeForm.subject.trim());
         formData.append("body", composeForm.message.trim());
+        composeFiles.forEach(f => formData.append("attachments", f));
         await axios.post("/api/messages/send/", formData);
       }
       closeCompose();
@@ -501,7 +512,7 @@ export default function Messagrie() {
           >
             <div className="profile-naaav">
               <div className="yasar">
-                <h3 className="monprofile">Communication</h3>
+                <h3 className="monprofile">Messagerie</h3>
                 <p className="morinfo">
                   Messagerie interne, suivi des echanges et reponse rapide par service.
                 </p>
@@ -525,40 +536,33 @@ export default function Messagrie() {
               </div>
             </div>
           </div>
-          <div className="mail-hero">
-            <section className="mail-hero-panel">
-              <div className="mail-hero-copy">
-                <span className="mail-hero-eyebrow">Espace communication</span>
-                <h2>{boxLabel}</h2>
-                <p>{boxDescription}</p>
+          {/* Compact stats bar */}
+          <div style={{ width: "96%", margin: "10px auto 0", borderRadius: 16, background: dark ? "linear-gradient(135deg,#0f172a,#1e3a5f)" : "linear-gradient(135deg,#0b6a3b,#159957)", padding: "11px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 4px 20px rgba(11,106,59,0.22)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div>
+                <span style={{ fontSize: 30, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{filteredEmails.length}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", marginLeft: 8 }}>{boxLabel}</span>
               </div>
-
-              <div className="mail-hero-grid">
-                <article className="mail-stat-card">
-                  <span>Messages visibles</span>
-                  <strong>{filteredEmails.length}</strong>
-                  <p>Apres recherche et filtres appliques.</p>
-                </article>
-                <article className="mail-stat-card accent">
-                  <span>Non lus</span>
-                  <strong>{currentUnreadCount}</strong>
-                  <p>Seulement dans les messages affiches.</p>
-                </article>
-                <article className="mail-stat-card">
-                  <span>Importants</span>
-                  <strong>{currentImportantCount}</strong>
-                  <p>Marques prioritaires dans la vue courante.</p>
-                </article>
-                <article className="mail-stat-card subtle">
-                  <span>Conversation ouverte</span>
-                  <strong>{selectedEmail ? "1" : "0"}</strong>
-                  <p>{selectedSummary}</p>
-                </article>
+              <div style={{ width: 1, height: 30, background: "rgba(255,255,255,0.15)" }} />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px 6px 10px", borderRadius: 20, background: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.45)" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbbf24", display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24" }}>{currentUnreadCount} non lu{currentUnreadCount !== 1 ? "s" : ""}</span>
+                </span>
+                <span style={{ padding: "6px 14px", borderRadius: 20, background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.4)", fontSize: 14, fontWeight: 800, color: "#f87171" }}>
+                  {currentImportantCount} important{currentImportantCount !== 1 ? "s" : ""}
+                </span>
+                <span style={{ padding: "6px 14px", borderRadius: 20, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.75)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {selectedEmail ? selectedEmail.subject?.slice(0, 40) || "(Sans objet)" : "Aucune sélection"}
+                </span>
               </div>
-            </section>
+            </div>
+            <button type="button" onClick={openCompose} style={{ padding: "8px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.12)", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#fff", backdropFilter: "blur(4px)", whiteSpace: "nowrap" }}>
+              + Nouveau message
+            </button>
           </div>
-          <div className="contenu-page-mail">
-            <div className="block_one">
+          <div className="contenu-page-mail" style={{ margin: "10px auto 0", paddingBottom: 0, height: "calc(100vh - 168px)", alignItems: "stretch" }}>
+            <div className="block_one" style={{ minHeight: 0, overflowY: "auto" }}>
               <div className="titles_block_one">
                 <h3 className="title_mail">Dossiers</h3>
                 <p className="morinfo size">Navigation rapide entre les differentes boites.</p>
@@ -611,8 +615,8 @@ export default function Messagrie() {
                 </button>
               </div>
             </div>
-            <div className="block_two">
-              <div className="top_block_two">
+            <div className="block_two" style={{ minHeight: 0 }}>
+              <div className="top_block_two" style={{ flexShrink: 0 }}>
                 <div className="mail-list-header">
                   <div>
                     <span className="folder-eyebrow">Vue active</span>
@@ -660,7 +664,7 @@ export default function Messagrie() {
               </div>
               <hr className="mail-divider" />
 
-              <div className="mail-list">
+              <div className="mail-list" style={{ flex: 1, maxHeight: "none" }}>
                 {loading && <div className="mail-empty">Chargement...</div>}
                 {!loading &&
                   filteredEmails.map((mail) => (
@@ -690,7 +694,7 @@ export default function Messagrie() {
                 {!loading && pageError && <div className="mail-empty">{pageError}</div>}
               </div>
             </div>
-            <div className="block_three">
+            <div className="block_three" style={{ minHeight: 0, overflowY: "auto" }}>
               {selectedEmail ? (
                 <>
                   <div className="message-header">
@@ -761,6 +765,37 @@ export default function Messagrie() {
                       </div>
                     </div>
                     <pre className="message-body">{selectedEmail.body}</pre>
+                    {selectedEmail.attachments?.length > 0 && (
+                      <div style={{ marginTop: 14, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+                        <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#94a3b8" }}>
+                          📎 Pièces jointes ({selectedEmail.attachments.length})
+                        </p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {selectedEmail.attachments.map(att => (
+                            <a
+                              key={att.id}
+                              href={att.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={att.file_name}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                background: dark ? "#1e293b" : "#f1f5f9",
+                                border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+                                borderRadius: 10, padding: "6px 12px",
+                                fontSize: 12, color: dark ? "#e2e8f0" : "#374151",
+                                textDecoration: "none", fontWeight: 500,
+                              }}
+                            >
+                              📄 {att.file_name}
+                              <span style={{ color: "#94a3b8", fontSize: 11 }}>
+                                ({att.file_size ? `${(att.file_size / 1024).toFixed(0)} ko` : ""})
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {boxType === "inbox" && (
@@ -829,22 +864,69 @@ export default function Messagrie() {
             </div>
 
             <form className="compose-form" onSubmit={onComposeSubmit}>
-              <label>
-                A
-                <select
-                  name="recipientId"
-                  value={composeForm.recipientId}
-                  onChange={onComposeFieldChange}
-                  required
-                >
-                  <option value="">-- Selectionner --</option>
-                  {recipients.map((recipient) => (
-                    <option key={recipient.user_id} value={recipient.user_id}>
-                      {recipient.full_name || `${recipient.first_name} ${recipient.last_name}`} (
-                      {recipient.email})
-                    </option>
-                  ))}
-                </select>
+              <label style={{ position: "relative" }}>
+                À
+                <input
+                  type="text"
+                  placeholder="Rechercher par nom ou prénom..."
+                  value={recipientSearch}
+                  autoComplete="off"
+                  onChange={e => {
+                    setRecipientSearch(e.target.value);
+                    setShowRecipientDropdown(true);
+                    if (!e.target.value) setComposeForm(p => ({ ...p, recipientId: "" }));
+                  }}
+                  onFocus={() => setShowRecipientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowRecipientDropdown(false), 150)}
+                />
+                {showRecipientDropdown && recipientSearch.trim() && (() => {
+                  const q = recipientSearch.trim().toLowerCase();
+                  const filtered = recipients.filter(r => {
+                    const name = (r.full_name || `${r.first_name} ${r.last_name}`).toLowerCase();
+                    return name.split(" ").some(p => p.startsWith(q)) || name.includes(q);
+                  });
+                  if (!filtered.length) return (
+                    <div style={{
+                      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999,
+                      background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10,
+                      padding: "8px 0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+                    }}>
+                      <p style={{ padding: "8px 14px", margin: 0, fontSize: 13, color: "#94a3b8" }}>Aucun résultat</p>
+                    </div>
+                  );
+                  return (
+                    <div style={{
+                      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999,
+                      background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10,
+                      maxHeight: 220, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+                    }}>
+                      {filtered.map(r => {
+                        const name = r.full_name || `${r.first_name} ${r.last_name}`;
+                        return (
+                          <button
+                            key={r.user_id}
+                            type="button"
+                            onMouseDown={() => {
+                              setComposeForm(p => ({ ...p, recipientId: String(r.user_id) }));
+                              setRecipientSearch(name);
+                              setShowRecipientDropdown(false);
+                            }}
+                            style={{
+                              display: "flex", flexDirection: "column", width: "100%",
+                              padding: "9px 14px", border: "none", background: "none",
+                              cursor: "pointer", textAlign: "left",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
+                            onMouseLeave={e => e.currentTarget.style.background = "none"}
+                          >
+                            <span style={{ fontWeight: 600, fontSize: 13, color: "#0f172a" }}>{name}</span>
+                            <span style={{ fontSize: 11, color: "#94a3b8" }}>{r.email}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </label>
               <label>
                 Objet
@@ -867,6 +949,75 @@ export default function Messagrie() {
                   required
                 />
               </label>
+              {/* File drop zone */}
+              <input
+                id="compose-file-input"
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                onChange={e => {
+                  const files = Array.from(e.target.files);
+                  if (files.length) setComposeFiles(prev => [...prev, ...files]);
+                  e.target.value = "";
+                }}
+              />
+              <label
+                htmlFor="compose-file-input"
+                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragLeave={e => {
+                  e.preventDefault(); e.stopPropagation();
+                  if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+                }}
+                onDrop={e => {
+                  e.preventDefault(); e.stopPropagation();
+                  setDragOver(false);
+                  const dropped = Array.from(e.dataTransfer.files);
+                  if (dropped.length) setComposeFiles(prev => [...prev, ...dropped]);
+                }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: `2px dashed ${dragOver ? "#4ade80" : "#cbd5e1"}`,
+                  borderRadius: 12,
+                  padding: "18px 16px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  background: dragOver ? "rgba(74,222,128,0.07)" : "transparent",
+                  transition: "border-color 0.2s, background 0.2s",
+                  marginTop: 4,
+                  userSelect: "none",
+                  fontWeight: "normal",
+                  fontSize: 13,
+                  color: dragOver ? "#16a34a" : "#94a3b8",
+                  flexDirection: "column",
+                  gap: 0,
+                }}
+              >
+                📎 {dragOver ? "Déposer ici..." : "Glisser-déposer des fichiers ici, ou cliquer pour choisir"}
+              </label>
+
+              {/* Attached files list */}
+              {composeFiles.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+                  {composeFiles.map((f, i) => (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "#f1f5f9", borderRadius: 8,
+                      padding: "4px 10px", fontSize: 12, color: "#374151",
+                    }}>
+                      <span>{f.name}</span>
+                      <span style={{ color: "#94a3b8" }}>({(f.size / 1024).toFixed(0)} ko)</span>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setComposeFiles(prev => prev.filter((_, j) => j !== i)); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 14, lineHeight: 1 }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {composeError && <p className="mail-empty">{composeError}</p>}
 
               <div className="compose-actions">

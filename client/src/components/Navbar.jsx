@@ -169,10 +169,10 @@ export default function Navbar(props) {
       items: [
         { to: "/home", label: "Dashboard" },
         { to: "/profile", label: "Mon Profil" },
-        { to: "/conge", label: "Congés" },
+        ...(!isRh ? [{ to: "/conge", label: "Congés" }] : []),
         { to: "/attendance", label: "Présence" },
         ...(isEmployee ? [{ to: "/documents", label: "Documents" }] : []),
-        ...(!isChef ? [{ to: "/evaluations", label: "Évaluations" }] : []),
+        ...(!isChef && !isDrh ? [{ to: "/evaluations", label: "Évaluations" }] : []),
         ...(!isChef && !isDrh ? [{ to: "/tasks", label: "Mes tâches" }] : []),
       ],
     },
@@ -182,8 +182,9 @@ export default function Navbar(props) {
           {
             title: "Espace DRH",
             items: [
-              { to: "/rh/reports", label: "Pilotage et rapports" },
+              { to: "/rh/reports", label: "Rapport d'absence" },
               { to: "/chef/tasks", label: "Tâches équipe" },
+              { to: "/chef/evaluations", label: "Évaluer mon équipe" },
               { to: "/rh/evaluations", label: "Évaluations globales" },
               { to: "/rh/documents", label: "Documents globaux" },
               { to: "/rh/leaves", label: "Congés (Approbations)" },
@@ -219,7 +220,7 @@ export default function Navbar(props) {
           {
             title: isRhFormation ? "Espace RH Formation" : isRhConges ? "Espace RH Congé" : "Espace RH",
             items: [
-              { to: "/rh/reports", label: "Pilotage et rapports" },
+              { to: "/rh/reports", label: "Rapport d'absence" },
               { to: "/rh/evaluations", label: "Évaluations globales" },
               { to: "/rh/documents", label: "Documents globaux" },
               ...(isRhConges ? [

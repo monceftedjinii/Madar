@@ -15,7 +15,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from ..models import (
 	Employee, Attendance, LeaveRequest, Task,
-	AbsenceWarning, DisciplineFlag, Document, RoleChoices
+	AbsenceWarning, DisciplineFlag, Document, RoleChoices, AbsenceJustification
 )
 
 
@@ -192,8 +192,30 @@ def _count_employees(user):
 		return 1
 	if user.role == RoleChoices.CHEF:
 		service_id = _get_dept_scope(user)
-		return Employee.objects.filter(service_id=service_id).count() if service_id else 0
-	return Employee.objects.count()
+		return Employee.objects.filter(service_id=service_id, is_active=True).count() if service_id else 0
+	return Employee.objects.filter(is_active=True).count()
+
+
+def _count_employees_in_period(user, from_date, to_date):
+	"""Count distinct employees who had attendance records in the period."""
+	qs = Attendance.objects.filter(date__gte=from_date, date__lte=to_date)
+	if user.role == RoleChoices.EMPLOYEE:
+		try:
+			emp = Employee.objects.get(email=user.email)
+			return 1 if qs.filter(employee_id=emp.id).exists() else 0
+		except Employee.DoesNotExist:
+			return 0
+	elif user.role == RoleChoices.CHEF:
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
+	else:
+		try:
+			emp = Employee.objects.get(email=user.email)
+			if emp.service_id:
+				qs = qs.filter(employee__service_id=emp.service_id)
+		except Employee.DoesNotExist:
+			pass
+	return qs.values('employee_id').distinct().count()
 
 
 def _count_attendance(user, from_date, to_date):
@@ -221,6 +243,29 @@ def _count_warnings(user, from_date, to_date):
 	elif user.role == RoleChoices.CHEF:
 		service_id = _get_dept_scope(user)
 		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
+	return qs.count()
+
+
+def _count_absences(user, from_date, to_date):
+	"""Count absence days (AbsenceJustification records) in the period."""
+	qs = AbsenceJustification.objects.filter(date__gte=from_date, date__lte=to_date)
+	if user.role == RoleChoices.EMPLOYEE:
+		try:
+			emp = Employee.objects.get(email=user.email)
+			qs = qs.filter(employee_id=emp.id)
+		except Employee.DoesNotExist:
+			return 0
+	elif user.role == RoleChoices.CHEF:
+		service_id = _get_dept_scope(user)
+		qs = qs.filter(employee__service_id=service_id) if service_id else qs.none()
+	else:
+		# GRH/DRH — filter by their service (HR)
+		try:
+			emp = Employee.objects.get(email=user.email)
+			if emp.service_id:
+				qs = qs.filter(employee__service_id=emp.service_id)
+		except Employee.DoesNotExist:
+			pass
 	return qs.count()
 
 
@@ -286,9 +331,9 @@ def reports_summary(request):
 		return Response({'detail': 'invalid date format (use YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
 
 	data = {
-		'employees_count': _count_employees(request.user),
+		'employees_count': _count_employees_in_period(request.user, from_date, to_date),
 		'attendance_days_count': _count_attendance(request.user, from_date, to_date),
-		'absences_detected_count': _count_warnings(request.user, from_date, to_date),
+		'absences_detected_count': _count_absences(request.user, from_date, to_date),
 		'warnings_count': _count_warnings(request.user, from_date, to_date),
 		'discipline_flags_count': _count_discipline_flags(request.user, from_date, to_date),
 	}

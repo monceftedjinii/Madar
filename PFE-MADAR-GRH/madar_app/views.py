@@ -806,10 +806,10 @@ def get_employees_count(user, from_date, to_date):
 	elif user.role == RoleChoices.CHEF:
 		dept_id = get_employee_scope(user)
 		if dept_id:
-			return Employee.objects.filter(department_id=dept_id).count()
+			return Employee.objects.filter(department_id=dept_id, is_active=True).count()
 		return 0
 	else:  # GRH, RH_*
-		return Employee.objects.count()
+		return Employee.objects.filter(is_active=True).count()
 
 
 def get_attendance_count(user, from_date, to_date):
