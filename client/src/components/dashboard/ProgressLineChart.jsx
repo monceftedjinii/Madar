@@ -2,6 +2,9 @@ import { Line } from "react-chartjs-2";
 import { getBaseChartOptions } from "./chartConfig";
 
 export default function ProgressLineChart({ values, dark = false }) {
+  if (!values || !Array.isArray(values)) {
+    return <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 13 }}>Aucune donnée</div>;
+  }
   const data = {
     labels: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"],
     datasets: [

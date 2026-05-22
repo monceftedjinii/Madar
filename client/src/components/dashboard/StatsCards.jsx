@@ -31,6 +31,7 @@ const iconMap = {
   formations: MenuBookOutlinedIcon,
   evaluations: QueryStatsOutlinedIcon,
   alerts: AssignmentLateOutlinedIcon,
+  leaves_approved: FactCheckOutlinedIcon,
 };
 
 const colorMap = {
@@ -53,6 +54,7 @@ const colorMap = {
   formations: "bg-fuchsia-50 text-fuchsia-600",
   evaluations: "bg-violet-50 text-violet-600",
   alerts: "bg-rose-50 text-rose-600",
+  leaves_approved: "bg-emerald-50 text-emerald-600",
 };
 
 const darkColorMap = {
@@ -75,10 +77,12 @@ const darkColorMap = {
   formations: "bg-fuchsia-500/15 text-fuchsia-300",
   evaluations: "bg-violet-500/15 text-violet-300",
   alerts: "bg-rose-500/15 text-rose-300",
+  leaves_approved: "bg-emerald-500/15 text-emerald-300",
 };
 
 function StatCard({ item, dark = false }) {
-  const Icon = iconMap[item.id];
+  const Icon = iconMap[item.id] ?? TaskAltOutlinedIcon;
+  const isAttendance = item.id === "attendance";
   const cardClass = dark
     ? "group rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     : "group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg";
@@ -86,17 +90,19 @@ function StatCard({ item, dark = false }) {
   return (
     <article className={cardClass}>
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium ${dark ? "text-slate-300" : "text-slate-500"}`}>
             {item.label}
           </p>
           <h3 className={`mt-3 text-3xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
             {item.value}
           </h3>
-          <p className="mt-2 text-xs text-slate-400">{item.helper}</p>
+          <p className={`mt-2 text-xs leading-relaxed ${isAttendance ? (dark ? "text-sky-300 font-semibold" : "text-sky-600 font-semibold") : "text-slate-400"}`}>
+            {item.helper}
+          </p>
         </div>
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+          className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ${
             dark ? darkColorMap[item.id] : colorMap[item.id]
           }`}
         >

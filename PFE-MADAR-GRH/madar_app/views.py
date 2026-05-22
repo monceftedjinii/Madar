@@ -186,7 +186,7 @@ def mark_task_done(request, pk):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated])
 def attendance_check_in(request):
 	now = timezone.now()
 	today = now.date()
@@ -205,7 +205,7 @@ def attendance_check_in(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated])
 def attendance_check_out(request):
 	now = timezone.now()
 	today = now.date()
@@ -230,7 +230,7 @@ def attendance_check_out(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated])
 def attendance_me(request):
 	# parse from/to
 	qfrom = request.query_params.get('from')
@@ -259,7 +259,7 @@ def attendance_me(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated])
 def create_leave(request):
 	# employee creates own leave request
 	data = request.data
@@ -315,7 +315,7 @@ def create_leave(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmployee])
+@permission_classes([IsAuthenticated])
 def my_leaves(request):
 	try:
 		emp = Employee.objects.get(email=request.user.email)

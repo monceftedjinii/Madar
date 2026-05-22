@@ -1,9 +1,10 @@
 const badgeConfig = {
-  Excellent:      { bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.4)",  color: "#22c55e" },
-  Bon:            { bg: "rgba(59,130,246,0.15)",  border: "rgba(59,130,246,0.4)", color: "#3b82f6" },
-  Moyen:          { bg: "rgba(245,158,11,0.15)",  border: "rgba(245,158,11,0.4)", color: "#f59e0b" },
-  "A ameliorer":  { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
-  "À améliorer":  { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
+  Excellent:       { bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.4)",  color: "#22c55e" },
+  Bon:             { bg: "rgba(59,130,246,0.15)",  border: "rgba(59,130,246,0.4)", color: "#3b82f6" },
+  Moyen:           { bg: "rgba(245,158,11,0.15)",  border: "rgba(245,158,11,0.4)", color: "#f59e0b" },
+  "A ameliorer":   { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
+  "À améliorer":   { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.35)", color: "#ef4444" },
+  "Non évalué":    { bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.3)", color: "#94a3b8" },
 };
 
 function getAccountInitials(fullName) {

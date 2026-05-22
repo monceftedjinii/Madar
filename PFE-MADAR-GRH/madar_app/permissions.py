@@ -210,19 +210,21 @@ class CanIssueWarnings(permissions.BasePermission):
 
 
 class CanUploadDocument(permissions.BasePermission):
-    """RH service members and CHEFs can upload. Employees cannot."""
+    """RH members (any role), CHEFs, and DRH can upload. Regular employees cannot."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        if request.user.service == ServiceChoices.HR:
+        # DRH or any RH role (checks Employee.role via is_any_rh)
+        if is_drh(request.user) or is_any_rh(request.user):
             return True
+        # Chef or legacy RH role on User model
         return request.user.role in [
             RoleChoices.RH_SIMPLE,
             RoleChoices.RH_AGENT,
             RoleChoices.CHEF,
             RoleChoices.GRH,
-        ]
+        ] or request.user.service == ServiceChoices.HR
 
 
 class CanValidateDocument(permissions.BasePermission):

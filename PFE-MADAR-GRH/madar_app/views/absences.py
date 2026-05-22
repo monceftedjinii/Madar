@@ -262,9 +262,13 @@ def rh_absences_global(request):
 	if not is_any_rh(request.user):
 		return Response({'detail': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
-	today = timezone.localdate()
-	days_back = int(request.query_params.get('days', 60))
+	now = timezone.localtime()
+	today = now.date()
+	days_back = int(request.query_params.get('days', 365))
 	from_date = today - timedelta(days=days_back)
+
+	# Today only counts as absent after 17:00; before that the workday isn't over yet
+	absence_cutoff = today if now.hour >= 17 else today - timedelta(days=1)
 
 	# 1 — all check-in dates per employee
 	attended_by_emp = {}
@@ -297,7 +301,7 @@ def rh_absences_global(request):
 		on_leave = on_leave_by_emp.get(emp.id, set())
 		emp_start = max(from_date, emp.hired_at) if emp.hired_at else from_date
 		d = emp_start
-		while d <= today:
+		while d <= absence_cutoff:
 			if d.weekday() < 5 and d not in attended and d not in on_leave:
 				j = justifs_map.get((emp.id, d.isoformat()))
 				doc_url = None

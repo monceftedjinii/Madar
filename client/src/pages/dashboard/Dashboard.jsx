@@ -55,6 +55,8 @@ const emptyDashboard = {
   stats: [],
   charts: {
     weeklyPerformance: [],
+    weeklyLabels: [],
+    currentWeekIndex: null,
     monthlyProgress: [],
     taskBreakdown: { completed: 0, pending: 0, late: 0 },
     skills: {
@@ -278,7 +280,12 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="h-80">
-                <PerformanceBarChart values={dashboardData.charts.weeklyPerformance} dark={dark} />
+                <PerformanceBarChart
+                  values={dashboardData.charts.weeklyPerformance}
+                  labels={dashboardData.charts.weeklyLabels}
+                  currentWeekIndex={dashboardData.charts.currentWeekIndex}
+                  dark={dark}
+                />
               </div>
             </article>
 

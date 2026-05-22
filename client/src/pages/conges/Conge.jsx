@@ -26,6 +26,7 @@ export default function Conge() {
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [editingRequestId, setEditingRequestId] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null); // holds the request to cancel
 
   const fetchData = async () => {
     try {
@@ -128,7 +129,30 @@ export default function Conge() {
     [balances],
   );
 
+  // Active accepted annual leave (ongoing vacation — employee is currently on leave)
+  const activeAcceptedAnnual = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return requests.find((r) => {
+      if (r.type !== "CA" && r.type_code !== "CA") return false;
+      if (r.status !== "ACCEPTED") return false;
+      const end = new Date(`${r.end_date}T00:00:00`);
+      return end >= today;
+    }) || null;
+  }, [requests]);
+
   const validateForm = () => {
+    // Block new annual leave if employee is currently on an accepted annual leave
+    if (form.type === "CA" && activeAcceptedAnnual) {
+      const returnDate = new Date(`${activeAcceptedAnnual.end_date}T00:00:00`);
+      returnDate.setDate(returnDate.getDate() + 1);
+      setFeedback("");
+      setErrorMessage(
+        `Vous êtes en congé annuel jusqu'au ${formatIsoDateLabel(activeAcceptedAnnual.end_date)}. Vous pourrez soumettre une nouvelle demande à partir du ${returnDate.toLocaleDateString("fr-FR")}.`
+      );
+      return false;
+    }
+
     if (selectedLeaveType?.requires_attachment && !selectedAttachment) {
       setFeedback("");
       setErrorMessage("Un justificatif est obligatoire pour ce type de congé.");
@@ -264,27 +288,25 @@ export default function Conge() {
     resetFormState();
   };
 
-  const cancelPendingRequest = async (requestId) => {
-    const confirmed = window.confirm(
-      "Voulez-vous vraiment annuler cette demande de congé ?",
-    );
-    if (!confirmed) return;
+  const cancelPendingRequest = (requestId) => {
+    const req = requests.find(r => r.id === requestId);
+    setCancelModal(req || { id: requestId });
+  };
 
+  const confirmCancel = async () => {
+    if (!cancelModal) return;
     try {
       setFeedback("");
       setErrorMessage("");
-      await axios.post(`/api/leaves/${requestId}/cancel/`);
-      if (editingRequestId === requestId) {
-        resetFormState();
-      }
+      await axios.post(`/api/leaves/${cancelModal.id}/cancel/`);
+      if (editingRequestId === cancelModal.id) resetFormState();
+      setCancelModal(null);
       await fetchData();
       setFeedback("Demande de congé annulée avec succès.");
     } catch (err) {
       console.error("Error canceling leave request:", err);
-      setErrorMessage(
-        err?.response?.data?.detail ||
-          "Erreur lors de l'annulation de la demande.",
-      );
+      setCancelModal(null);
+      setErrorMessage(err?.response?.data?.detail || "Erreur lors de l'annulation de la demande.");
     }
   };
 
@@ -304,6 +326,7 @@ export default function Conge() {
   }, [balances]);
 
   return (
+    <>
     <div
       className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}
     >
@@ -390,6 +413,22 @@ export default function Conge() {
               </div>
               <div className="main-action-pill">Demande</div>
             </div>
+
+            {activeAcceptedAnnual && form.type === "CA" && (() => {
+              const returnDate = new Date(`${activeAcceptedAnnual.end_date}T00:00:00`);
+              returnDate.setDate(returnDate.getDate() + 1);
+              return (
+                <div style={{ margin: "0 0 14px", padding: "14px 18px", borderRadius: 14, background: "#fffbeb", border: "1px solid #fde047", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>🏖️</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#92400e" }}>Congé annuel en cours</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "#78350f" }}>
+                      Votre congé se termine le <strong>{formatIsoDateLabel(activeAcceptedAnnual.end_date)}</strong>. Vous pourrez soumettre une nouvelle demande à partir du <strong>{returnDate.toLocaleDateString("fr-FR")}</strong>.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
 
             <form onSubmit={onSubmit}>
               <div className="main-form-grid">
@@ -535,7 +574,7 @@ export default function Conge() {
                   <th>Type</th>
                   <th>Jours</th>
                   <th>Statut</th>
-                  <th>Actions</th>
+                  <th>Commentaire RH</th>
                 </tr>
               </thead>
               <tbody>
@@ -552,23 +591,15 @@ export default function Conge() {
                       </span>
                     </td>
                     <td>
-                      {item.status === "PENDING" && (
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => startEditingRequest(item)}
-                            style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #3b82f6", background: "#eff6ff", color: "#1d4ed8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => cancelPendingRequest(item.id)}
-                            style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                          >
-                            Annuler
-                          </button>
+                      {item.chef_comment ? (
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                          <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💬</span>
+                          <span style={{ fontSize: 12, color: item.status === "REFUSED" ? "#dc2626" : "#16a34a", fontWeight: 600, fontStyle: "italic" }}>
+                            {item.chef_comment}
+                          </span>
                         </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
                       )}
                     </td>
                   </tr>
@@ -580,5 +611,85 @@ export default function Conge() {
         </div>
       </div>
     </div>
+
+    {/* Cancel confirmation modal */}
+    {cancelModal && (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 700,
+        background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      }} onClick={() => setCancelModal(null)}>
+        <div style={{
+          background: dark ? "#0f172a" : "#fff",
+          borderRadius: 24, width: "100%", maxWidth: 440,
+          boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+          border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`,
+          overflow: "hidden",
+        }} onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div style={{
+            padding: "22px 24px 0",
+            display: "flex", alignItems: "flex-start", gap: 14,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+              background: "#fee2e2", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: 20,
+            }}>🗑️</div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>
+                Annuler la demande
+              </h3>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+                Cette action est irréversible.
+              </p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ padding: "18px 24px" }}>
+            <div style={{
+              borderRadius: 14, padding: "12px 16px",
+              background: dark ? "#1e293b" : "#f8fafc",
+              border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
+            }}>
+              <p style={{ margin: 0, fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>Type de congé</p>
+              <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700, color: dark ? "#f1f5f9" : "#0f172a" }}>
+                {cancelModal.type_label || cancelModal.type || "Congé"}
+              </p>
+              {cancelModal.start_date && (
+                <>
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>Période</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700, color: dark ? "#f1f5f9" : "#0f172a" }}>
+                    {formatDate(cancelModal.start_date)} → {formatDate(cancelModal.end_date)}
+                  </p>
+                </>
+              )}
+            </div>
+            <p style={{ margin: "14px 0 0", fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>
+              Voulez-vous vraiment annuler cette demande ? Elle sera supprimée définitivement.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div style={{
+            padding: "12px 24px 20px",
+            display: "flex", gap: 10, justifyContent: "flex-end",
+            borderTop: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}`,
+          }}>
+            <button type="button" onClick={() => setCancelModal(null)}
+              style={{ padding: "10px 22px", borderRadius: 12, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: "transparent", fontWeight: 700, fontSize: 14, cursor: "pointer", color: dark ? "#94a3b8" : "#64748b" }}>
+              Garder
+            </button>
+            <button type="button" onClick={confirmCancel}
+              style={{ padding: "10px 22px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", boxShadow: "0 4px 14px rgba(239,68,68,0.35)" }}>
+              Oui, annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

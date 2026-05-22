@@ -13,6 +13,22 @@ function formatDate(value) {
   return date.toLocaleDateString("fr-FR");
 }
 
+function getInitials(firstName, lastName) {
+  const f = (firstName || "").trim();
+  const l = (lastName || "").trim();
+  if (!f && !l) return "?";
+  if (!l) return f.slice(0, 2).toUpperCase();
+  return `${f[0]}${l[0]}`.toUpperCase();
+}
+
+const roleLabels = {
+  EMPLOYEE: "Employé",
+  CHEF: "Chef de service",
+  RH_SIMPLE: "RH Congé",
+  RH_AGENT: "RH Agent",
+  GRH: "DRH",
+};
+
 export default function TeamEmployees() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
@@ -20,340 +36,276 @@ export default function TeamEmployees() {
   const [loading, setLoading] = useState(true);
   const [serviceName, setServiceName] = useState("");
   const [error, setError] = useState("");
-  const [currentRole, setCurrentRole] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [search, setSearch] = useState("");
 
   const fetchEmployees = async () => {
     try {
       setLoading(true);
       setError("");
-
-      const [meResponse, employeesResponse] = await Promise.all([
+      const [, employeesResponse] = await Promise.all([
         axios.get("/api/whoami/"),
         axios.get("/api/employees/", { params: { scope: "team" } }),
       ]);
-      const role = meResponse.data?.role || "";
       const data = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
-
-      setCurrentRole(role);
       setEmployees(data);
       setServiceName(data[0]?.service?.nomService || "");
-    } catch (requestError) {
-      console.error("Erreur chargement équipe :", requestError);
+    } catch {
       setEmployees([]);
       setServiceName("");
-      setCurrentRole("");
       setError("Impossible de charger la liste des employés du service.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  useEffect(() => { fetchEmployees(); }, []);
 
   const stats = useMemo(() => {
     const total = employees.length;
-    const online = employees.filter((employee) => employee.is_online).length;
-    const offline = Math.max(total - online, 0);
-    return { total, online, offline };
+    const online = employees.filter((e) => e.is_online).length;
+    return { total, online, offline: Math.max(total - online, 0) };
   }, [employees]);
 
-  const modalCardStyle = {
-    width: "min(92vw, 760px)",
-    maxHeight: "88vh",
-    overflowY: "auto",
-    borderRadius: 18,
-    padding: 24,
-    background: dark ? "#111827" : "#ffffff",
-    color: dark ? "#e2e8f0" : "#111827",
-    boxShadow: "0 18px 48px rgba(15, 23, 42, 0.28)",
-    border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-  };
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return employees;
+    return employees.filter((emp) => {
+      const name = `${emp.first_name || ""} ${emp.last_name || ""}`.toLowerCase();
+      return (
+        name.includes(q) ||
+        (emp.email || "").toLowerCase().includes(q) ||
+        (emp.role || "").toLowerCase().includes(q) ||
+        (emp.contract_type || "").toLowerCase().includes(q) ||
+        (emp.service?.nomService || "").toLowerCase().includes(q)
+      );
+    });
+  }, [employees, search]);
+
+  const card = dark
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm"
+    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+
+  const stickyHeader = dark
+    ? "border-b border-slate-800 bg-slate-950/90"
+    : "border-b border-slate-200/80 bg-white/90";
+
+  const btnClass = dark
+    ? "border border-slate-700 bg-slate-900 text-slate-100"
+    : "border border-slate-200 bg-white text-slate-700";
 
   return (
-    <div
-      className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}
-    >
+    <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
         <Navbar />
       </div>
 
       {isNavOpen && (
-        <div
-          className="profile-overlay"
-          onClick={() => setIsNavOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="profile-overlay" onClick={() => setIsNavOpen(false)} aria-hidden="true" />
       )}
 
       <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div
-          className={`sticky top-0 z-40 backdrop-blur ${
-            dark
-              ? "border-b border-slate-800 bg-slate-950/90"
-              : "border-b border-slate-200/80 bg-white/90"
-          }`}
-        >
-          <div className="profile-naaav">
-            <div className="yasar">
-              <h1 className="monprofile">Mon équipe</h1>
-              <p className="morinfo">
-                Visualisez les employés de votre service et leur statut de présence en ligne.
-              </p>
+        {/* Sticky header */}
+        <div className={`sticky top-0 z-40 backdrop-blur ${stickyHeader}`}>
+          <div className="mx-auto flex w-[96%] flex-wrap items-center justify-between gap-4 py-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Espace chef</p>
+              <h2 className={`text-xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>Mon équipe</h2>
             </div>
-            <div className="yamin">
-              <button
-                className="nav-toggle"
-                onClick={() => setIsNavOpen((prev) => !prev)}
-                type="button"
-              >
+            <div className="flex flex-wrap gap-3">
+              <button className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}
+                onClick={() => setIsNavOpen((p) => !p)} type="button">
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
-              <button
-                className="mode"
-                onClick={() => setDark((prev) => !prev)}
-                type="button"
-              >
-                {dark ? "mode clair" : "mode sombre"}
+              <button className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}
+                onClick={() => setDark((p) => !p)} type="button">
+                {dark ? "Mode clair" : "Mode sombre"}
               </button>
               <NotificationBell dark={dark} />
             </div>
           </div>
         </div>
 
-        <div className="infopro-infoper">
-          <section className="info-per">
-            <div className="top">
-              <h2 className="title">Service</h2>
-              <p className="desc">Équipe actuellement rattachée à votre compte.</p>
-            </div>
-            <div>
-              <p className="desc">Nom du service</p>
-              <h3>{serviceName || "Non renseigné"}</h3>
-            </div>
-            <div>
-              <p className="desc">Employés visibles</p>
-              <h3>{stats.total}</h3>
-            </div>
-          </section>
-
-          <section className="info-pro">
-            <div className="top">
-              <h2 className="title">Présence en ligne</h2>
-              <p className="desc">Suivi rapide de la disponibilité actuelle.</p>
-            </div>
-            <div>
-              <p className="desc">En ligne</p>
-              <h3>{stats.online}</h3>
-            </div>
-            <div>
-              <p className="desc">Hors ligne</p>
-              <h3>{stats.offline}</h3>
-            </div>
-            <div>
-              <button className="modifier" onClick={fetchEmployees} type="button">
-                Actualiser
-              </button>
-            </div>
-          </section>
-        </div>
-
-        <section className="activite-recente" style={{ width: "96%", margin: "24px auto" }}>
-          <div className="activite-top">
-            <h2 className="activite-title">Employés du service</h2>
-            <p className="activite-subtitle">
-              Statut en ligne des employés remontés par le backend.
-            </p>
+        <main className="mx-auto w-[96%] space-y-6 py-6">
+          {/* Stat cards */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: "Membres", value: stats.total, color: "bg-blue-50 text-blue-600", darkColor: "bg-blue-500/15 text-blue-300" },
+              { label: "En ligne", value: stats.online, color: "bg-emerald-50 text-emerald-600", darkColor: "bg-emerald-500/15 text-emerald-300" },
+              { label: "Hors ligne", value: stats.offline, color: "bg-slate-100 text-slate-500", darkColor: "bg-slate-700 text-slate-300" },
+            ].map(({ label, value, color, darkColor }) => (
+              <article key={label} className={card}>
+                <p className={`text-xs font-semibold uppercase tracking-wider ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</p>
+                <p className={`mt-2 text-3xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{value}</p>
+                <span className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${dark ? darkColor : color}`}>
+                  {serviceName || "Service"}
+                </span>
+              </article>
+            ))}
           </div>
 
-          {currentRole && !["CHEF", "RH_SENIOR"].includes(currentRole) && (
-            <div
-              className="page-feedback info"
-              style={{ margin: "0 0 16px" }}
-            >
-              Cette page est principalement destinée au chef de service et au RH senior pour suivre leur équipe.
-            </div>
-          )}
-
-          {error && (
-            <div
-              className="page-feedback error"
-              style={{ margin: "0 0 16px" }}
-            >
-              {error}
-            </div>
-          )}
-
-          <div className="activite-table-scroll">
-            <table className="activite-table">
-              <thead>
-                <tr>
-                  <th>Employé</th>
-                  <th>Sexe</th>
-                  <th>Service</th>
-                  <th>Rôle</th>
-                  <th>Contrat</th>
-                  <th>En ligne</th>
-                  <th>Dernière absence</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="8">Chargement de l'équipe...</td>
-                  </tr>
-                ) : employees.length === 0 ? (
-                  <tr>
-                    <td colSpan="8">Aucun employé n'est visible pour ce service.</td>
-                  </tr>
-                ) : (
-                  employees.map((employee) => {
-                    const fullName = `${employee.first_name || ""} ${employee.last_name || ""}`.trim();
-                    const roleLabels = {
-                      EMPLOYEE: "Employé",
-                      CHEF: "Chef",
-                      RH_SIMPLE: "RH Congé",
-                      RH_AGENT: "RH Agent",
-                      GRH: "DRH",
-                    };
-                    const sexeLabel = employee.sexe === "FEMME" ? "Femme" : employee.sexe === "HOMME" ? "Homme" : "-";
-
-                    return (
-                      <tr key={employee.id}>
-                        <td>{fullName || employee.email || "-"}</td>
-                        <td>{sexeLabel}</td>
-                        <td>{employee.service?.nomService || "-"}</td>
-                        <td>{roleLabels[employee.role] || employee.role || "-"}</td>
-                        <td>{employee.contract_type || "-"}</td>
-                        <td>
-                          <span className={`badge ${employee.is_online ? "badge-termine" : "badge-refuse"}`}>
-                            {employee.is_online ? "En ligne" : "Hors ligne"}
-                          </span>
-                        </td>
-                        <td>
-                          {employee.last_absence ? (
-                            <span className="badge badge-absent" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                              {formatDate(employee.last_absence)}
-                            </span>
-                          ) : (
-                            <span style={{ color: "#94a3b8", fontSize: 12 }}>-</span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            className="modifier"
-                            type="button"
-                            onClick={() => setSelectedEmployee(employee)}
-                          >
-                            Détails
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      {selectedEmployee && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 500,
-            padding: 16,
-          }}
-          onClick={() => setSelectedEmployee(null)}
-        >
-          <div style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                marginBottom: 18,
-              }}
-            >
+          {/* Employee list */}
+          <article className={card}>
+            {/* Header + search */}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 style={{ margin: 0 }}>
-                  {`${selectedEmployee.first_name || ""} ${selectedEmployee.last_name || ""}`.trim() ||
-                    selectedEmployee.email ||
-                    "Employé"}
-                </h2>
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: dark ? "#94a3b8" : "#64748b",
-                  }}
-                >
-                  Consultation des informations personnelles et professionnelles.
+                <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                  Employés du service
+                </h3>
+                <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                  {filtered.length} membre{filtered.length !== 1 ? "s" : ""} affiché{filtered.length !== 1 ? "s" : ""}
+                  {search ? ` · "${search}"` : ""}
                 </p>
               </div>
-              <button
-                type="button"
-                className="mode"
-                onClick={() => setSelectedEmployee(null)}
-              >
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 ${dark ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-50"}`}>
+                  <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Rechercher..."
+                    className={`w-48 bg-transparent text-sm outline-none ${dark ? "text-slate-100 placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"}`}
+                  />
+                  {search && (
+                    <button type="button" onClick={() => setSearch("")}
+                      className="text-slate-400 hover:text-slate-600">✕</button>
+                  )}
+                </div>
+                <button type="button" onClick={fetchEmployees}
+                  className={`rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}>
+                  Actualiser
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 ring-1 ring-rose-200">
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className={`rounded-2xl p-8 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                Chargement de l'équipe...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className={`rounded-2xl p-8 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                {search ? `Aucun résultat pour "${search}".` : "Aucun employé dans ce service."}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((emp) => {
+                  const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.trim();
+                  return (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => setSelectedEmployee(emp)}
+                      className={`group relative flex flex-col items-start gap-3 rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${dark ? "border border-slate-700 bg-slate-800 hover:border-slate-600" : "border border-slate-100 bg-slate-50 hover:border-slate-200 hover:bg-white"}`}
+                    >
+                      {/* Online dot */}
+                      <span className={`absolute right-4 top-4 h-2.5 w-2.5 rounded-full ring-2 ${emp.is_online ? "bg-emerald-400 ring-emerald-100" : "bg-slate-300 ring-slate-100"} ${dark ? "ring-slate-800" : ""}`} />
+
+                      {/* Avatar */}
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-extrabold text-white shadow-sm">
+                        {getInitials(emp.first_name, emp.last_name)}
+                      </div>
+
+                      {/* Info */}
+                      <div className="min-w-0 w-full">
+                        <p className={`truncate text-sm font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>
+                          {fullName || emp.email || "—"}
+                        </p>
+                        <p className={`mt-0.5 truncate text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                          {roleLabels[emp.role] || emp.role || "—"}
+                        </p>
+                        {emp.contract_type && (
+                          <p className={`mt-0.5 truncate text-xs ${dark ? "text-slate-500" : "text-slate-400"}`}>
+                            {emp.contract_type}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Status */}
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${emp.is_online ? (dark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700") : (dark ? "bg-slate-700 text-slate-400" : "bg-slate-100 text-slate-500")}`}>
+                        {emp.is_online ? "En ligne" : "Hors ligne"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </article>
+        </main>
+      </div>
+
+      {/* Detail modal */}
+      {selectedEmployee && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          onClick={() => setSelectedEmployee(null)}>
+          <div className={`w-full max-w-2xl rounded-3xl border p-6 shadow-2xl ${dark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"}`}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-lg font-extrabold text-white shadow-md">
+                  {getInitials(selectedEmployee.first_name, selectedEmployee.last_name)}
+                </div>
+                <div>
+                  <h2 className={`text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                    {`${selectedEmployee.first_name || ""} ${selectedEmployee.last_name || ""}`.trim() || selectedEmployee.email || "Employé"}
+                  </h2>
+                  <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                    {roleLabels[selectedEmployee.role] || selectedEmployee.role || "—"} · {selectedEmployee.service?.nomService || "—"}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setSelectedEmployee(null)}
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold ${dark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
                 Fermer
               </button>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 18,
-              }}
-            >
-              <section
-                style={{
-                  borderRadius: 16,
-                  padding: 18,
-                  background: dark ? "#0f172a" : "#f8fafc",
-                  border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-                }}
-              >
-                <h3 style={{ marginTop: 0 }}>Informations personnelles</h3>
-                <p><strong>Nom:</strong> {selectedEmployee.last_name || "-"}</p>
-                <p><strong>Prénom :</strong> {selectedEmployee.first_name || "-"}</p>
-                <p><strong>E-mail :</strong> {selectedEmployee.email || "-"}</p>
-                <p><strong>Téléphone :</strong> {selectedEmployee.phone_number || "-"}</p>
-                <p><strong>Adresse:</strong> {selectedEmployee.address || "-"}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <section className={`rounded-2xl p-4 ${dark ? "bg-slate-800" : "bg-slate-50"}`}>
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Informations personnelles</p>
+                {[
+                  ["Nom", selectedEmployee.last_name],
+                  ["Prénom", selectedEmployee.first_name],
+                  ["E-mail", selectedEmployee.email],
+                  ["Téléphone", selectedEmployee.phone_number],
+                  ["Adresse", selectedEmployee.address],
+                ].map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1.5 border-b border-slate-200/30 last:border-0">
+                    <span className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</span>
+                    <span className={`text-xs font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>{val || "—"}</span>
+                  </div>
+                ))}
               </section>
 
-              <section
-                style={{
-                  borderRadius: 16,
-                  padding: 18,
-                  background: dark ? "#0f172a" : "#f8fafc",
-                  border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`,
-                }}
-              >
-                <h3 style={{ marginTop: 0 }}>Informations professionnelles</h3>
-                <p><strong>Poste:</strong> {selectedEmployee.position || "-"}</p>
-                <p><strong>Service:</strong> {selectedEmployee.service?.nomService || "-"}</p>
-                <p><strong>Code service:</strong> {selectedEmployee.service?.code || "-"}</p>
-                <p><strong>Contrat:</strong> {selectedEmployee.contract_type || "-"}</p>
-                <p><strong>Date d'entrée :</strong> {formatDate(selectedEmployee.hired_at)}</p>
-                <p>
-                  <strong>Statut en ligne:</strong>{" "}
-                  <span
-                    className={`badge ${selectedEmployee.is_online ? "badge-termine" : "badge-refuse"}`}
-                  >
-                    {selectedEmployee.is_online ? "En ligne" : "Hors ligne"}
+              <section className={`rounded-2xl p-4 ${dark ? "bg-slate-800" : "bg-slate-50"}`}>
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Informations professionnelles</p>
+                {[
+                  ["Poste", selectedEmployee.position],
+                  ["Service", selectedEmployee.service?.nomService],
+                  ["Contrat", selectedEmployee.contract_type],
+                  ["Date d'entrée", formatDate(selectedEmployee.hired_at)],
+                  ["Dernière absence", formatDate(selectedEmployee.last_absence)],
+                ].map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1.5 border-b border-slate-200/30 last:border-0">
+                    <span className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</span>
+                    <span className={`text-xs font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>{val || "—"}</span>
+                  </div>
+                ))}
+                <div className="mt-3">
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${selectedEmployee.is_online ? (dark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200") : (dark ? "bg-slate-700 text-slate-400" : "bg-slate-100 text-slate-500")}`}>
+                    {selectedEmployee.is_online ? "● En ligne" : "○ Hors ligne"}
                   </span>
-                </p>
+                </div>
               </section>
             </div>
           </div>

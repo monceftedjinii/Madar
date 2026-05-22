@@ -5,7 +5,6 @@ import Navbar from "../components/Navbar";
 import useDarkModePreference from "../hooks/useDarkModePreference";
 import usePersistentNavState from "../hooks/usePersistentNavState";
 import "../styles/profile.css";
-import "../styles/chef-space.css";
 
 function formatTime(value) {
   if (!value) return "--:--";
@@ -19,12 +18,20 @@ function formatDate(value) {
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function getInitials(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function ChefAttendance() {
   const [dark, setDark] = useDarkModePreference();
   const [isNavOpen, setIsNavOpen] = usePersistentNavState();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [search, setSearch] = useState("");
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -38,8 +45,7 @@ export default function ChefAttendance() {
       setErrorMessage("");
       const response = await axios.get("/api/attendance/team/");
       setRows(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error("Erreur chargement présence équipe :", error);
+    } catch {
       setRows([]);
       setErrorMessage("Impossible de charger le suivi de présence de l'équipe.");
     } finally {
@@ -47,9 +53,7 @@ export default function ChefAttendance() {
     }
   };
 
-  useEffect(() => {
-    fetchAttendance();
-  }, []);
+  useEffect(() => { fetchAttendance(); }, []);
 
   const openDetail = async (row) => {
     setDetailEmployee(row);
@@ -77,288 +81,300 @@ export default function ChefAttendance() {
     return { total, complete, inProgress, absent, unjustified };
   }, [rows]);
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      (r.full_name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const card = dark
+    ? "rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm"
+    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+
+  const stickyHeader = dark
+    ? "border-b border-slate-800 bg-slate-950/90"
+    : "border-b border-slate-200/80 bg-white/90";
+
+  const btnClass = dark
+    ? "border border-slate-700 bg-slate-900 text-slate-100"
+    : "border border-slate-200 bg-white text-slate-700";
+
+  const statCards = [
+    { label: "Équipe", value: stats.total, light: "bg-blue-50 text-blue-600", dark_: "bg-blue-500/15 text-blue-300" },
+    { label: "Journée complète", value: stats.complete, light: "bg-emerald-50 text-emerald-600", dark_: "bg-emerald-500/15 text-emerald-300" },
+    { label: "En cours", value: stats.inProgress, light: "bg-amber-50 text-amber-600", dark_: "bg-amber-500/15 text-amberald-300" },
+    { label: "Absents", value: stats.absent, light: "bg-rose-50 text-rose-600", dark_: "bg-rose-500/15 text-rose-300" },
+    { label: "Non justifiées", value: stats.unjustified, light: stats.unjustified > 0 ? "bg-rose-50 text-rose-600" : "bg-slate-50 text-slate-500", dark_: stats.unjustified > 0 ? "bg-rose-500/15 text-rose-300" : "bg-slate-700 text-slate-400" },
+  ];
+
   return (
-    <div
-      className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}
-    >
+    <div className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}>
       <div className={`navbar-profile-page ${isNavOpen ? "open" : "closed"}`}>
         <Navbar />
       </div>
 
       {isNavOpen && (
-        <div
-          className="profile-overlay"
-          onClick={() => setIsNavOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="profile-overlay" onClick={() => setIsNavOpen(false)} aria-hidden="true" />
       )}
 
       <div className="profile-content !h-auto min-h-screen bg-transparent">
-        <div
-          className={`sticky top-0 z-40 backdrop-blur ${
-            dark
-              ? "border-b border-slate-800 bg-slate-950/90"
-              : "border-b border-slate-200/80 bg-white/90"
-          }`}
-        >
-          <div className="profile-naaav">
-            <div className="yasar">
-              <h1 className="monprofile">Présence équipe</h1>
-              <p className="morinfo">
-                Suivi des pointages, absences et journées complètes des employés de votre service.
-              </p>
+        {/* Sticky header */}
+        <div className={`sticky top-0 z-40 backdrop-blur ${stickyHeader}`}>
+          <div className="mx-auto flex w-[96%] flex-wrap items-center justify-between gap-4 py-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Espace chef</p>
+              <h2 className={`text-xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>Présence équipe</h2>
             </div>
-            <div className="yamin">
-              <button
-                className="nav-toggle"
-                onClick={() => setIsNavOpen((prev) => !prev)}
-                type="button"
-              >
+            <div className="flex flex-wrap gap-3">
+              <button className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}
+                onClick={() => setIsNavOpen((p) => !p)} type="button">
                 {isNavOpen ? "Masquer menu" : "Afficher menu"}
               </button>
-              <button className="mode" onClick={() => setDark((prev) => !prev)} type="button">
-                {dark ? "mode clair" : "mode sombre"}
+              <button className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}
+                onClick={() => setDark((p) => !p)} type="button">
+                {dark ? "Mode clair" : "Mode sombre"}
               </button>
               <NotificationBell dark={dark} />
             </div>
           </div>
         </div>
 
-        <div className="chef-page-stack">
-          <section className="chef-hero">
-            <div className="chef-hero-copy">
-              <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Lecture instantanée de la présence du service</h2>
-              <p className="chef-hero-description">
-                Repérez rapidement les journées complètes, les pointages en cours et les absences
-                de votre équipe avant d'entrer dans le détail.
-              </p>
-            </div>
-            <div className="chef-hero-kpis">
-              <article className="chef-kpi-card">
-                <span>Équipe suivie</span>
-                <strong>{stats.total}</strong>
-                <p>Collaborateurs inclus dans votre scope chef.</p>
+        <main className="mx-auto w-[96%] space-y-6 py-6">
+          {/* Stat cards */}
+          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-5">
+            {statCards.map(({ label, value, light, dark_ }) => (
+              <article key={label} className={card}>
+                <p className={`text-xs font-semibold uppercase tracking-wider ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</p>
+                <p className={`mt-2 text-3xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{value}</p>
+                <span className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${dark ? dark_ : light}`}>
+                  Aujourd'hui
+                </span>
               </article>
-              <article className="chef-kpi-card">
-                <span>Complet</span>
-                <strong>{stats.complete}</strong>
-                <p>Journées clôturées avec entrée et sortie.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>En cours</span>
-                <strong>{stats.inProgress}</strong>
-                <p>Pointages encore ouverts aujourd&apos;hui.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Absents</span>
-                <strong>{stats.absent}</strong>
-                <p>Employés sans présence sur la journée.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Non justifiées</span>
-                <strong style={{ color: stats.unjustified > 0 ? "#ef4444" : undefined }}>
-                  {stats.unjustified}
-                </strong>
-                <p>Absences sans justificatif sur la période.</p>
-              </article>
-            </div>
-          </section>
-
-          <div className="chef-metrics-grid">
-            <article className="chef-metric-card">
-              <span>Actualisation</span>
-              <strong>{loading ? "..." : "OK"}</strong>
-              <p>Les données de présence peuvent être rechargées à tout moment.</p>
-            </article>
-            <article className="chef-metric-card">
-              <span>Controle</span>
-              <strong>{stats.complete + stats.inProgress}</strong>
-              <p>Employés avec une présence déjà constatée sur la journée.</p>
-            </article>
-            <article className="chef-metric-card">
-              <span>Action rapide</span>
-              <p style={{ marginTop: 12 }}>
-                <button className="modifier" onClick={fetchAttendance} type="button">
-                  Actualiser
-                </button>
-              </p>
-            </article>
+            ))}
           </div>
 
-          {errorMessage && <div className="page-feedback error">{errorMessage}</div>}
+          {errorMessage && (
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 ring-1 ring-rose-200">
+              {errorMessage}
+            </div>
+          )}
 
-          <section className="chef-panel">
-            <div className="chef-panel-head">
+          {/* Employee list */}
+          <article className={card}>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2>Suivi de présence équipe</h2>
-                <p>Données remontées par le backend pour la période en cours.</p>
+                <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                  Suivi de présence
+                </h3>
+                <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                  {filtered.length} membre{filtered.length !== 1 ? "s" : ""} affiché{filtered.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 ${dark ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-50"}`}>
+                  <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                  <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Rechercher un employé..."
+                    className={`w-44 bg-transparent text-sm outline-none ${dark ? "text-slate-100 placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"}`} />
+                  {search && (
+                    <button type="button" onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600">✕</button>
+                  )}
+                </div>
+                <button type="button" onClick={fetchAttendance}
+                  className={`rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${btnClass}`}>
+                  Actualiser
+                </button>
               </div>
             </div>
 
-            <div className="activite-table-scroll">
-              <table className="activite-table">
-              <thead>
-                <tr>
-                  <th>Employé</th>
-                  <th>Dernière absence</th>
-                  <th>Entrée</th>
-                  <th>Sortie</th>
-                  <th>Journées complètes</th>
-                  <th>Sorties manquantes</th>
-                  <th>Absences</th>
-                  <th>Abs. non justifiées</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="8">Chargement de la présence équipe...</td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="8">Aucune donnée de présence disponible.</td>
-                  </tr>
-                ) : (
-                  rows.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <div>{row.full_name}</div>
-                        <div style={{ fontSize: 12, color: "#94a3b8" }}>{row.email}</div>
-                      </td>
-                      <td>
-                        {row.last_absence ? (
-                          <span style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-                            {formatDate(row.last_absence)}
+            {loading ? (
+              <div className={`rounded-2xl p-8 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                Chargement de la présence équipe...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className={`rounded-2xl p-8 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                {search ? `Aucun résultat pour "${search}".` : "Aucune donnée de présence disponible."}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((row) => {
+                  const isComplete = row.today_check_in && row.today_check_out;
+                  const isInProgress = row.today_check_in && !row.today_check_out;
+                  const statusLabel = isComplete ? "Journée complète" : isInProgress ? "En cours" : "Absent";
+                  const statusCls = isComplete
+                    ? dark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700"
+                    : isInProgress
+                      ? dark ? "bg-amber-500/15 text-amber-300" : "bg-amber-50 text-amber-700"
+                      : dark ? "bg-rose-500/15 text-rose-300" : "bg-rose-50 text-rose-700";
+
+                  return (
+                    <button key={row.id} type="button" onClick={() => openDetail(row)}
+                      className={`group relative flex flex-col items-start gap-3 rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${dark ? "border border-slate-700 bg-slate-800 hover:border-slate-600" : "border border-slate-100 bg-slate-50 hover:border-slate-200 hover:bg-white"}`}>
+
+                      <div className="flex w-full items-start justify-between gap-2">
+                        {/* Avatar */}
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-extrabold text-white shadow-sm">
+                          {getInitials(row.full_name)}
+                        </div>
+                        {/* Unjustified badge */}
+                        {row.unjustified_absences > 0 && (
+                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 ring-1 ring-rose-200">
+                            {row.unjustified_absences} inj.
                           </span>
-                        ) : (
-                          <span style={{ color: "#94a3b8", fontSize: 12 }}>-</span>
                         )}
-                      </td>
-                      <td>{formatTime(row.today_check_in)}</td>
-                      <td>{formatTime(row.today_check_out)}</td>
-                      <td>{row.complete_days}</td>
-                      <td>{row.pending_checkout_days}</td>
-                      <td>{row.absent_days}</td>
-                      <td>
-                        {row.unjustified_absences > 0 ? (
-                          <span className="badge badge-refuse">{row.unjustified_absences}</span>
-                        ) : (
-                          <span className="badge badge-termine">0</span>
-                        )}
-                      </td>
-                      <td>
-                        <button className="modifier" type="button" onClick={() => openDetail(row)}>
-                          Détails
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+                      </div>
+
+                      <div className="min-w-0 w-full">
+                        <p className={`truncate text-sm font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>{row.full_name}</p>
+                        <p className={`mt-0.5 truncate text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{row.email}</p>
+                      </div>
+
+                      {/* Times */}
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className={`font-semibold ${row.today_check_in ? (dark ? "text-emerald-400" : "text-emerald-600") : "text-slate-400"}`}>
+                          ↑ {formatTime(row.today_check_in)}
+                        </span>
+                        <span className={dark ? "text-slate-400" : "text-slate-400"}>
+                          ↓ {formatTime(row.today_check_out)}
+                        </span>
+                      </div>
+
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${statusCls}`}>
+                        {statusLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </article>
+        </main>
       </div>
 
-      {/* Employee Detail Modal */}
+      {/* Detail Modal */}
       {detailEmployee && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setDetailEmployee(null)}
-        >
-          <div
-            style={{ background: dark ? "#1e293b" : "#fff", borderRadius: 28, width: "100%", maxWidth: 820, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.28)", overflow: "hidden" }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div style={{ padding: "20px 24px", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#64748b" }}>Détails de présence</p>
-                <h2 style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>{detailEmployee.full_name}</h2>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#94a3b8" }}>{detailEmployee.email} • {detailEmployee.service}</p>
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+          onClick={() => setDetailEmployee(null)}>
+          <div className={`flex w-full max-w-3xl flex-col rounded-3xl border shadow-2xl ${dark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+            style={{ maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${dark ? "border-slate-800" : "border-slate-100"}`}>
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-extrabold text-white shadow-md">
+                  {getInitials(detailEmployee.full_name)}
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Détails de présence</p>
+                  <h2 className={`text-xl font-black ${dark ? "text-slate-50" : "text-slate-900"}`}>{detailEmployee.full_name}</h2>
+                  <p className="text-xs text-slate-400">{detailEmployee.email}</p>
+                </div>
               </div>
-              <button onClick={() => setDetailEmployee(null)} type="button" style={{ border: "none", borderRadius: 12, padding: "8px 16px", fontWeight: 700, cursor: "pointer", background: dark ? "#334155" : "#f1f5f9", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }}>
+              <button type="button" onClick={() => setDetailEmployee(null)}
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold ${dark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
                 Fermer
               </button>
             </div>
 
             {/* Filters */}
-            <div style={{ padding: "14px 24px", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap" }}>Du</span>
-                <input type="date" lang="fr" value={detailFromDate} onChange={e => setDetailFromDate(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: 12, border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap" }}>Au</span>
-                <input type="date" lang="fr" value={detailToDate} onChange={e => setDetailToDate(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: 12, border: `1px solid ${dark ? "#334155" : "#cbd5e1"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13 }} />
+            <div className={`flex flex-wrap items-center gap-3 px-6 py-4 border-b ${dark ? "border-slate-800" : "border-slate-100"}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-400">Du</span>
+                <input type="date" value={detailFromDate} onChange={(e) => setDetailFromDate(e.target.value)}
+                  className={`rounded-xl border px-3 py-2 text-sm outline-none ${dark ? "border-slate-700 bg-slate-800 text-slate-100" : "border-slate-200 bg-slate-50 text-slate-800"}`} />
+                <span className="text-xs font-semibold text-slate-400">Au</span>
+                <input type="date" value={detailToDate} onChange={(e) => setDetailToDate(e.target.value)}
+                  className={`rounded-xl border px-3 py-2 text-sm outline-none ${dark ? "border-slate-700 bg-slate-800 text-slate-100" : "border-slate-200 bg-slate-50 text-slate-800"}`} />
                 {(detailFromDate || detailToDate) && (
                   <button type="button" onClick={() => { setDetailFromDate(""); setDetailToDate(""); }}
-                    style={{ border: "none", borderRadius: 10, padding: "6px 10px", fontSize: 12, cursor: "pointer", background: dark ? "#334155" : "#e2e8f0", color: dark ? "#e2e8f0" : "#64748b", fontWeight: 600 }}>
-                    ✕
-                  </button>
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${dark ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-600"}`}>✕</button>
                 )}
               </div>
-              {["all", "Complet", "Entrée seule", "Absent"].map(s => (
-                <button key={s} type="button"
-                  onClick={() => setDetailStatusFilter(s)}
-                  style={{ border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    background: detailStatusFilter === s ? (dark ? "#3b82f6" : "#0f172a") : (dark ? "#334155" : "#e2e8f0"),
-                    color: detailStatusFilter === s ? "#fff" : (dark ? "#cbd5e1" : "#475569") }}>
-                  {s === "all" ? "Tous" : s}
-                </button>
-              ))}
+              <div className="flex gap-2">
+                {["all", "Complet", "Entrée seule", "Absent"].map((s) => (
+                  <button key={s} type="button" onClick={() => setDetailStatusFilter(s)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${detailStatusFilter === s ? "bg-blue-600 text-white" : dark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                    {s === "all" ? "Tous" : s}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Body */}
-            <div style={{ overflowY: "auto", flex: 1 }}>
+            <div className="flex-1 overflow-y-auto">
               {detailLoading ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Chargement...</div>
+                <div className="p-10 text-center text-sm text-slate-400">Chargement...</div>
               ) : detailData ? (() => {
-                const filtered = detailData.days.filter(day => {
-                  if (day.is_weekend) return false;
-                  if (detailStatusFilter !== "all" && day.status !== detailStatusFilter) return false;
-                  if (detailFromDate && day.date < detailFromDate) return false;
-                  if (detailToDate && day.date > detailToDate) return false;
-                  return true;
-                });
-                const statusColor = s => s === "Complet" ? "#16a34a" : s === "Absent" ? "#dc2626" : "#d97706";
-                const statusBg = s => s === "Complet" ? "#dcfce7" : s === "Absent" ? "#fee2e2" : "#fef9c3";
-                const justifColor = s => s === "Justifié" ? "#16a34a" : s === "En cours" ? "#d97706" : s === "Non acceptée" ? "#dc2626" : "#64748b";
+                // Sort newest first; weekends only show in "Tous", hidden when a status filter is active
+                const days = [...detailData.days]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .filter((day) => {
+                    if (day.is_weekend) return detailStatusFilter === "all"; // weekends only in "Tous"
+                    if (detailStatusFilter !== "all" && day.status !== detailStatusFilter) return false;
+                    if (detailFromDate && day.date < detailFromDate) return false;
+                    if (detailToDate && day.date > detailToDate) return false;
+                    return true;
+                  });
 
-                return filtered.length === 0 ? (
-                  <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Aucun enregistrement correspondant.</div>
-                ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                if (days.length === 0) return <div className="p-10 text-center text-sm text-slate-400">Aucun enregistrement correspondant.</div>;
+
+                return (
+                  <table className="w-full border-separate border-spacing-0 text-sm">
                     <thead>
-                      <tr style={{ background: dark ? "#0f172a" : "#f8fafc" }}>
-                        {["Date", "Entrée", "Sortie", "Statut", "Justification"].map(h => (
-                          <th key={h} style={{ padding: "10px 20px", textAlign: "left", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#64748b", borderBottom: `1px solid ${dark ? "#334155" : "#e2e8f0"}` }}>{h}</th>
+                      <tr className={dark ? "bg-slate-950" : "bg-slate-50"}>
+                        {["Date", "Entrée", "Sortie", "Statut"].map((h) => (
+                          <th key={h} className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-widest ${dark ? "text-slate-400 border-b border-slate-800" : "text-slate-400 border-b border-slate-100"}`}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.map(day => (
-                        <tr key={day.date} style={{ borderBottom: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}` }}>
-                          <td style={{ padding: "11px 20px", fontWeight: 600, color: dark ? "#e2e8f0" : "#0f172a" }}>
-                            {new Date(`${day.date}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-                          </td>
-                          <td style={{ padding: "11px 20px", color: day.check_in ? (dark ? "#86efac" : "#16a34a") : "#94a3b8", fontWeight: day.check_in ? 600 : 400 }}>{day.check_in || "--:--"}</td>
-                          <td style={{ padding: "11px 20px", color: day.check_out ? (dark ? "#e2e8f0" : "#0f172a") : "#94a3b8" }}>{day.check_out || "--:--"}</td>
-                          <td style={{ padding: "11px 20px" }}>
-                            <span style={{ background: statusBg(day.status), color: statusColor(day.status), borderRadius: 20, padding: "3px 12px", fontWeight: 700, fontSize: 12 }}>{day.status}</span>
-                          </td>
-                          <td style={{ padding: "11px 20px" }}>
-                            {day.justification_status ? (
-                              <span style={{ color: justifColor(day.justification_status), fontWeight: 600, fontSize: 12 }}>{day.justification_status}</span>
-                            ) : day.status === "Absent" ? (
-                              <span style={{ color: "#94a3b8", fontSize: 12 }}>Non justifié</span>
-                            ) : <span style={{ color: "#94a3b8" }}>—</span>}
-                          </td>
-                        </tr>
-                      ))}
+                      {days.map((day) => {
+                        const isWeekend = day.is_weekend;
+                        const isJustified = day.justification_status === "Justifié" || day.raw_justif_status === "JUSTIFIE";
+                        const rowBg = isWeekend
+                          ? dark ? "bg-slate-800/40" : "bg-slate-50/80"
+                          : "";
+
+                        let statusBadge;
+                        if (isWeekend) {
+                          statusBadge = (
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-500">Weekend</span>
+                          );
+                        } else if (day.status === "Complet") {
+                          statusBadge = <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">Complet</span>;
+                        } else if (day.status === "Absent") {
+                          statusBadge = isJustified ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700">Absent</span>
+                              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">Justifié</span>
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700">Absent · Non justifié</span>
+                          );
+                        } else {
+                          statusBadge = <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">{day.status}</span>;
+                        }
+
+                        return (
+                          <tr key={day.date} className={`${rowBg} ${dark ? "border-b border-slate-800 hover:bg-slate-800/50" : "border-b border-slate-50 hover:bg-slate-50"}`}>
+                            <td className={`px-5 py-3.5 text-sm font-semibold ${isWeekend ? "text-slate-400" : dark ? "text-slate-200" : "text-slate-800"}`}>
+                              {new Date(`${day.date}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
+                            </td>
+                            <td className={`px-5 py-3.5 text-sm font-semibold ${isWeekend ? "text-slate-400" : day.check_in ? (dark ? "text-emerald-400" : "text-emerald-600") : "text-slate-400"}`}>
+                              {isWeekend ? "—" : (day.check_in || "--:--")}
+                            </td>
+                            <td className={`px-5 py-3.5 text-sm ${isWeekend ? "text-slate-400" : day.check_out ? (dark ? "text-slate-200" : "text-slate-700") : "text-slate-400"}`}>
+                              {isWeekend ? "—" : (day.check_out || "--:--")}
+                            </td>
+                            <td className="px-5 py-3.5">{statusBadge}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 );
@@ -367,17 +383,16 @@ export default function ChefAttendance() {
 
             {/* Footer stats */}
             {detailData && !detailLoading && (
-              <div style={{ padding: "14px 24px", borderTop: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, display: "flex", gap: 24, flexWrap: "wrap" }}>
+              <div className={`flex flex-wrap gap-6 px-6 py-4 border-t ${dark ? "border-slate-800" : "border-slate-100"}`}>
                 {[
-                  { label: "Complets", val: detailData.days.filter(d => !d.is_weekend && d.status === "Complet").length, color: "#16a34a" },
-                  { label: "Entrée seule", val: detailData.days.filter(d => !d.is_weekend && d.status === "Entrée seule").length, color: "#d97706" },
-                  { label: "Absences", val: detailData.days.filter(d => !d.is_weekend && d.status === "Absent").length, color: "#dc2626" },
-                  { label: "Justifiés", val: detailData.days.filter(d => d.raw_justif_status === "JUSTIFIE").length, color: "#2563eb" },
-                ].map(item => (
-                  <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.color, display: "inline-block" }} />
-                    <span style={{ fontSize: 13, color: dark ? "#94a3b8" : "#64748b" }}>{item.label}:</span>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: item.color }}>{item.val}</span>
+                  { label: "Complets", val: detailData.days.filter((d) => !d.is_weekend && d.status === "Complet").length, cls: "text-emerald-500" },
+                  { label: "Entrée seule", val: detailData.days.filter((d) => !d.is_weekend && d.status === "Entrée seule").length, cls: "text-amber-500" },
+                  { label: "Absences", val: detailData.days.filter((d) => !d.is_weekend && d.status === "Absent").length, cls: "text-rose-500" },
+                  { label: "Justifiés", val: detailData.days.filter((d) => d.raw_justif_status === "JUSTIFIE").length, cls: "text-blue-500" },
+                ].map(({ label, val, cls }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={`text-lg font-black ${cls}`}>{val}</span>
+                    <span className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</span>
                   </div>
                 ))}
               </div>

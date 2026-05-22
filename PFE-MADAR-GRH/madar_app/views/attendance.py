@@ -88,7 +88,10 @@ def attendance_me(request):
 	"""Return attendance records for the current employee, chef or RH staff in a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
-	today = timezone.localdate()
+	now_local = timezone.localtime()
+	today = now_local.date()
+	# Treat today as absent only after 17:00; before that the workday isn't over
+	absence_cutoff = today if now_local.hour >= 17 else today - timedelta(days=1)
 
 	if qfrom:
 		from_date = datetime.fromisoformat(qfrom).date()
@@ -131,7 +134,10 @@ def attendance_team(request):
 	"""Return attendance summary for the manager's service on a date range."""
 	qfrom = request.query_params.get('from')
 	qto = request.query_params.get('to')
-	today = timezone.localdate()
+	now_local = timezone.localtime()
+	today = now_local.date()
+	# Only count today as a potential absence day after 17:00
+	absence_cutoff = today if now_local.hour >= 17 else today - timedelta(days=1)
 
 	from_date = datetime.fromisoformat(qfrom).date() if qfrom else today.replace(day=1)
 	to_date = datetime.fromisoformat(qto).date() if qto else today
@@ -189,7 +195,7 @@ def attendance_team(request):
 		justified_dates = justified_dates_by_emp.get(employee.id, set())
 		emp_start = max(from_date, employee.hired_at) if employee.hired_at else from_date
 		current_date = emp_start
-		while current_date <= to_date:
+		while current_date <= min(to_date, absence_cutoff):
 			if current_date.weekday() < 5 and current_date not in record_map:
 				absent_days += 1
 				last_absence_date = current_date
@@ -197,10 +203,10 @@ def attendance_team(request):
 					unjustified_absences += 1
 			current_date = current_date + timedelta(days=1)
 
-		# Notify chef if this employee is absent today
+		# Notify chef if this employee is absent today — only after 17:00
 		today_record = record_map.get(today)
 		full_name = f"{employee.first_name} {employee.last_name}".strip() or employee.email
-		if today.weekday() < 5 and not today_record:
+		if today.weekday() < 5 and not today_record and now_local.hour >= 17:
 			notif_message = f"{full_name} n'est pas venu(e) au travail le {today.isoformat()}."
 			if notif_message not in already_notified_today:
 				notify(request.user, 'Absence détectée', notif_message, link='/chef/attendance')

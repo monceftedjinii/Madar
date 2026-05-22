@@ -76,22 +76,31 @@ def create_leave(request):
 			status=status.HTTP_400_BAD_REQUEST
 		)
 
-	# Block if employee has a pending request or ongoing approved leave
 	today = date.today()
-	blocked = LeaveRequest.objects.filter(
-		employee=emp,
-		status=LeaveRequest.Status.PENDING
-	).exists() or LeaveRequest.objects.filter(
-		employee=emp,
-		status=LeaveRequest.Status.ACCEPTED,
-		end_date__gte=today
-	).exists()
 
-	if blocked:
-		return Response(
-			{'detail': "You can't submit a new leave request while you have a pending request or an ongoing approved leave."},
-			status=status.HTTP_400_BAD_REQUEST
-		)
+	# Block annual leave if employee already has an active/ongoing accepted annual leave
+	if leave_type.code == 'CA':
+		active_annual = LeaveRequest.objects.filter(
+			employee=emp,
+			type__code='CA',
+			status=LeaveRequest.Status.ACCEPTED,
+			end_date__gte=today,
+		).order_by('end_date').first()
+		if active_annual:
+			return_date = active_annual.end_date + timedelta(days=1)
+			return Response(
+				{
+					'detail': (
+						f"Vous êtes en congé annuel jusqu'au "
+						f"{active_annual.end_date.strftime('%d/%m/%Y')}. "
+						f"Vous pourrez soumettre une nouvelle demande à partir du "
+						f"{return_date.strftime('%d/%m/%Y')}."
+					),
+					'code': 'ACTIVE_ANNUAL_LEAVE',
+					'blocked_until': return_date.isoformat(),
+				},
+				status=status.HTTP_400_BAD_REQUEST
+			)
 
 	# Annual leave 2-split rule (code CA, 30 days max, at most 2 fractions per year)
 	ANNUAL_CODE = 'CA'
@@ -132,6 +141,10 @@ def create_leave(request):
 
 	is_drh_user = is_drh(request.user)
 	is_rh_user = is_any_rh(request.user)
+	is_chef_user = (
+		request.user.role == RoleChoices.CHEF or
+		request.user.get_employee_role() == EmployeeRoleChoices.CHEF
+	)
 	is_unlimited = leave_type.nbrJoursDroit == 0
 
 	# DRH: auto-accept immediately — no validation needed
@@ -163,17 +176,17 @@ def create_leave(request):
 		status=LeaveRequest.Status.PENDING,
 	)
 
-	if is_rh_user:
-		# RH (non-DRH): single step — GRH validates
+	if is_rh_user or is_chef_user:
+		# RH or Chef: single step — RH Congé validates directly (no service chef step needed)
 		step = ValidationWorkflow.objects.create(
 			leave_request=leave,
 			validation_order=1,
-			validator_role=RoleChoices.GRH,
+			validator_role=RoleChoices.RH_SIMPLE,
 			is_active=True,
 		)
 		_notify_step_validators(leave, step)
 	else:
-		# Regular employee / chef: 2-step workflow
+		# Regular employee: 2-step workflow (chef → GRH)
 		workflow_steps = ValidationWorkflow.initialize_for_leave_request(leave)
 		ValidationWorkflow.objects.filter(leave_request=leave).update(is_active=False)
 		first_step = workflow_steps.first()
@@ -333,7 +346,7 @@ def department_pending_leaves(request):
 			RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT, RoleChoices.GRH
 		])
 	else:
-		# Regular RH Congé: only sees employee leaves at RH_SIMPLE step
+		# RH Congé: sees employee and chef leaves (RH_SIMPLE/RH_AGENT steps)
 		qs = qs.filter(validation_workflow__validator_role__in=[
 			RoleChoices.RH_SIMPLE, RoleChoices.RH_AGENT
 		])

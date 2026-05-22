@@ -9,6 +9,7 @@ from .models import (
 )
 from .models import Task
 from .models import Attendance
+from .models import Evaluation, EvaluationScore, EvaluationCriteria
 from .models import LeaveType, LeaveRequest, SoldeConge, ValidationWorkflow
 from .models import AbsenceWarning, DisciplineFlag, Notification
 from .models import DocumentType, Document, DocumentHistory, DocumentVersion, DocumentValidation, DocumentAccess
@@ -351,7 +352,18 @@ class ValidationWorkflowAdmin(admin.ModelAdmin):
 
 admin.site.register(Task)
 admin.site.register(Attendance)
-admin.site.register(LeaveRequest)
+
+
+@admin.register(LeaveRequest)
+class LeaveRequestAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee', 'type', 'start_date', 'end_date', 'status', 'decided_by', 'created_at')
+    list_filter = ('status', 'type', 'start_date')
+    search_fields = ('employee__first_name', 'employee__last_name', 'employee__email')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'decided_at')
+    raw_id_fields = ('employee', 'decided_by')
+
+
 admin.site.register(AbsenceWarning)
 admin.site.register(DisciplineFlag)
 admin.site.register(Notification)
@@ -507,3 +519,25 @@ class MessagingSettingsAdmin(admin.ModelAdmin):
 
 
 admin.site.register(MessagingSettings, MessagingSettingsAdmin)
+
+
+class EvaluationScoreInline(admin.TabularInline):
+	model = EvaluationScore
+	extra = 0
+	readonly_fields = ('criterion', 'score', 'comment')
+
+
+@admin.register(Evaluation)
+class EvaluationAdmin(admin.ModelAdmin):
+	list_display = ('id', 'employee', 'evaluator', 'period', 'year', 'global_score', 'recommendation', 'evaluation_date')
+	list_filter = ('year', 'recommendation', 'status')
+	search_fields = ('employee__first_name', 'employee__last_name', 'evaluator__first_name', 'period')
+	ordering = ('-evaluation_date',)
+	readonly_fields = ('created_at', 'global_score')
+	inlines = [EvaluationScoreInline]
+
+
+@admin.register(EvaluationCriteria)
+class EvaluationCriteriaAdmin(admin.ModelAdmin):
+	list_display = ('id', 'label', 'note_min', 'note_max', 'weight')
+	ordering = ('label',)

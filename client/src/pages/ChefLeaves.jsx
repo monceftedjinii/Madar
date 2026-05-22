@@ -37,6 +37,8 @@ export default function ChefLeaves() {
   const [actionId, setActionId] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [decisionModal, setDecisionModal] = useState(null); // { request, action }
+  const [decisionComment, setDecisionComment] = useState("");
 
   const fetchRequests = async () => {
     try {
@@ -69,37 +71,35 @@ export default function ChefLeaves() {
     };
   }, [requests]);
 
-  const decideRequest = async (requestId, action) => {
-    const comment =
-      window.prompt(
-        action === "approve"
-          ? "Commentaire de validation (optionnel)"
-          : "Motif de refus (optionnel)",
-        "",
-      ) ?? "";
+  const openDecisionModal = (requestItem, action) => {
+    setDecisionModal({ request: requestItem, action });
+    setDecisionComment("");
+    setFeedback("");
+    setErrorMessage("");
+  };
 
+  const submitDecision = async () => {
+    if (!decisionModal) return;
+    const { request, action } = decisionModal;
     try {
-      setActionId(requestId);
+      setActionId(request.id);
       setFeedback("");
       setErrorMessage("");
-      await axios.post(`/api/leaves/${requestId}/${action}/`, { comment });
-      setFeedback(
-        action === "approve"
-          ? "Demande validée avec succès."
-          : "Demande refusée avec succès.",
-      );
+      await axios.post(`/api/leaves/${request.id}/${action}/`, { comment: decisionComment });
+      setFeedback(action === "approve" ? "Demande validée avec succès." : "Demande refusée avec succès.");
+      setDecisionModal(null);
       await fetchRequests();
     } catch (requestError) {
       console.error("Erreur décision congé :", requestError);
-      setErrorMessage(
-        requestError?.response?.data?.detail || "Impossible de traiter cette demande.",
-      );
+      setErrorMessage(requestError?.response?.data?.detail || "Impossible de traiter cette demande.");
+      setDecisionModal(null);
     } finally {
       setActionId(null);
     }
   };
 
   return (
+    <>
     <div
       className={`profile-page${dark ? " dark" : ""} ${isNavOpen ? "nav-open" : "nav-closed"}`}
     >
@@ -250,8 +250,8 @@ export default function ChefLeaves() {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button className="modifier" disabled={actionId === requestItem.id} onClick={() => decideRequest(requestItem.id, "approve")} type="button">Valider</button>
-                            <button className="mode" disabled={actionId === requestItem.id} onClick={() => decideRequest(requestItem.id, "reject")} type="button">Refuser</button>
+                            <button className="modifier" disabled={actionId === requestItem.id} onClick={() => openDecisionModal(requestItem, "approve")} type="button">Valider</button>
+                            <button className="mode" disabled={actionId === requestItem.id} onClick={() => openDecisionModal(requestItem, "reject")} type="button">Refuser</button>
                           </div>
                         </td>
                       </tr>
@@ -282,15 +282,16 @@ export default function ChefLeaves() {
                   <th>Période</th>
                   <th>Justificatif</th>
                   <th>Statut final</th>
-                  <th>Décision finale par</th>
+                  <th>Commentaire RH</th>
+                  <th>Décision par</th>
                   <th>Date décision</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="7">Chargement...</td></tr>
+                  <tr><td colSpan="8">Chargement...</td></tr>
                 ) : requests.filter((r) => r.status !== "PENDING" || !r.can_decide).length === 0 ? (
-                  <tr><td colSpan="7">Aucun historique pour le moment.</td></tr>
+                  <tr><td colSpan="8">Aucun historique pour le moment.</td></tr>
                 ) : (
                   requests.filter((r) => r.status !== "PENDING" || !r.can_decide).map((requestItem) => {
                     const fullName = `${requestItem.employee?.first_name || ""} ${requestItem.employee?.last_name || ""}`.trim() || requestItem.employee_email || "-";
@@ -318,6 +319,13 @@ export default function ChefLeaves() {
                             </span>
                           )}
                         </td>
+                        <td style={{ maxWidth: 200 }}>
+                          {requestItem.chef_comment ? (
+                            <span style={{ fontSize: 13, color: dark ? "#cbd5e1" : "#374151" }}>{requestItem.chef_comment}</span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
                         <td>{requestItem.decided_by || "-"}</td>
                         <td>{requestItem.decided_at ? new Date(requestItem.decided_at).toLocaleDateString("fr-FR") : "-"}</td>
                       </tr>
@@ -331,5 +339,82 @@ export default function ChefLeaves() {
         </div>
       </div>
     </div>
+
+    {/* Decision modal */}
+    {decisionModal && (() => {
+      const { request, action } = decisionModal;
+      const isApprove = action === "approve";
+      const fullName = `${request.employee?.first_name || ""} ${request.employee?.last_name || ""}`.trim() || request.employee_email || "-";
+      return (
+        <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setDecisionModal(null)}>
+          <div style={{ background: dark ? "#0f172a" : "#fff", borderRadius: 24, width: "100%", maxWidth: 460, boxShadow: "0 24px 64px rgba(0,0,0,0.28)", border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, overflow: "hidden" }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding: "22px 24px 0", display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: isApprove ? "#dcfce7" : "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                {isApprove ? "✅" : "❌"}
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: dark ? "#f1f5f9" : "#0f172a" }}>
+                  {isApprove ? "Valider la demande" : "Refuser la demande"}
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+                  Demande de congé de {fullName}
+                </p>
+              </div>
+            </div>
+
+            {/* Info card */}
+            <div style={{ padding: "16px 24px" }}>
+              <div style={{ borderRadius: 14, padding: "12px 16px", background: dark ? "#1e293b" : "#f8fafc", border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8" }}>Type</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700, color: dark ? "#f1f5f9" : "#0f172a" }}>{request.type_label || request.type}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8" }}>Période</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700, color: dark ? "#f1f5f9" : "#0f172a" }}>{formatDate(request.start_date)} → {formatDate(request.end_date)}</p>
+                  </div>
+                </div>
+                {request.reason && (
+                  <div style={{ marginTop: 10 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8" }}>Motif</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 13, color: dark ? "#cbd5e1" : "#374151" }}>{request.reason}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Comment field */}
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: dark ? "#94a3b8" : "#64748b", marginBottom: 6 }}>
+                {isApprove ? "Commentaire (optionnel)" : "Motif de refus (optionnel)"}
+              </label>
+              <textarea
+                rows={3}
+                value={decisionComment}
+                onChange={e => setDecisionComment(e.target.value)}
+                placeholder={isApprove ? "Bon courage pour ce congé..." : "Expliquer la raison du refus..."}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0a0f1a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Actions */}
+            <div style={{ padding: "12px 24px 20px", display: "flex", gap: 10, justifyContent: "flex-end", borderTop: `1px solid ${dark ? "#1e293b" : "#f1f5f9"}` }}>
+              <button type="button" onClick={() => setDecisionModal(null)}
+                style={{ padding: "10px 22px", borderRadius: 12, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: "transparent", fontWeight: 700, fontSize: 14, cursor: "pointer", color: dark ? "#94a3b8" : "#64748b" }}>
+                Annuler
+              </button>
+              <button type="button" onClick={submitDecision} disabled={!!actionId}
+                style={{ padding: "10px 22px", borderRadius: 12, border: "none", background: isApprove ? "linear-gradient(135deg,#16a34a,#15803d)" : "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 800, fontSize: 14, cursor: actionId ? "not-allowed" : "pointer", opacity: actionId ? 0.7 : 1, boxShadow: isApprove ? "0 4px 14px rgba(22,163,74,0.35)" : "0 4px 14px rgba(239,68,68,0.35)" }}>
+                {actionId ? "Traitement..." : isApprove ? "Confirmer la validation" : "Confirmer le refus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+    </>
   );
 }

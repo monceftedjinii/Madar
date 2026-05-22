@@ -53,7 +53,7 @@ class EmployeeDashboardService:
             raise ValueError("employee record not found")
 
         task_rows, completed_count, pending_count, late_count = self._build_tasks()
-        attendance_rate = self._compute_attendance_rate()
+        attendance_rate, att_present, att_expected = self._compute_attendance_rate()
         overall_progress = (
             round((completed_count / len(task_rows)) * 100) if task_rows else 0
         )
@@ -84,6 +84,8 @@ class EmployeeDashboardService:
                 late_count,
                 attendance_rate,
                 final_score,
+                att_present,
+                att_expected,
             ),
             "charts": self._build_charts(
                 task_rows,
@@ -211,7 +213,7 @@ class EmployeeDashboardService:
             "overallProgress": overall_progress,
             "finalScore": final_score,
             "topSkill": self._get_top_skill(attendance_rate, overall_progress),
-            "statusLabel": self._get_score_label(final_score),
+            "statusLabel": self._get_evaluation_label(),
         }
 
     def _build_tasks(self):
@@ -255,13 +257,14 @@ class EmployeeDashboardService:
     def _compute_attendance_rate(self):
         expected_days = self._get_expected_attendance_days()
         if not expected_days:
-            return 0
+            return 0, 0, 0
         attendance_complete = self.attendance_qs.filter(
             date__in=expected_days,
             check_in_time__isnull=False,
             check_out_time__isnull=False,
         ).count()
-        return round((attendance_complete / len(expected_days)) * 100)
+        rate = round((attendance_complete / len(expected_days)) * 100)
+        return rate, attendance_complete, len(expected_days)
 
     def _compute_final_score(
         self,
@@ -270,14 +273,15 @@ class EmployeeDashboardService:
         late_count,
         unread_notifications,
     ):
+        # Scale out of 10: base 4 + attendance contribution + task contribution - penalties
         raw_score = (
-            8
-            + attendance_rate * 0.05
-            + overall_progress * 0.06
-            - late_count * 0.7
-            - unread_notifications * 0.15
+            4
+            + attendance_rate * 0.025
+            + overall_progress * 0.03
+            - late_count * 0.35
+            - unread_notifications * 0.07
         )
-        return round(max(6, min(20, raw_score)), 1)
+        return round(max(0, min(10, raw_score)), 1)
 
     def _build_stats(
         self,
@@ -287,11 +291,13 @@ class EmployeeDashboardService:
         late_count,
         attendance_rate,
         final_score,
+        att_present=0,
+        att_expected=0,
     ):
-        weekly_performance = self._build_weekly_performance(task_rows, attendance_rate)
+        weekly_perf_values, _, _ = self._build_weekly_performance(task_rows, attendance_rate)
         monthly_performance = (
-            round(sum(weekly_performance) / len(weekly_performance))
-            if weekly_performance
+            round(sum(weekly_perf_values) / len(weekly_perf_values))
+            if weekly_perf_values
             else 0
         )
         return [
@@ -323,7 +329,7 @@ class EmployeeDashboardService:
                 "id": "attendance",
                 "label": "Taux de présence",
                 "value": f"{attendance_rate}%",
-                "helper": "Présence personnelle",
+                "helper": f"{self.MONTH_NAMES[self.period_start.month]} {self.period_start.year} · {att_present} j. présents / {att_expected} attendus",
             },
             {
                 "id": "performance",
@@ -342,35 +348,23 @@ class EmployeeDashboardService:
         attendance_rate,
         overall_progress,
     ):
-        weekly_performance = self._build_weekly_performance(task_rows, attendance_rate)
+        weekly_values, weekly_labels, current_week_idx = self._build_weekly_performance(task_rows, attendance_rate)
         return {
-            "weeklyPerformance": weekly_performance,
-            "monthlyProgress": self._build_monthly_progress(weekly_performance),
+            "weeklyPerformance": weekly_values,
+            "weeklyLabels": weekly_labels,
+            "currentWeekIndex": current_week_idx,
+            "monthlyProgress": self._build_monthly_progress(weekly_values),
             "taskBreakdown": {
                 "completed": completed_count,
                 "pending": pending_count,
                 "late": late_count,
             },
             "skills": {
-                "punctuality": max(
-                    6, min(20, round(attendance_rate / 5) if attendance_rate else 8)
-                ),
-                "productivity": max(
-                    6, min(20, round(overall_progress / 5) if overall_progress else 8)
-                ),
-                "teamwork": max(
-                    6, min(20, 15 - late_count + min(self.inbox_qs.count(), 4))
-                ),
-                "discipline": max(
-                    6,
-                    min(
-                        20,
-                        14 - late_count + round(attendance_rate / 20)
-                        if attendance_rate
-                        else 10,
-                    ),
-                ),
-                "qualityOfWork": max(6, min(20, 12 + completed_count)),
+                "punctuality":   max(0, min(10, round(attendance_rate / 10))),
+                "productivity":  max(0, min(10, round(overall_progress / 10))),
+                "teamwork":      max(0, min(10, round(7 - late_count * 0.5 + min(self.inbox_qs.count(), 2) * 0.5))),
+                "discipline":    max(0, min(10, round(7 - late_count * 0.5 + attendance_rate / 50))),
+                "qualityOfWork": max(0, min(10, round(6 + completed_count * 0.5))),
             },
         }
 
@@ -482,16 +476,64 @@ class EmployeeDashboardService:
         }
 
     def _build_weekly_performance(self, task_rows, attendance_rate):
-        completed_tasks = len([task for task in task_rows if task["status"] == "Terminée"])
-        total_tasks = len(task_rows) or 1
-        completion_rate = round((completed_tasks / total_tasks) * 100)
-        base = round((attendance_rate + completion_rate) / 2) if (attendance_rate or task_rows) else 40
-        return [
-            max(35, min(100, base - 8)),
-            max(35, min(100, base - 2)),
-            max(35, min(100, base + 3)),
-            max(35, min(100, base + 7)),
+        """
+        Divide the selected month into 7-day windows (day 1-7, 8-14, 15-21, 22-end).
+        Return only weeks that have at least started, based on pure attendance rate.
+        Also returns labels and the index of the current (in-progress) week.
+        """
+        values = []
+        labels = []
+        current_week_idx = None
+
+        # Always 4 fixed windows: 1-7, 8-14, 15-21, 22-end
+        week_boundaries = [
+            (self.period_start.replace(day=1),
+             self.period_start.replace(day=7)),
+            (self.period_start.replace(day=8),
+             self.period_start.replace(day=14)),
+            (self.period_start.replace(day=15),
+             self.period_start.replace(day=21)),
+            (self.period_start.replace(day=22),
+             self.period_end),  # day 22 → end of month
         ]
+
+        week_num = 0
+        for week_start, week_end in week_boundaries:
+            # Skip weeks that haven't started yet
+            if week_start > self.today:
+                break
+
+            week_num += 1
+
+            # Working days (Mon–Fri) in this window, capped at today
+            cap = min(week_end, self.today)
+            working_days = [
+                week_start + timedelta(days=i)
+                for i in range((cap - week_start).days + 1)
+                if (week_start + timedelta(days=i)).weekday() < 5
+            ]
+
+            if not working_days:
+                continue
+
+            # Pure attendance: complete days / working days in this window
+            complete = Attendance.objects.filter(
+                employee=self.employee,
+                date__in=working_days,
+                check_in_time__isnull=False,
+                check_out_time__isnull=False,
+            ).count()
+
+            att_rate = round((complete / len(working_days)) * 100)
+            values.append(max(0, min(100, att_rate)))
+            labels.append(f"S{week_num}")
+
+            # Mark as current week only if this is the ongoing month
+            real_today = timezone.localdate()
+            if week_start <= real_today <= week_end and self.period_start.month == real_today.month and self.period_start.year == real_today.year:
+                current_week_idx = len(values) - 1
+
+        return values, labels, current_week_idx
 
     def _get_expected_attendance_days(self):
         start_date = max(self.month_start, self.employee.hired_at)
@@ -523,18 +565,15 @@ class EmployeeDashboardService:
         return expected_days
 
     def _build_monthly_progress(self, weekly_performance):
+        """Build 8 data points by interpolating between the 4 real weekly values."""
         if not weekly_performance:
             return []
-        return [
-            max(15, min(100, weekly_performance[0] - 20)),
-            max(15, min(100, weekly_performance[0] - 8)),
-            weekly_performance[0],
-            max(15, min(100, weekly_performance[1] - 4)),
-            weekly_performance[1],
-            max(15, min(100, weekly_performance[2] - 3)),
-            weekly_performance[2],
-            weekly_performance[3],
-        ]
+        points = []
+        for i, val in enumerate(weekly_performance):
+            prev = weekly_performance[i - 1] if i > 0 else val
+            points.append(max(0, min(100, round((prev + val) / 2))))
+            points.append(val)
+        return points
 
     def _get_top_skill(self, attendance_rate, overall_progress):
         if attendance_rate >= 90:
@@ -544,13 +583,34 @@ class EmployeeDashboardService:
         return "Rigueur"
 
     def _get_score_label(self, final_score):
-        if final_score >= 16:
-            return "Excellent"
-        if final_score >= 12:
-            return "Bon"
         if final_score >= 8:
+            return "Excellent"
+        if final_score >= 6:
+            return "Bon"
+        if final_score >= 4:
             return "Moyen"
         return "À améliorer"
+
+    def _get_evaluation_label(self):
+        """Return the recommendation label from the latest real evaluation, or 'Non évalué'."""
+        eval_obj = (
+            Evaluation.objects.filter(
+                employee=self.employee,
+                evaluation_date__year=self.period_start.year,
+                evaluation_date__month=self.period_start.month,
+            )
+            .order_by("-evaluation_date")
+            .first()
+        )
+        if not eval_obj:
+            return "Non évalué"
+        label_map = {
+            "EXCELLENT": "Excellent",
+            "GOOD": "Bon",
+            "AVERAGE": "Moyen",
+            "IMPROVEMENT": "À améliorer",
+        }
+        return label_map.get(eval_obj.recommendation, eval_obj.recommendation)
 
     def _get_latest_evaluation(self):
         """Return the evaluation for the selected month, or None."""

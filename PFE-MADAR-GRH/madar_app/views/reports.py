@@ -134,14 +134,22 @@ def _build_pdf_report(title, headers, rows):
 
 	data = [headers] + rows
 	table = Table(data, repeatRows=1)
-	table.setStyle(TableStyle([
+
+	base_styles = [
 		('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
 		('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
 		('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
 		('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
 		('ALIGN', (0, 0), (-1, 0), 'CENTER'),
 		('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-	]))
+	]
+	# Grey out weekend rows (last column == 'Weekend')
+	for i, row in enumerate(rows, start=1):
+		if row and row[-1] == 'Weekend':
+			base_styles.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#eeeeee')))
+			base_styles.append(('TEXTCOLOR', (0, i), (-1, i), colors.HexColor('#999999')))
+
+	table.setStyle(TableStyle(base_styles))
 	story.append(table)
 	doc.build(story)
 	output.seek(0)
@@ -380,7 +388,19 @@ def export_attendance_report(request):
 	rows = []
 	current_date = from_date
 	while current_date <= to_date:
+		is_weekend = current_date.weekday() >= 5  # Saturday=5, Sunday=6
 		for emp in employees:
+			if is_weekend:
+				rows.append([
+					f"{emp.first_name} {emp.last_name}",
+					_format_date(current_date),
+					'—',
+					'—',
+					'—',
+					'Weekend',
+				])
+				continue
+
 			attendance = attendance_map.get((emp.id, current_date))
 			if attendance and attendance.check_in_time:
 				status_label = 'Late' if attendance.check_in_time > EXPORT_LATE_THRESHOLD else 'Present'

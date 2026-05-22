@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.utils import timezone
 
-from madar_app.models import Attendance, Employee, LeaveRequest, Notification, Task, User
+from madar_app.models import Attendance, Employee, Evaluation, LeaveRequest, Notification, Task, User
 
 
 class ChefDashboardService:
@@ -114,6 +114,27 @@ class ChefDashboardService:
 
         pending_leaves_count = sum(1 for l in leaves if l.status == LeaveRequest.Status.PENDING)
 
+        # Monthly metrics
+        # Team attendance rate for the selected month
+        month_att = Attendance.objects.filter(
+            employee__in=all_service_employees,
+            date__gte=self.period_start,
+            date__lte=self.today,
+        )
+        month_att_total = month_att.count()
+        month_att_complete = month_att.filter(check_in_time__isnull=False, check_out_time__isnull=False).count()
+        team_attendance_rate = round((month_att_complete / month_att_total) * 100) if month_att_total else 0
+
+        # Evaluations done this month by this chef
+        evals_done = Evaluation.objects.filter(
+            evaluator=self.user,
+            evaluation_date__gte=self.period_start,
+            evaluation_date__lte=self.today,
+        ).count()
+
+        # Approved leaves this month
+        approved_leaves_count = sum(1 for l in leaves if l.status == LeaveRequest.Status.ACCEPTED)
+
         return {
             "header": {
                 "department": self.chef_employee.service.nomService if self.chef_employee.service else "Non renseigne",
@@ -133,16 +154,18 @@ class ChefDashboardService:
                 ),
                 "teamSize": total_service_size,
                 "onlineCount": online_count,
+                "checkedInCount": checked_in_count,
+                "submittedCount": submitted_count,
+                "revisionCount": revision_count,
+                "pendingLeaves": pending_leaves_count,
             },
             "stats": [
-                {"id": "team", "label": "Employes du service", "value": total_service_size, "helper": "Equipe geree"},
-                {"id": "online", "label": "En ligne", "value": online_count, "helper": "Disponibles maintenant"},
                 {"id": "tasks", "label": "Taches assignees", "value": len(task_dicts), "helper": "Sur le mois selectionne"},
-                {"id": "submitted", "label": "Travaux remis", "value": submitted_count, "helper": "A relire par le chef"},
-                {"id": "revision", "label": "Corrections", "value": revision_count, "helper": "Demandes de reprise"},
-                {"id": "late", "label": "Taches en retard", "value": late_count, "helper": "Suivi des delais"},
-                {"id": "leaves", "label": "Conges en attente", "value": pending_leaves_count, "helper": "A valider"},
-                {"id": "attendance", "label": "Pointages du jour", "value": checked_in_count, "helper": "Entrees enregistrees"},
+                {"id": "completed", "label": "Taches terminees", "value": done_count, "helper": "Validees ce mois"},
+                {"id": "late", "label": "Taches en retard", "value": late_count, "helper": "Delais depasses"},
+                {"id": "attendance", "label": "Presence equipe", "value": f"{team_attendance_rate}%", "helper": "Taux moyen ce mois"},
+                {"id": "evaluations", "label": "Evaluations effectuees", "value": evals_done, "helper": "Evaluations soumises ce mois"},
+                {"id": "leaves_approved", "label": "Conges accordes", "value": approved_leaves_count, "helper": "Approuves ce mois"},
             ],
             "charts": {
                 "attendance": [
@@ -166,6 +189,16 @@ class ChefDashboardService:
                     "isOnline": self._is_user_online(team_users.get(member.email)),
                     "checkedInToday": bool(attendance_by_employee.get(member.id) and attendance_by_employee[member.id].check_in_time),
                     "checkedOutToday": bool(attendance_by_employee.get(member.id) and attendance_by_employee[member.id].check_out_time),
+                    "checkInTime": (
+                        attendance_by_employee[member.id].check_in_time.strftime("%H:%M")
+                        if attendance_by_employee.get(member.id) and attendance_by_employee[member.id].check_in_time
+                        else None
+                    ),
+                    "checkOutTime": (
+                        attendance_by_employee[member.id].check_out_time.strftime("%H:%M")
+                        if attendance_by_employee.get(member.id) and attendance_by_employee[member.id].check_out_time
+                        else None
+                    ),
                 }
                 for member in team_members
             ],

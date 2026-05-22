@@ -44,7 +44,7 @@ function getTaskStatus(task) {
 
 function getStatusClass(label) {
   if (label === "Terminée") return "badge-termine";
-  if (label === "Travail remis") return "badge-genere";
+  if (label === "Travail remis") return "badge-soumis";
   if (label === "Correction demandée") return "badge-attente";
   if (label === "En retard") return "badge-refuse";
   return "badge-attente";
@@ -297,7 +297,13 @@ export default function Tasks() {
                           <div>{task.submission_note || "-"}</div>
                           <div style={{ fontSize: 12, color: "#94a3b8" }}>{formatDateTime(task.submitted_at)}</div>
                         </td>
-                        <td>{task.review_comment || "-"}</td>
+                        <td>
+                          {task.review_comment ? (
+                            <span style={{ fontSize: 13, color: dark ? "#e2e8f0" : "#374151" }}>{task.review_comment}</span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
                         <td>
                           {task.status === "DONE" ? (
                             <span className="badge badge-termine">Validée</span>
@@ -311,7 +317,7 @@ export default function Tasks() {
                               {task.status === "REVISION" ? "Corriger" : "Remettre"}
                             </button>
                           ) : (
-                            <span className="badge badge-genere">En attente de revue</span>
+                            <span className="badge badge-soumis">En attente de revue</span>
                           )}
                         </td>
                       </tr>

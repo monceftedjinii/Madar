@@ -1,14 +1,11 @@
 import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
-import ChecklistRtlOutlinedIcon from "@mui/icons-material/ChecklistRtlOutlined";
 import Navbar from "../../components/Navbar";
 import useDarkModePreference from "../../hooks/useDarkModePreference";
 import usePersistentNavState from "../../hooks/usePersistentNavState";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import StatsCards from "../../components/dashboard/StatsCards";
-import PerformanceBarChart from "../../components/dashboard/PerformanceBarChart";
 import ChefSummaryCard from "../../components/dashboard/ChefSummaryCard";
 import "../../styles/chef-space.css";
 
@@ -42,6 +39,8 @@ const emptyDashboard = {
     teamSize: 0,
     onlineCount: 0,
     checkedInCount: 0,
+    submittedCount: 0,
+    revisionCount: 0,
     pendingLeaves: 0,
   },
   stats: [],
@@ -105,21 +104,12 @@ export default function ChefDashboard() {
           params: { month: selectedMonth },
         });
         const data = response.data || {};
-        const checkedInStat = Array.isArray(data.stats)
-          ? data.stats.find((item) => item.id === "attendance")
-          : null;
-        const leavesStat = Array.isArray(data.stats)
-          ? data.stats.find((item) => item.id === "leaves")
-          : null;
-
         setDashboardData({
           ...emptyDashboard,
           ...data,
           profile: {
             ...emptyDashboard.profile,
             ...(data.profile || {}),
-            checkedInCount: Number.parseInt(checkedInStat?.value ?? 0, 10) || 0,
-            pendingLeaves: Number.parseInt(leavesStat?.value ?? 0, 10) || 0,
           },
         });
       } catch (error) {
@@ -160,15 +150,6 @@ export default function ChefDashboard() {
     : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
 
   const innerClass = dark ? "rounded-2xl bg-slate-800 p-4" : "rounded-2xl bg-slate-50 p-4";
-
-  const taskChartValues = [
-    dashboardData.charts.tasks.todo,
-    dashboardData.charts.tasks.submitted,
-    dashboardData.charts.tasks.revision,
-    dashboardData.charts.tasks.done,
-  ];
-  const taskChartMax = Math.max(1, ...taskChartValues);
-  const attendanceChartMax = Math.max(1, dashboardData.profile.teamSize || 0);
 
   return (
     <div
@@ -224,38 +205,84 @@ export default function ChefDashboard() {
         </div>
 
         <main className="chef-page-stack">
-          <section className="chef-hero">
-            <div className="chef-hero-copy">
-              <span className="chef-eyebrow">Espace chef</span>
-              <h2 className="chef-hero-title">Pilotage du service sur une seule vue</h2>
-              <p className="chef-hero-description">
-                Surveillez l&apos;effectif, les pointages actifs, les conges en attente et la charge
-                de travail avant d&apos;entrer dans les tableaux de detail.
-              </p>
-            </div>
-            <div className="chef-hero-kpis">
-              <article className="chef-kpi-card">
-                <span>Equipe</span>
-                <strong>{dashboardData.profile.teamSize}</strong>
-                <p>Employes actuellement suivis dans votre service.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>En ligne</span>
-                <strong>{dashboardData.profile.onlineCount}</strong>
-                <p>Collaborateurs actifs sur la periode choisie.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Pointages</span>
-                <strong>{dashboardData.profile.checkedInCount}</strong>
-                <p>Presences deja enregistrees aujourd&apos;hui.</p>
-              </article>
-              <article className="chef-kpi-card">
-                <span>Conges</span>
-                <strong>{dashboardData.profile.pendingLeaves}</strong>
-                <p>Demandes en attente d&apos;attention manager.</p>
-              </article>
-            </div>
+          <section>
+            <ChefSummaryCard dark={dark} profile={dashboardData.profile} />
           </section>
+
+          {/* Equipe du service — second card */}
+          <article className={cardClass}>
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
+                  Equipe du service
+                </h3>
+                <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                  Presence en ligne et pointage du jour pour chaque membre.
+                </p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${dark ? "bg-blue-500/15 text-blue-300" : "bg-blue-50 text-blue-600"}`}>
+                {dashboardData.team.length} membre{dashboardData.team.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {dashboardData.team.length === 0 ? (
+              <div className={`rounded-2xl p-6 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                Aucun membre d'equipe a afficher.
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {dashboardData.team.map((member) => {
+                  const initials = (() => {
+                    const parts = (member.fullName || "").trim().split(/\s+/).filter(Boolean);
+                    if (!parts.length) return "?";
+                    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+                  })();
+                  const attendanceBadge = member.checkedOutToday
+                    ? { label: "Journee complete", cls: "badge-termine" }
+                    : member.checkedInToday
+                      ? { label: "En cours", cls: "badge-attente" }
+                      : { label: "Absent", cls: "badge-refuse" };
+                  return (
+                    <div
+                      key={member.id}
+                      className={`relative flex flex-col gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-md ${dark ? "bg-slate-800 border border-slate-700" : "bg-slate-50 border border-slate-100"}`}
+                    >
+                      {/* Online dot */}
+                      <span
+                        className={`absolute right-4 top-4 h-2.5 w-2.5 rounded-full ring-2 ${member.isOnline ? "bg-emerald-400 ring-emerald-100" : "bg-slate-300 ring-slate-100"} ${dark ? "ring-slate-800" : ""}`}
+                        title={member.isOnline ? "En ligne" : "Hors ligne"}
+                      />
+                      {/* Avatar */}
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-extrabold text-white shadow-sm">
+                        {initials}
+                      </div>
+                      {/* Info */}
+                      <div className="min-w-0">
+                        <p className={`truncate text-sm font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>
+                          {member.fullName}
+                        </p>
+                        <p className={`mt-0.5 truncate text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                          {member.employee_role || "—"}
+                        </p>
+                      </div>
+                      {/* Attendance badge + times */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`badge ${attendanceBadge.cls}`}>
+                          {attendanceBadge.label}
+                        </span>
+                        {member.checkInTime && (
+                          <span className={`text-xs font-medium ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                            {member.checkInTime}{member.checkOutTime ? ` → ${member.checkOutTime}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </article>
 
           <DashboardHeader
             dark={dark}
@@ -270,198 +297,73 @@ export default function ChefDashboard() {
 
           <StatsCards dark={dark} items={dashboardData.stats} />
 
-          <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <ChefSummaryCard dark={dark} profile={dashboardData.profile} />
-
+          <section>
             <article className={cardClass}>
-              <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                Alertes manager
-              </h3>
-              <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                Priorites a suivre pour votre service sur la periode choisie.
-              </p>
-
-              <div className="mt-5 space-y-4">
-                <div className={innerClass}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Travaux remis
-                  </p>
-                  <p className={`mt-2 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    {dashboardData.charts.tasks.submitted}
-                  </p>
-                  <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                    Remises en attente de validation du chef.
-                  </p>
-                </div>
-                <div className={innerClass}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Corrections demandees
-                  </p>
-                  <p className={`mt-2 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    {dashboardData.charts.tasks.revision}
-                  </p>
-                  <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                    Taches retournees a l equipe pour ajustement.
-                  </p>
-                </div>
-                <div className={innerClass}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Notifications non lues
-                  </p>
-                  <p className={`mt-2 text-2xl font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    {dashboardData.notifications.filter((item) => !item.isRead).length}
-                  </p>
-                  <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                    Informations recentes a traiter.
-                  </p>
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-2">
-            <article className={cardClass}>
-              <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                   <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Presence de l equipe
+                    Historique de conge
                   </h3>
-                  <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                    Vision immediate des pointages du jour.
+                  <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                    Toutes les demandes de l equipe sur la periode selectionnee.
                   </p>
                 </div>
-                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
-                  <BarChartOutlinedIcon fontSize="small" />
-                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${dark ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-500"}`}>
+                  {dashboardData.leaves.length} demande{dashboardData.leaves.length !== 1 ? "s" : ""}
+                </span>
               </div>
-              <div className="h-80">
-                <PerformanceBarChart
-                  values={dashboardData.charts.attendance}
-                  labels={["Pointes", "Absents", "Journees completes"]}
-                  datasetLabel="Presence equipe"
-                  max={attendanceChartMax}
-                  colors={["#38bdf8", "#f87171", "#22c55e"]}
-                  dark={dark}
-                />
-              </div>
-            </article>
 
-            <article className={cardClass}>
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                    Cycle des taches
-                  </h3>
-                  <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                    Repartition des taches creees par le chef sur le mois.
-                  </p>
+              {dashboardData.leaves.length === 0 ? (
+                <div className={`rounded-2xl p-6 text-center text-sm ${dark ? "bg-slate-800 text-slate-400" : "bg-slate-50 text-slate-400"}`}>
+                  Aucune demande de conge sur cette periode.
                 </div>
-                <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
-                  <ChecklistRtlOutlinedIcon fontSize="small" />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {dashboardData.leaves.map((leave) => {
+                    const isAccepted = leave.status === "accepted" || leave.status === "ACCEPTED";
+                    const isRefused  = leave.status === "refused"  || leave.status === "REFUSED";
+                    const isPending  = !isAccepted && !isRefused;
+                    const statusLabel = isAccepted ? "Validee" : isRefused ? "Refusee" : "En attente";
+                    const rowBase = isAccepted
+                      ? dark
+                        ? "bg-emerald-900/30 border border-emerald-700/50"
+                        : "bg-emerald-50 border border-emerald-200"
+                      : isRefused
+                        ? dark
+                          ? "bg-rose-900/30 border border-rose-700/50"
+                          : "bg-rose-50 border border-rose-200"
+                        : dark
+                          ? "bg-slate-800 border border-slate-700"
+                          : "bg-slate-50 border border-slate-100";
+                    return (
+                      <div key={leave.id} className={`rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-md ${rowBase}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-sm font-semibold leading-snug ${dark ? "text-slate-100" : "text-slate-800"}`}>
+                            {leave.employee}
+                          </p>
+                          {isAccepted ? (
+                            <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-300">
+                              ✓ {statusLabel}
+                            </span>
+                          ) : isRefused ? (
+                            <span className="flex-shrink-0 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 ring-1 ring-rose-300">
+                              ✗ {statusLabel}
+                            </span>
+                          ) : (
+                            <span className="badge badge-attente flex-shrink-0">{statusLabel}</span>
+                          )}
+                        </div>
+                        <p className={`mt-2 text-xs font-medium ${isAccepted ? (dark ? "text-emerald-300" : "text-emerald-700") : dark ? "text-slate-300" : "text-slate-600"}`}>
+                          {leave.type}
+                        </p>
+                        <p className={`mt-1 text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                          {formatDate(leave.startDate)} → {formatDate(leave.endDate)}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-              <div className="h-80">
-                <PerformanceBarChart
-                  values={taskChartValues}
-                  labels={["En cours", "Remises", "Corrections", "Terminees"]}
-                  datasetLabel="Taches equipe"
-                  max={taskChartMax}
-                  colors={["#60a5fa", "#38bdf8", "#f59e0b", "#10b981"]}
-                  dark={dark}
-                />
-              </div>
-            </article>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <article className={cardClass}>
-              <div className="mb-5">
-                <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                  Equipe du service
-                </h3>
-                <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                  Presence en ligne et pointage du jour pour chaque employe.
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-separate border-spacing-y-3">
-                  <thead>
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      <th className="px-3">Employe</th>
-                      <th className="px-3">Poste</th>
-                      <th className="px-3">En ligne</th>
-                      <th className="px-3">Pointage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData.team.map((member) => (
-                      <tr key={member.id} className={dark ? "rounded-2xl bg-slate-800" : "rounded-2xl bg-slate-50"}>
-                        <td className={`rounded-l-2xl px-3 py-4 text-sm font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>
-                          <div>{member.fullName}</div>
-                          <div className={`mt-1 text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>{member.email}</div>
-                        </td>
-                        <td className={`px-3 py-4 text-sm ${dark ? "text-slate-300" : "text-slate-600"}`}>
-                          {member.employee_role || "-"}
-                        </td>
-                        <td className="px-3 py-4 text-sm">
-                          <span className={`badge ${member.isOnline ? "badge-termine" : "badge-refuse"}`}>
-                            {member.isOnline ? "En ligne" : "Hors ligne"}
-                          </span>
-                        </td>
-                        <td className="rounded-r-2xl px-3 py-4 text-sm">
-                          <span className={`badge ${member.checkedOutToday ? "badge-termine" : member.checkedInToday ? "badge-attente" : "badge-refuse"}`}>
-                            {member.checkedOutToday
-                              ? "Journee complete"
-                              : member.checkedInToday
-                                ? "En cours"
-                                : "Absent"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {!dashboardData.team.length && (
-                      <tr>
-                        <td colSpan="4" className={`px-3 py-4 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                          Aucun employe d equipe a afficher.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-
-            <article className={cardClass}>
-              <div className="mb-5">
-                <h3 className={`text-lg font-bold ${dark ? "text-slate-50" : "text-slate-900"}`}>
-                  Conges en attente
-                </h3>
-                <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                  Demandes d equipe a verifier rapidement.
-                </p>
-              </div>
-              <div className="space-y-3">
-                {dashboardData.leaves.map((leave) => (
-                  <div key={leave.id} className={innerClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className={`font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>
-                        {leave.employee}
-                      </p>
-                      <span className="badge badge-attente">{leave.status}</span>
-                    </div>
-                    <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-slate-500"}`}>
-                      {leave.type} • du {formatDate(leave.startDate)} au {formatDate(leave.endDate)}
-                    </p>
-                  </div>
-                ))}
-                {!dashboardData.leaves.length && (
-                  <div className={innerClass}>
-                    <p className={dark ? "text-slate-300" : "text-slate-500"}>
-                      Aucun conge en attente sur cette periode.
-                    </p>
-                  </div>
-                )}
-              </div>
+              )}
             </article>
           </section>
 

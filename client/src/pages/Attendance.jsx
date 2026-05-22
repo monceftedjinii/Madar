@@ -21,6 +21,15 @@ const toISODate = (value) => {
 
 const getTodayISO = () => toISODate(new Date());
 
+// Absent rows only appear after 17:00 for today; before that today is not yet an absence
+const getAbsenceCutoffISO = () => {
+  const now = new Date();
+  if (now.getHours() >= 17) return toISODate(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return toISODate(yesterday);
+};
+
 const getDatesInRange = (from, to) => {
   if (!from || !to || from > to) return [];
 
@@ -265,7 +274,7 @@ export default function Attendance() {
     }
 
     const cappedToDate =
-      appliedRange.to > getTodayISO() ? getTodayISO() : appliedRange.to;
+      appliedRange.to > getAbsenceCutoffISO() ? getAbsenceCutoffISO() : appliedRange.to;
 
     if (
       !appliedRange.from ||
@@ -294,13 +303,19 @@ export default function Attendance() {
       .reverse();
   }, [records, historyLoaded, appliedRange, hiredAt]);
 
-  const completedDays = displayedRecords.filter(
+  const isWeekendDate = (dateStr) => {
+    const d = parseISODate(dateStr).getDay(); // 0=Sun, 6=Sat
+    return d === 0 || d === 6;
+  };
+
+  const workingRecords = displayedRecords.filter((item) => !isWeekendDate(item.date));
+  const completedDays = workingRecords.filter(
     (item) => item.check_in_time && item.check_out_time,
   ).length;
-  const pendingCheckoutDays = displayedRecords.filter(
+  const pendingCheckoutDays = workingRecords.filter(
     (item) => item.check_in_time && !item.check_out_time,
   ).length;
-  const absentDays = displayedRecords.filter(
+  const absentDays = workingRecords.filter(
     (item) => !item.check_in_time,
   ).length;
 
@@ -674,7 +689,7 @@ export default function Attendance() {
               </div>
               <div className="main-note-card">
                 <h4>Résumé</h4>
-                <p>Jours sur la période : {displayedRecords.length}</p>
+                <p>Jours ouvrables : {workingRecords.length}</p>
                 <p style={{ marginTop: 8 }}>Journées complètes : {completedDays}</p>
                 <p style={{ marginTop: 8 }}>Sorties manquantes: {pendingCheckoutDays}</p>
                 <p style={{ marginTop: 8 }}>Absences: {absentDays}</p>
@@ -709,21 +724,24 @@ export default function Attendance() {
                   </thead>
                   <tbody>
                     {displayedRecords.map((record) => {
-                      const isComplete =
-                        record.check_in_time && record.check_out_time;
+                      const weekend = isWeekendDate(record.date);
+                      const isComplete = record.check_in_time && record.check_out_time;
                       const isAbsent = !record.check_in_time;
-                      const statusLabel = isComplete
-                        ? "Complet"
-                        : record.check_in_time
-                          ? "En cours"
-                          : "Absent";
-                      const statusClass = isComplete
-                        ? "badge-termine"
-                        : record.check_in_time
-                          ? "badge-attente"
-                          : "badge-absent";
+
+                      const statusLabel = weekend
+                        ? "Weekend"
+                        : isComplete ? "Complet"
+                        : record.check_in_time ? "En cours"
+                        : "Absent";
+
+                      const statusClass = weekend
+                        ? null
+                        : isComplete ? "badge-termine"
+                        : record.check_in_time ? "badge-attente"
+                        : "badge-absent";
+
                       const justif = justifications[record.date];
-                      const justifStatus = justif?.status || (isAbsent ? "NON_JUSTIFIE" : null);
+                      const justifStatus = justif?.status || (isAbsent && !weekend ? "NON_JUSTIFIE" : null);
                       const justifLabels = {
                         NON_JUSTIFIE: "Non justifié",
                         EN_COURS: "En cours",
@@ -737,42 +755,64 @@ export default function Attendance() {
                         NON_ACCEPTE: "badge-absent",
                       };
 
+                      const weekendRowStyle = weekend ? {
+                        background: dark ? "rgba(234,179,8,0.07)" : "rgba(254,252,232,0.9)",
+                        borderLeft: "3px solid #eab308",
+                      } : {};
+
                       return (
                         <tr
                           key={`${record.date}-${record.check_in_time || "none"}`}
+                          style={weekendRowStyle}
                         >
-                          <td>{formatDate(record.date)}</td>
-                          <td>{formatTime(record.check_in_time)}</td>
-                          <td>{formatTime(record.check_out_time)}</td>
+                          <td style={weekend ? { color: "#ca8a04", fontWeight: 600 } : {}}>
+                            {formatDate(record.date)}
+                          </td>
+                          <td style={weekend ? { color: "#94a3b8" } : {}}>
+                            {weekend ? "—" : formatTime(record.check_in_time)}
+                          </td>
+                          <td style={weekend ? { color: "#94a3b8" } : {}}>
+                            {weekend ? "—" : formatTime(record.check_out_time)}
+                          </td>
                           <td>
-                            <span className={`badge ${statusClass}`}>
-                              {statusLabel}
-                            </span>
+                            {weekend ? (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                                padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                                background: dark ? "rgba(234,179,8,0.15)" : "#fef9c3",
+                                color: "#ca8a04",
+                                border: "1px solid #fde047",
+                              }}>
+                                Weekend
+                              </span>
+                            ) : (
+                              <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                            )}
                           </td>
                           {canJustifyAbsence && (
-                          <td>
-                            {isAbsent && justifStatus ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <span className={`badge ${justifColors[justifStatus] || "badge-absent"}`}>
-                                  {justifLabels[justifStatus] || justifStatus}
-                                </span>
-                                {(justifStatus === "NON_JUSTIFIE" || justifStatus === "NON_ACCEPTE") && (
-                                  <button
-                                    type="button"
-                                    onClick={() => { setJustifyModal(record.date); setJustifyFile(null); setJustifyError(""); }}
-                                    style={{
-                                      border: "none", borderRadius: 8, padding: "4px 10px",
-                                      fontSize: 12, fontWeight: 600, cursor: "pointer",
-                                      background: dark ? "#334155" : "#e2e8f0",
-                                      color: dark ? "#f1f5f9" : "#0f172a",
-                                    }}
-                                  >
-                                    Justifier
-                                  </button>
-                                )}
-                              </div>
-                            ) : null}
-                          </td>
+                            <td>
+                              {!weekend && isAbsent && justifStatus ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                  <span className={`badge ${justifColors[justifStatus] || "badge-absent"}`}>
+                                    {justifLabels[justifStatus] || justifStatus}
+                                  </span>
+                                  {(justifStatus === "NON_JUSTIFIE" || justifStatus === "NON_ACCEPTE") && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setJustifyModal(record.date); setJustifyFile(null); setJustifyError(""); }}
+                                      style={{
+                                        border: "none", borderRadius: 8, padding: "4px 10px",
+                                        fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                        background: dark ? "#334155" : "#e2e8f0",
+                                        color: dark ? "#f1f5f9" : "#0f172a",
+                                      }}
+                                    >
+                                      Justifier
+                                    </button>
+                                  )}
+                                </div>
+                              ) : null}
+                            </td>
                           )}
                         </tr>
                       );

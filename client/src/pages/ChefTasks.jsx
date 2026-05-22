@@ -74,6 +74,10 @@ export default function ChefTasks() {
   const [reviewAction, setReviewAction] = useState("approve");
   const [actionId, setActionId] = useState(null);
   const [isDrh, setIsDrh] = useState(false);
+  const [archivedTasks, setArchivedTasks] = useState([]);
+  const [historySearch, setHistorySearch] = useState("");
+  const [archiveSearch, setArchiveSearch] = useState("");
+  const [archiveVisible, setArchiveVisible] = useState(true);
 
   const fieldStyle = {
     width: "100%",
@@ -255,12 +259,17 @@ export default function ChefTasks() {
     event.preventDefault();
     if (!reviewTask) return;
 
+    if (reviewAction === "reject" && !reviewComment.trim()) {
+      setErrorMessage("Un commentaire est obligatoire pour demander une correction.");
+      return;
+    }
+
     try {
       setActionId(reviewTask.id);
       resetMessages();
       await axios.post(`/api/tasks/${reviewTask.id}/review/`, {
         action: reviewAction,
-        comment: reviewComment.trim(),
+        review_comment: reviewComment.trim(),
       });
       setFeedback(
         reviewAction === "approve"
@@ -505,6 +514,17 @@ export default function ChefTasks() {
               <div className="chef-action-pill">Suivi equipe</div>
             </div>
 
+            {/* Search bar */}
+            <div style={{ marginBottom: 14 }}>
+              <input
+                type="text"
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Rechercher par nom ou titre..."
+                style={{ width: "100%", padding: "9px 14px", borderRadius: 12, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
             <div className="activite-table-scroll">
               <table className="activite-table">
               <thead>
@@ -520,21 +540,18 @@ export default function ChefTasks() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="7">Chargement des taches...</td>
-                  </tr>
-                ) : tasks.length === 0 ? (
-                  <tr>
-                    <td colSpan="7">Aucune tache d'equipe pour le moment.</td>
-                  </tr>
-                ) : (
-                  tasks.map((task) => {
-                    const employeeName =
-                      `${task.employee?.first_name || ""} ${task.employee?.last_name || ""}`.trim() ||
-                      task.employee?.email ||
-                      "-";
+                  <tr><td colSpan="7">Chargement des taches...</td></tr>
+                ) : (() => {
+                  const q = historySearch.trim().toLowerCase();
+                  const filtered = tasks.filter(t => {
+                    const name = `${t.employee?.first_name || ""} ${t.employee?.last_name || ""}`.toLowerCase();
+                    const title = (t.title || "").toLowerCase();
+                    return !q || name.includes(q) || title.includes(q);
+                  });
+                  if (!filtered.length) return <tr><td colSpan="7">Aucune tache trouvee.</td></tr>;
+                  return filtered.map((task) => {
+                    const employeeName = `${task.employee?.first_name || ""} ${task.employee?.last_name || ""}`.trim() || task.employee?.email || "-";
                     const statusLabel = getStatusLabel(task);
-
                     return (
                       <tr key={task.id}>
                         <td>
@@ -544,67 +561,143 @@ export default function ChefTasks() {
                         <td>{employeeName}</td>
                         <td>{formatDate(task.due_date)}</td>
                         <td>
-                          <span className={`badge ${getStatusClass(statusLabel)}`}>
-                            {statusLabel}
-                          </span>
+                          <span className={`badge ${getStatusClass(statusLabel)}`}>{statusLabel}</span>
                         </td>
                         <td>
                           <div>{task.submission_note || "-"}</div>
                           <div style={{ fontSize: 12, color: "#94a3b8" }}>{formatDateTime(task.submitted_at)}</div>
                           {task.review_comment && (
-                            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
-                              Retour: {task.review_comment}
-                            </div>
+                            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>Retour: {task.review_comment}</div>
                           )}
                         </td>
                         <td>
                           {task.submission_attachment ? (
-                            <a
-                              href={task.submission_attachment}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "#2563eb", fontWeight: 600 }}
-                            >
-                              Ouvrir
-                            </a>
-                          ) : (
-                            "-"
-                          )}
+                            <a href={task.submission_attachment} target="_blank" rel="noreferrer" style={{ color: "#2563eb", fontWeight: 600 }}>Ouvrir</a>
+                          ) : "-"}
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {task.can_review ? (
-                              <button className="modifier" onClick={() => openReview(task)} type="button">
-                                Traiter
-                              </button>
+                              <button className="modifier" onClick={() => openReview(task)} type="button">Traiter</button>
                             ) : task.status === "DONE" ? (
-                              <span className="badge badge-termine">Validee</span>
-                            ) : (
-                              <span className="badge badge-genere">Suivi en cours</span>
-                            )}
-
-                            {task.status !== "DONE" && (
                               <>
+                                <span className="badge badge-termine">Validee</span>
                                 <button
-                                  className="mode"
-                                  disabled={actionId === task.id}
-                                  onClick={() => deleteTask(task)}
                                   type="button"
+                                  onClick={() => {
+                                    setArchivedTasks(prev => prev.some(a => a.id === task.id) ? prev : [...prev, task]);
+                                    setTasks(prev => prev.filter(t => t.id !== task.id));
+                                  }}
+                                  style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #94a3b8", background: "transparent", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#64748b" }}
                                 >
-                                  {actionId === task.id ? "Suppression..." : "Supprimer"}
+                                  Archiver
                                 </button>
                               </>
+                            ) : (
+                              <span className="badge badge-genere">Suivi en cours</span>
                             )}
                           </div>
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  });
+                })()}
               </tbody>
               </table>
             </div>
           </section>
+
+          {/* Archive section */}
+          {archivedTasks.length > 0 && (
+          <section className="chef-panel">
+            <div className="chef-panel-head">
+              <div>
+                <h2>Archives</h2>
+                <p>{archivedTasks.length} tache{archivedTasks.length > 1 ? "s" : ""} archivee{archivedTasks.length > 1 ? "s" : ""}.</p>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setArchiveVisible(v => !v)}
+                  style={{ padding: "6px 14px", borderRadius: 10, border: `1px solid ${dark ? "#334155" : "#e2e8f0"}`, background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer", color: dark ? "#94a3b8" : "#64748b" }}
+                >
+                  {archiveVisible ? "Masquer ▲" : "Afficher ▼"}
+                </button>
+                <div className="chef-action-pill" style={{ background: "#f1f5f9", color: "#64748b" }}>Archive</div>
+              </div>
+            </div>
+
+            {archiveVisible && (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <input
+                    type="text"
+                    value={archiveSearch}
+                    onChange={e => setArchiveSearch(e.target.value)}
+                    placeholder="Rechercher dans les archives..."
+                    style={{ width: "100%", padding: "9px 14px", borderRadius: 12, border: `1.5px solid ${dark ? "#334155" : "#e2e8f0"}`, background: dark ? "#0f172a" : "#f8fafc", color: dark ? "#e2e8f0" : "#0f172a", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                <div className="activite-table-scroll">
+                  <table className="activite-table">
+                  <thead>
+                    <tr>
+                      <th>Tache</th>
+                      <th>Employe</th>
+                      <th>Echeance</th>
+                      <th>Remise</th>
+                      <th>Retour chef</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const q = archiveSearch.trim().toLowerCase();
+                      const filtered = archivedTasks.filter(t => {
+                        const name = `${t.employee?.first_name || ""} ${t.employee?.last_name || ""}`.toLowerCase();
+                        const title = (t.title || "").toLowerCase();
+                        return !q || name.includes(q) || title.includes(q);
+                      });
+                      if (!filtered.length) return <tr><td colSpan="6">Aucune archive trouvee.</td></tr>;
+                      return filtered.map(task => {
+                        const employeeName = `${task.employee?.first_name || ""} ${task.employee?.last_name || ""}`.trim() || "-";
+                        return (
+                          <tr key={task.id} style={{ opacity: 0.75 }}>
+                            <td>
+                              <div>{task.title || "-"}</div>
+                              <div style={{ fontSize: 12, color: "#94a3b8" }}>{task.description || "-"}</div>
+                            </td>
+                            <td>{employeeName}</td>
+                            <td>{formatDate(task.due_date)}</td>
+                            <td>
+                              <div>{task.submission_note || "-"}</div>
+                              <div style={{ fontSize: 12, color: "#94a3b8" }}>{formatDateTime(task.submitted_at)}</div>
+                            </td>
+                            <td style={{ fontSize: 13, color: dark ? "#86efac" : "#166534" }}>{task.review_comment || "—"}</td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTasks(prev => [...prev, task]);
+                                  setArchivedTasks(prev => prev.filter(a => a.id !== task.id));
+                                }}
+                                style={{ padding: "4px 12px", borderRadius: 8, border: "1px solid #3b82f6", background: "#eff6ff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#1d4ed8" }}
+                              >
+                                Désarchiver
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+          )}
         </div>
       </div>
 
